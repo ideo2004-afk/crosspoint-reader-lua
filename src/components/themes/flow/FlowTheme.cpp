@@ -222,7 +222,7 @@ void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
     int y = rect.y + i * (rowHeight + spacing);
     
     if (selected) {
-      renderer.fillRoundedRect(menuLeft, y, menuWidth, rowHeight, cornerRadius, Color::LightGray);
+      renderer.fillRoundedRect(menuLeft, y, menuWidth, rowHeight, cornerRadius, Color::Black);
     }
     
     // Left-align icon with 12px padding from menuLeft (aligns with covers)
@@ -231,7 +231,7 @@ void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
       const uint8_t* iconBitmap = LyraTheme::iconForName(icon, 32);
       if (iconBitmap != nullptr) {
         // Center icon vertically in rowHeight
-        renderer.drawIcon(iconBitmap, menuLeft + 12, y + (rowHeight - 32) / 2, 32, 32);
+        renderer.drawIcon(iconBitmap, menuLeft + 12, y + (rowHeight - 32) / 2, 32, 32, selected ? White : Black);
       }
     }
     
@@ -243,7 +243,7 @@ void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
     
     // Text starts after the icon area (rowHeight ensures consistent spacing)
     int textY = y + (rowHeight - renderer.getLineHeight(NOTOSANS_14_FONT_ID)) / 2 + nudge;
-    renderer.drawText(NOTOSANS_14_FONT_ID, menuLeft + rowHeight, textY, label.c_str(), Color::Black, EpdFontFamily::REGULAR);
+    renderer.drawText(NOTOSANS_14_FONT_ID, menuLeft + rowHeight, textY, label.c_str(), selected ? White : Black, EpdFontFamily::REGULAR);
   }
 }
 

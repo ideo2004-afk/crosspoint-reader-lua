@@ -14,6 +14,7 @@
 #include "NetworkModeSelectionActivity.h"
 #include "WifiSelectionActivity.h"
 #include "activities/network/CalibreConnectActivity.h"
+#include "activities/util/LuaActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 
@@ -47,10 +48,16 @@ void CrossPointWebServerActivity::onEnter() {
   requestUpdate();
 
   // Launch network mode selection subactivity
-  LOG_DBG("WEBACT", "Launching NetworkModeSelectionActivity...");
+  LOG_INF("WEBACT", "Launching NetworkModeSelectionActivity...");
   enterNewActivity(new NetworkModeSelectionActivity(
       renderer, mappedInput, [this](const NetworkMode mode) { onNetworkModeSelected(mode); },
-      onFlashcard, onQubic, onGoToMiniGo,
+      onQubic, onGoToMiniGo,
+      [this](const std::string& name) {
+          enterNewActivity(new LuaActivity(renderer, mappedInput, name, [this] {
+              exitActivity();
+              requestUpdate(); // Redraw menu on return
+          }));
+      },
       [this]() { onGoBack(); }  // Cancel goes back to home
       ));
 }
@@ -118,7 +125,8 @@ void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) 
       state = WebServerActivityState::MODE_SELECTION;
       enterNewActivity(new NetworkModeSelectionActivity(
           renderer, mappedInput, [this](const NetworkMode nextMode) { onNetworkModeSelected(nextMode); },
-          onFlashcard, onQubic, onGoToMiniGo,
+          onQubic, onGoToMiniGo,
+          [](const std::string&){},
           [this]() { onGoBack(); }));
     }));
     return;
@@ -165,7 +173,8 @@ void CrossPointWebServerActivity::onWifiSelectionComplete(const bool connected) 
     state = WebServerActivityState::MODE_SELECTION;
     enterNewActivity(new NetworkModeSelectionActivity(
         renderer, mappedInput, [this](const NetworkMode mode) { onNetworkModeSelected(mode); },
-        onFlashcard, onQubic, onGoToMiniGo,
+        onQubic, onGoToMiniGo,
+        [](const std::string&){},
         [this]() { onGoBack(); }));
   }
 }

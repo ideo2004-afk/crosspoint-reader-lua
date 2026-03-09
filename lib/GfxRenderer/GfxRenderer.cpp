@@ -626,8 +626,31 @@ void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, co
   display.drawImage(bitmap, rotatedX, rotatedY, width, height);
 }
 
-void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
-  display.drawImageTransparent(bitmap, y, getScreenWidth() - width - x, height, width);
+void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height,
+                           const TextColor color) const {
+  if (color == Black) {
+    // Optimization: black icons can use the faster hardware-accelerated path
+    display.drawImageTransparent(bitmap, y, getScreenWidth() - width - x, height, width);
+    return;
+  }
+
+  // For non-black icons (e.g. White for selection), we must draw manually pixel by pixel.
+  // Note: Icons are pre-rotated for the display driver (columns become rows).
+  // The bitmap data is laid out such that logical columns are stored sequentially,
+  // but in reverse order: Bitmap Row 0 corresponds to Logical Column (width - 1).
+  int bytesPerRow = (height + 7) / 8;
+  for (int iconIdxX = 0; iconIdxX < width; iconIdxX++) {
+    int logicalX = x + (width - 1 - iconIdxX);
+    for (int iconY = 0; iconY < height; iconY++) {
+      const int byteIndex = iconIdxX * bytesPerRow + (iconY / 8);
+      const uint8_t bitIndex = 7 - (iconY % 8);
+      // In these icons, 0 is ink (black) and 1 is transparent.
+      // We draw only the ink pixels using the requested color.
+      if (!((bitmap[byteIndex] >> bitIndex) & 1)) {
+        drawPixel(logicalX, y + iconY, color != White);
+      }
+    }
+  }
 }
 
 void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, const int maxWidth, const int maxHeight,

@@ -60,8 +60,8 @@ static const char* aiMumbles[] = {
 static const int numAiMumbles = sizeof(aiMumbles) / sizeof(aiMumbles[0]);
 
 static const char* playerMumbles[] = {
-    "Your turn, human.", "Take your time. I've already won.", "Are you intimidated by my 500 sims?", "Go ahead, make my day.",
-    "I calculated 500 ways you lose from here.", "Staring at the board won't change the truth.", "I hope you have a 'Plan B'.", "Is it getting hot in here?",
+    "Your turn, human.", "Take your time. I've already won.", "Are you intimidated by my 200 sims?", "Go ahead, make my day.",
+    "I calculated 200 ways you lose from here.", "Staring at the board won't change the truth.", "I hope you have a 'Plan B'.", "Is it getting hot in here?",
     "You're playing right into my silicon hands.", "That last move of yours was... cute.", "My influence is growing. Can you feel it?", "I don't need eyes to see your despair.",
     "Error 404: Human winning chances not found.", "Resistance is futile, but please, try.", "I'm giving you 3 seconds to resign.", "Are you Googling the Joseki?",
     "I process a million possibilities while you blink.", "Don't cry when I take that corner.", "I'm just a simple C++ program, how are you losing?", "Your move. Try not to embarrass yourself.",
@@ -100,7 +100,10 @@ void MiniGoActivity::resetGame(int size, bool skipSizeSelection) {
   renderBoard(true);
 }
 
-void MiniGoActivity::onExit() {}
+void MiniGoActivity::onExit() {
+  renderer.clearScreen();
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+}
 
 void MiniGoActivity::loop() {
   if (inEscMenu || !isAiThinking) {
@@ -108,24 +111,15 @@ void MiniGoActivity::loop() {
   }
   if (!inEscMenu && isAiThinking) {
     if (aiSimulationsDone == 0) {
-        engine.startMCTS(aiColor);
-        aiSimulationsDone = 1;
+        // Show AI personality first
         aiMumbleIndex = rand() % numAiMumbles;
-        lastMumbleChangeTime = millis();
-        renderBoard(false);
-    } else if (aiSimulationsDone < 800) {
-        // Run a chunk of simulations
-        int chunk = (boardSize == 9) ? 20 : 40; 
-        engine.runMCTSSteps(chunk);
-        aiSimulationsDone += chunk;
+        renderBoard(false); 
         
-        // Update mumbles every 8 seconds
-        if (millis() - lastMumbleChangeTime > 8000) {
-            aiMumbleIndex = rand() % numAiMumbles; 
-            lastMumbleChangeTime = millis();
-            renderBoard(false);
-        }
-    } else {
+        // Run all 200 simulations in one block
+        engine.startMCTS(aiColor);
+        engine.runMCTSSteps(200);
+        
+        // Finalize move
         makeAiMove();
     }
   }
@@ -209,13 +203,13 @@ bool MiniGoActivity::handleInput() {
       } else if (mappedInput.wasShortPressed(MappedInputManager::Button::Confirm)) {
           bool isChaos = (handicapSelectionIndex == 3);
           if (!isChaos) {
-              const int handicapTable[] = {2, 3, 4};
+              const int handicapTable[] = {1, 2, 3};
               handicapCount = handicapTable[handicapSelectionIndex];
           }
           showHandicapSelection = false;
           
           if (isChaos) {
-              // Chaos Mode: Randomly scatter 4 Black and 2 White stones
+              // Chaos Mode: Randomly scatter Black and White stones
               int available[81];
               int availCount = 0;
               for (int i = 0; i < boardSize * boardSize; i++) available[availCount++] = i;
@@ -230,11 +224,12 @@ bool MiniGoActivity::handleInput() {
                   }
               };
               
-              placeRandomStones(4, MiniGoEngine::BLACK);
-              if (boardSize == 9) placeRandomStones(2, MiniGoEngine::BLACK); // 6 total for 9x9
+              // 7x7: 4B/2W, 9x9: 6B/2W
+              int blackCount = (boardSize == 9) ? 6 : 4;
+              placeRandomStones(blackCount, MiniGoEngine::BLACK);
               placeRandomStones(2, MiniGoEngine::WHITE);
               
-              // Set last move to the last White stone placed
+              // Set last move marker to any of the White stones
               for (int y = 0; y < boardSize; y++) {
                   for (int x = 0; x < boardSize; x++) {
                       if (engine.getAt(x, y) == MiniGoEngine::WHITE) {
@@ -249,18 +244,17 @@ bool MiniGoActivity::handleInput() {
               // Place AI (Black) handicap stones
               int p1 = 2; // (2,2) for 7x7 and 9x9
               int p2 = (boardSize == 9) ? 6 : 4; // (6,6) for 9x9, (4,4) for 7x7
+              if (handicapCount >= 1) {
+                  engine.makeMove(MiniGoEngine::Move::Play(p2, p2), MiniGoEngine::BLACK);
+              }
               if (handicapCount >= 2) {
                   engine.makeMove(MiniGoEngine::Move::Play(p1, p1), MiniGoEngine::BLACK);
-                  engine.makeMove(MiniGoEngine::Move::Play(p2, p2), MiniGoEngine::BLACK);
               }
               if (handicapCount >= 3) {
                   engine.makeMove(MiniGoEngine::Move::Play(p2, p1), MiniGoEngine::BLACK);
               }
-              if (handicapCount >= 4) {
-                  engine.makeMove(MiniGoEngine::Move::Play(p1, p2), MiniGoEngine::BLACK);
-              }
-              lastMove = MiniGoEngine::Move::Play(p1, p2); // Mark last handicap stone
-              if (handicapCount == 2) lastMove = MiniGoEngine::Move::Play(p2, p2);
+              lastMove = MiniGoEngine::Move::Play(p2, p2); 
+              if (handicapCount == 2) lastMove = MiniGoEngine::Move::Play(p1, p1);
               if (handicapCount == 3) lastMove = MiniGoEngine::Move::Play(p2, p1);
               
               // White moves first after handicap
@@ -346,10 +340,11 @@ void MiniGoActivity::makeAiMove() {
     status = (blackScoreCache > whiteScoreCache) ? (playerColor == MiniGoEngine::BLACK ? Won : Lost) : (playerColor == MiniGoEngine::WHITE ? Won : Lost);
     if (blackScoreCache == whiteScoreCache) status = Draw;
   }
+  
   renderBoard(false);
 }
 
-void MiniGoActivity::renderBoard(bool fullRefresh) {
+void MiniGoActivity::renderBoard(bool fullRefresh, HalDisplay::RefreshMode refreshMode) {
   renderer.clearScreen(); 
 
   // Header
@@ -538,7 +533,7 @@ void MiniGoActivity::renderBoard(bool fullRefresh) {
       GUI.drawButtonHints(renderer, l.btn1, l.btn2, l.btn3, l.btn4);
   }
 
-  renderer.displayBuffer();
+  renderer.displayBuffer(refreshMode);
 }
 
 void MiniGoActivity::renderSizeSelection() {
@@ -579,7 +574,7 @@ void MiniGoActivity::renderHandicapSelection() {
     
     renderer.drawCenteredText(UI_12_FONT_ID, my + 30, "AI Handicap", true, EpdFontFamily::BOLD);
     
-    const char* labels[] = {"2", "3", "4", "Chaos"};
+    const char* labels[] = {"1", "2", "3", "Chaos"};
     for (int i = 0; i < 4; i++) {
         int width = 80;
         int bx = mx + 16 + (i * 96);

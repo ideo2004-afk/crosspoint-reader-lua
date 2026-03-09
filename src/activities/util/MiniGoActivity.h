@@ -51,7 +51,7 @@ class MiniGoActivity final : public Activity {
   float whiteScoreCache = 0;
   bool resultsCached = false;
 
-  void renderBoard(bool fullRefresh = false);
+  void renderBoard(bool fullRefresh = false, HalDisplay::RefreshMode refreshMode = HalDisplay::FAST_REFRESH);
   void renderEscMenu();
   void renderSizeSelection();
   void renderHandicapSelection();

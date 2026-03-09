@@ -70,12 +70,12 @@ struct SettingInfo {
     return s;
   }
 
-  static SettingInfo Action(StrId nameId, SettingAction action, StrId category = StrId::STR_NONE_OPT) {
+  static SettingInfo Action(StrId nameId, SettingAction action, StrId cat = StrId::STR_NONE_OPT) {
     SettingInfo s;
     s.nameId = nameId;
     s.type = SettingType::ACTION;
     s.action = action;
-    s.category = category;
+    s.category = cat;
     return s;
   }
 

@@ -205,26 +205,28 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
   // Draw selection
   int contentWidth = rect.width - 5;
   if (selectedIndex >= 0) {
-    renderer.fillRect(0, rect.y + selectedIndex % pageItems * rowHeight - 2, rect.width, rowHeight);
+    renderer.fillRoundedRect(BaseMetrics::values.contentSidePadding, rect.y + selectedIndex % pageItems * rowHeight,
+                             contentWidth - BaseMetrics::values.contentSidePadding * 2, rowHeight, 6, Color::Black);
   }
   // Draw all items
   const auto pageStartIndex = selectedIndex / pageItems * pageItems;
   for (int i = pageStartIndex; i < itemCount && i < pageStartIndex + pageItems; i++) {
     const int itemY = rect.y + (i % pageItems) * rowHeight;
     int textWidth = contentWidth - BaseMetrics::values.contentSidePadding * 2 - (rowValue != nullptr ? 60 : 0);
+    bool isSelected = (i == selectedIndex);
 
     // Draw name
     auto itemName = rowTitle(i);
-    auto font = (rowSubtitle != nullptr) ? UI_12_FONT_ID : UI_10_FONT_ID;
+    auto font = NOTOSANS_14_FONT_ID;
     auto item = renderer.truncatedText(font, itemName.c_str(), textWidth);
-    renderer.drawText(font, rect.x + BaseMetrics::values.contentSidePadding, itemY, item.c_str(), i != selectedIndex);
+    renderer.drawText(font, rect.x + BaseMetrics::values.contentSidePadding, itemY + 2, item.c_str(), !isSelected);
 
     if (rowSubtitle != nullptr) {
       // Draw subtitle
       std::string subtitleText = rowSubtitle(i);
       auto subtitle = renderer.truncatedText(UI_10_FONT_ID, subtitleText.c_str(), textWidth);
-      renderer.drawText(UI_10_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding, itemY + 30, subtitle.c_str(),
-                        i != selectedIndex);
+      renderer.drawText(UI_10_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding, itemY + 32, subtitle.c_str(),
+                        !isSelected);
     }
 
     if (rowValue != nullptr) {
@@ -232,7 +234,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
       std::string valueText = rowValue(i);
       const auto valueTextWidth = renderer.getTextWidth(UI_10_FONT_ID, valueText.c_str());
       renderer.drawText(UI_10_FONT_ID, rect.x + contentWidth - BaseMetrics::values.contentSidePadding - valueTextWidth,
-                        itemY, valueText.c_str(), i != selectedIndex);
+                        itemY + 2, valueText.c_str(), !isSelected);
     }
   }
 }

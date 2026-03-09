@@ -221,7 +221,7 @@ void HomeActivity::loop() {
       } else if (menuSelectorIndex == recentsIdx) {
         onRecentsOpen();
       } else if (menuSelectorIndex == pluginsIdx) {
-        onFileTransferOpen(); // This goes to the new Plugins (transfer) page
+        onPluginsOpen();
       } else if (menuSelectorIndex == settingsIdx) {
         onSettingsOpen();
       }
@@ -299,7 +299,7 @@ void HomeActivity::render(Activity::RenderLock&&) {
                           labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_RECENTS),
-                                        "Toolbox", tr(STR_SETTINGS_TITLE)};
+                                        "Plugins", tr(STR_SETTINGS_TITLE)};
   std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings};
 
   // Add 50px extra spacing below books (+50) for better visual separation

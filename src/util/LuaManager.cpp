@@ -1,0 +1,483 @@
+#include "LuaManager.h"
+#include <Arduino.h>
+#include <esp_random.h>
+#include <HalStorage.h>
+#include <GfxRenderer.h>
+#include <Bitmap.h>
+#include "MappedInputManager.h"
+#include "Logging.h"
+#include "fontIds.h"
+#include "components/UITheme.h"
+
+// ─── Registry helpers ─────────────────────────────────────────────────────────
+
+extern "C" {
+
+static GfxRenderer* get_renderer(lua_State* L) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "renderer_ptr");
+    auto* r = (GfxRenderer*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    return r;
+}
+
+static MappedInputManager* get_input(lua_State* L) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "input_ptr");
+    auto* m = (MappedInputManager*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    return m;
+}
+
+static MappedInputManager::Button parse_button(const char* name) {
+    if (strcmp(name, "confirm") == 0)      return MappedInputManager::Button::Confirm;
+    if (strcmp(name, "left") == 0)         return MappedInputManager::Button::Left;
+    if (strcmp(name, "right") == 0)        return MappedInputManager::Button::Right;
+    if (strcmp(name, "up") == 0)           return MappedInputManager::Button::Up;
+    if (strcmp(name, "down") == 0)         return MappedInputManager::Button::Down;
+    if (strcmp(name, "page_back") == 0)    return MappedInputManager::Button::PageBack;
+    if (strcmp(name, "page_forward") == 0) return MappedInputManager::Button::PageForward;
+    return MappedInputManager::Button::Back;
+}
+
+// ─── log ─────────────────────────────────────────────────────────────────────
+
+static int l_log(lua_State* L) {
+    const char* msg = luaL_checkstring(L, 1);
+    logSerial.print("[LUA] ");
+    logSerial.println(msg);
+    return 0;
+}
+
+// ─── gui ─────────────────────────────────────────────────────────────────────
+
+static int l_gui_clear(lua_State* L) {
+    auto r = get_renderer(L);
+    if (r) r->clearScreen();
+    return 0;
+}
+
+static int l_gui_refresh(lua_State* L) {
+    auto r = get_renderer(L);
+    int mode = luaL_optinteger(L, 1, HalDisplay::FAST_REFRESH);
+    if (r) r->displayBuffer((HalDisplay::RefreshMode)mode);
+    return 0;
+}
+
+static int l_gui_draw_rect(lua_State* L) {
+    auto r = get_renderer(L);
+    if (r) r->drawRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4));
+    return 0;
+}
+
+static int l_gui_fill_rect(lua_State* L) {
+    auto r = get_renderer(L);
+    if (r) r->fillRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4));
+    return 0;
+}
+
+static int l_gui_draw_line(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    int lw = luaL_optinteger(L, 5, 1);
+    bool black = lua_isnoneornil(L, 6) ? true : lua_toboolean(L, 6);
+    r->drawLine(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), lw, black);
+    return 0;
+}
+
+static int l_gui_draw_rounded_rect(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    int lw     = luaL_optinteger(L, 5, 2);
+    int radius = luaL_optinteger(L, 6, 10);
+    bool black = lua_isnoneornil(L, 7) ? true : lua_toboolean(L, 7);
+    r->drawRoundedRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), lw, radius, black);
+    return 0;
+}
+
+static int l_gui_fill_rounded_rect(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    int radius = luaL_optinteger(L, 5, 10);
+    bool black = lua_isnoneornil(L, 6) ? true : lua_toboolean(L, 6);
+    r->fillRoundedRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4),
+                       radius, black ? Color::Black : Color::White);
+    return 0;
+}
+
+static int l_gui_draw_text(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    bool black = lua_isnoneornil(L, 5) ? true : lua_toboolean(L, 5);
+    r->drawText(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2), luaL_checkinteger(L, 3),
+                luaL_checkstring(L, 4), black);
+    return 0;
+}
+
+static int l_gui_draw_centered_text(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    bool black = lua_isnoneornil(L, 4) ? true : lua_toboolean(L, 4);
+    r->drawCenteredText(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                        luaL_checkstring(L, 3), black);
+    return 0;
+}
+
+static int l_gui_get_text_width(lua_State* L) {
+    auto r = get_renderer(L);
+    lua_pushinteger(L, r ? r->getTextWidth(luaL_checkinteger(L, 1), luaL_checkstring(L, 2)) : 0);
+    return 1;
+}
+
+static int l_gui_get_width(lua_State* L) {
+    auto r = get_renderer(L);
+    lua_pushinteger(L, r ? r->getScreenWidth() : 480);
+    return 1;
+}
+
+static int l_gui_get_height(lua_State* L) {
+    auto r = get_renderer(L);
+    lua_pushinteger(L, r ? r->getScreenHeight() : 800);
+    return 1;
+}
+
+// gui.drawButtonHints(back, confirm, prev, next) — args are logical roles, remapped to physical positions
+static int l_gui_draw_button_hints(lua_State* L) {
+    auto r = get_renderer(L);
+    auto* m = get_input(L);
+    if (!r) return 0;
+    const char* back    = luaL_optstring(L, 1, "");
+    const char* confirm = luaL_optstring(L, 2, "");
+    const char* prev    = luaL_optstring(L, 3, "");
+    const char* next    = luaL_optstring(L, 4, "");
+    if (m) {
+        const auto l = m->mapLabels(back, confirm, prev, next);
+        GUI.drawButtonHints(*r, l.btn1, l.btn2, l.btn3, l.btn4);
+    } else {
+        GUI.drawButtonHints(*r, back, confirm, prev, next);
+    }
+    return 0;
+}
+
+static int l_gui_set_orientation(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    const char* mode = luaL_checkstring(L, 1);
+    GfxRenderer::Orientation o = GfxRenderer::Portrait;
+    if (strcmp(mode, "landscape_cw") == 0)       o = GfxRenderer::LandscapeClockwise;
+    else if (strcmp(mode, "landscape_ccw") == 0) o = GfxRenderer::LandscapeCounterClockwise;
+    else if (strcmp(mode, "portrait_inv") == 0)  o = GfxRenderer::PortraitInverted;
+    r->setOrientation(o);
+    return 0;
+}
+
+// gui.drawBmp(path [, x, y, maxW, maxH]) → bool
+// x/y default to centered; maxW/maxH default to screen size
+static int l_gui_draw_bmp(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) { lua_pushboolean(L, 0); return 1; }
+
+    const char* path = luaL_checkstring(L, 1);
+
+    FsFile file;
+    if (!Storage.openFileForRead("LUA", path, file)) {
+        LOG_ERR("LUA", "drawBmp: cannot open %s", path);
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+
+    Bitmap bitmap(file, true);
+    if (bitmap.parseHeaders() != BmpReaderError::Ok) {
+        file.close();
+        LOG_ERR("LUA", "drawBmp: parse failed for %s", path);
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+
+    int sw = r->getScreenWidth();
+    int sh = r->getScreenHeight();
+    int x    = luaL_optinteger(L, 2, std::max(0, (sw - bitmap.getWidth())  / 2));
+    int y    = luaL_optinteger(L, 3, std::max(0, (sh - bitmap.getHeight()) / 2));
+    int maxW = luaL_optinteger(L, 4, sw);
+    int maxH = luaL_optinteger(L, 5, sh);
+
+    r->drawBitmap(bitmap, x, y, maxW, maxH);
+    file.close();
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+// ─── input ───────────────────────────────────────────────────────────────────
+
+static int l_input_was_pressed(lua_State* L) {
+    auto* m = get_input(L);
+    lua_pushboolean(L, m ? m->wasPressed(parse_button(luaL_checkstring(L, 1))) : 0);
+    return 1;
+}
+
+static int l_input_was_released(lua_State* L) {
+    auto* m = get_input(L);
+    lua_pushboolean(L, m ? m->wasReleased(parse_button(luaL_checkstring(L, 1))) : 0);
+    return 1;
+}
+
+static int l_input_is_pressed(lua_State* L) {
+    auto* m = get_input(L);
+    lua_pushboolean(L, m ? m->isPressed(parse_button(luaL_checkstring(L, 1))) : 0);
+    return 1;
+}
+
+static int l_input_is_any_pressed(lua_State* L) {
+    auto* m = get_input(L);
+    lua_pushboolean(L, m ? m->isAnyPressed() : 0);
+    return 1;
+}
+
+// ─── sys ─────────────────────────────────────────────────────────────────────
+
+static int l_sys_millis(lua_State* L) {
+    lua_pushinteger(L, (lua_Integer)millis());
+    return 1;
+}
+
+static int l_sys_delay(lua_State* L) {
+    delay((int)luaL_checkinteger(L, 1));
+    return 0;
+}
+
+static int l_sys_exit(lua_State* L) {
+    // Get LuaManager pointer from registry and set wantsExit
+    lua_getfield(L, LUA_REGISTRYINDEX, "lua_manager_ptr");
+    LuaManager* mgr = (LuaManager*)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    if (mgr) mgr->setWantsExit();
+    return 0;
+}
+
+// ─── fs ──────────────────────────────────────────────────────────────────────
+
+// fs.listDirs(path) → table of directory names
+static int l_fs_list_dirs(lua_State* L) {
+    const char* path = luaL_checkstring(L, 1);
+    lua_newtable(L);
+    int idx = 1;
+
+    FsFile root = Storage.open(path);
+    if (!root || !root.isDirectory()) {
+        if (root) root.close();
+        return 1;
+    }
+    root.rewindDirectory();
+    char name[256];
+    for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
+        if (file.isDirectory()) {
+            file.getName(name, sizeof(name));
+            if (name[0] != '.') {
+                lua_pushstring(L, name);
+                lua_rawseti(L, -2, idx++);
+            }
+        }
+        file.close();
+    }
+    root.close();
+    return 1;
+}
+
+// fs.listFiles(path) → table of file names
+static int l_fs_list_files(lua_State* L) {
+    const char* path = luaL_checkstring(L, 1);
+    lua_newtable(L);
+    int idx = 1;
+
+    auto files = Storage.listFiles(path, 500);
+    for (const auto& f : files) {
+        if (!f.startsWith(".")) {
+            lua_pushstring(L, f.c_str());
+            lua_rawseti(L, -2, idx++);
+        }
+    }
+    return 1;
+}
+
+// fs.exists(path) → bool
+static int l_fs_exists(lua_State* L) {
+    lua_pushboolean(L, Storage.exists(luaL_checkstring(L, 1)));
+    return 1;
+}
+
+// fs.readFile(path) → string or nil
+static int l_fs_read_file(lua_State* L) {
+    const char* path = luaL_checkstring(L, 1);
+    if (!Storage.exists(path)) { lua_pushnil(L); return 1; }
+    String content = Storage.readFile(path);
+    lua_pushstring(L, content.c_str());
+    return 1;
+}
+
+// fs.writeFile(path, content) → bool
+static int l_fs_write_file(lua_State* L) {
+    const char* path    = luaL_checkstring(L, 1);
+    const char* content = luaL_checkstring(L, 2);
+    lua_pushboolean(L, Storage.writeFile(path, String(content)));
+    return 1;
+}
+
+} // extern "C"
+
+// ─── LuaManager ──────────────────────────────────────────────────────────────
+
+LuaManager& LuaManager::getInstance() { static LuaManager instance; return instance; }
+
+bool LuaManager::begin(GfxRenderer* r, MappedInputManager* input) {
+    if (initialized) return true;
+
+    wantsExit = false;
+    LOG_INF("LUA", "Heap before begin: %d", ESP.getFreeHeap());
+    L = luaL_newstate();
+    if (!L) { LOG_ERR("LUA", "OOM: Cannot create state"); return false; }
+
+    luaL_openlibs(L);
+
+    // Seed math.random with hardware RNG
+    lua_getglobal(L, "math");
+    lua_getfield(L, -1, "randomseed");
+    lua_pushinteger(L, (lua_Integer)esp_random());
+    lua_call(L, 1, 0);
+    lua_pop(L, 1);
+
+    // Store pointers in registry
+    if (r) {
+        lua_pushlightuserdata(L, r);
+        lua_setfield(L, LUA_REGISTRYINDEX, "renderer_ptr");
+    }
+    if (input) {
+        lua_pushlightuserdata(L, input);
+        lua_setfield(L, LUA_REGISTRYINDEX, "input_ptr");
+    }
+    lua_pushlightuserdata(L, this);
+    lua_setfield(L, LUA_REGISTRYINDEX, "lua_manager_ptr");
+
+    registerBindings();
+    LOG_INF("LUA", "VM ready, heap: %d", ESP.getFreeHeap());
+
+    initialized = true;
+    return true;
+}
+
+void LuaManager::end() {
+    if (L) { lua_close(L); L = nullptr; }
+    initialized = false;
+    wantsExit = false;
+}
+
+void LuaManager::registerBindings() {
+    // log()
+    lua_pushcfunction(L, l_log);
+    lua_setglobal(L, "log");
+
+    // gui.*
+    lua_newtable(L);
+    lua_pushcfunction(L, l_gui_clear);              lua_setfield(L, -2, "clear");
+    lua_pushcfunction(L, l_gui_refresh);            lua_setfield(L, -2, "refresh");
+    lua_pushcfunction(L, l_gui_draw_rect);          lua_setfield(L, -2, "drawRect");
+    lua_pushcfunction(L, l_gui_fill_rect);          lua_setfield(L, -2, "fillRect");
+    lua_pushcfunction(L, l_gui_draw_line);          lua_setfield(L, -2, "drawLine");
+    lua_pushcfunction(L, l_gui_draw_rounded_rect);  lua_setfield(L, -2, "drawRoundedRect");
+    lua_pushcfunction(L, l_gui_fill_rounded_rect);  lua_setfield(L, -2, "fillRoundedRect");
+    lua_pushcfunction(L, l_gui_draw_text);          lua_setfield(L, -2, "drawText");
+    lua_pushcfunction(L, l_gui_draw_centered_text); lua_setfield(L, -2, "drawCenteredText");
+    lua_pushcfunction(L, l_gui_get_text_width);     lua_setfield(L, -2, "getTextWidth");
+    lua_pushcfunction(L, l_gui_get_width);          lua_setfield(L, -2, "width");
+    lua_pushcfunction(L, l_gui_get_height);         lua_setfield(L, -2, "height");
+    lua_pushcfunction(L, l_gui_set_orientation);    lua_setfield(L, -2, "setOrientation");
+    lua_pushcfunction(L, l_gui_draw_bmp);           lua_setfield(L, -2, "drawBmp");
+    lua_pushcfunction(L, l_gui_draw_button_hints);  lua_setfield(L, -2, "drawButtonHints");
+    lua_setglobal(L, "gui");
+
+    // input.*
+    lua_newtable(L);
+    lua_pushcfunction(L, l_input_was_pressed);    lua_setfield(L, -2, "wasPressed");
+    lua_pushcfunction(L, l_input_was_released);   lua_setfield(L, -2, "wasReleased");
+    lua_pushcfunction(L, l_input_is_pressed);     lua_setfield(L, -2, "isPressed");
+    lua_pushcfunction(L, l_input_is_any_pressed); lua_setfield(L, -2, "isAnyPressed");
+    lua_setglobal(L, "input");
+
+    // sys.*
+    lua_newtable(L);
+    lua_pushcfunction(L, l_sys_millis); lua_setfield(L, -2, "millis");
+    lua_pushcfunction(L, l_sys_delay);  lua_setfield(L, -2, "delay");
+    lua_pushcfunction(L, l_sys_exit);   lua_setfield(L, -2, "exit");
+    lua_setglobal(L, "sys");
+
+    // fs.*
+    lua_newtable(L);
+    lua_pushcfunction(L, l_fs_list_dirs);  lua_setfield(L, -2, "listDirs");
+    lua_pushcfunction(L, l_fs_list_files); lua_setfield(L, -2, "listFiles");
+    lua_pushcfunction(L, l_fs_exists);     lua_setfield(L, -2, "exists");
+    lua_pushcfunction(L, l_fs_read_file);  lua_setfield(L, -2, "readFile");
+    lua_pushcfunction(L, l_fs_write_file); lua_setfield(L, -2, "writeFile");
+    lua_setglobal(L, "fs");
+
+    // Refresh mode constants
+    lua_pushinteger(L, HalDisplay::FULL_REFRESH); lua_setglobal(L, "REFRESH_FULL");
+    lua_pushinteger(L, HalDisplay::HALF_REFRESH); lua_setglobal(L, "REFRESH_HALF");
+    lua_pushinteger(L, HalDisplay::FAST_REFRESH); lua_setglobal(L, "REFRESH_FAST");
+
+    // Font ID constants
+    lua_pushinteger(L, BOOKERLY_14_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_14");
+    lua_pushinteger(L, BOOKERLY_12_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_12");
+    lua_pushinteger(L, BOOKERLY_16_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_16");
+    lua_pushinteger(L, BOOKERLY_18_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_18");
+    lua_pushinteger(L, NOTOSANS_12_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_12");
+    lua_pushinteger(L, NOTOSANS_14_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_14");
+    lua_pushinteger(L, NOTOSANS_16_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_16");
+    lua_pushinteger(L, NOTOSANS_18_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_18");
+    lua_pushinteger(L, UI_10_FONT_ID);       lua_setglobal(L, "FONT_UI_10");
+    lua_pushinteger(L, UI_12_FONT_ID);       lua_setglobal(L, "FONT_UI_12");
+    lua_pushinteger(L, SMALL_FONT_ID);       lua_setglobal(L, "FONT_SMALL");
+}
+
+bool LuaManager::callFunction(const char* funcName) {
+    if (!L) return false;
+    lua_getglobal(L, funcName);
+    if (!lua_isfunction(L, -1)) { lua_pop(L, 1); return false; }
+    if (lua_pcall(L, 0, 0, 0) != LUA_OK) {
+        LOG_ERR("LUA", "Runtime in %s: %s", funcName, lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return false;
+    }
+    return true;
+}
+
+bool LuaManager::runPlugin(const std::string& pluginName) {
+    if (!initialized && !begin()) return false;
+
+    std::string path = "/plugins/" + pluginName + "/main.lua";
+    LOG_INF("LUA", "Opening: %s", path.c_str());
+
+    FsFile file = Storage.open(path.c_str());
+    if (!file) { LOG_ERR("LUA", "File missing: %s", path.c_str()); return false; }
+
+    size_t size = file.size();
+    char* buf = (char*)malloc(size + 1);
+    if (!buf) { LOG_ERR("LUA", "OOM for script buffer"); file.close(); return false; }
+
+    file.read((uint8_t*)buf, size);
+    buf[size] = '\0';
+    file.close();
+
+    int res = luaL_dostring(L, buf);
+    free(buf);
+
+    if (res != LUA_OK) {
+        LOG_ERR("LUA", "Parse error: %s", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return false;
+    }
+    LOG_INF("LUA", "Script loaded OK");
+    return true;
+}
