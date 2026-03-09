@@ -1,5 +1,5 @@
 -- Flashcard Plugin
--- Deck structure: /plugins/flashcard/<DeckName>/NNN_a.bmp + NNN_b.bmp
+-- DESCRIPTION: E-Ink optimized study tool.
 -- Progress:       /plugins/flashcard/<DeckName>/progress.txt (one learned sideA path per line)
 
 local PLUGIN_PATH = "/plugins/flashcard"

@@ -1,3 +1,4 @@
+-- DESCRIPTION: Basic Lua API demonstration
 local count = 0
 local lastPress = 0
 

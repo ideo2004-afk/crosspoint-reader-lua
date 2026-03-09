@@ -1,5 +1,5 @@
 -- Qubic — 3D Tic-Tac-Toe
--- Full port of QubicEngine + QubicActivity
+-- DESCRIPTION: 3D Tic-Tac-Toe Game with AI.
 
 local NONE  = 0
 local HUMAN = 1

@@ -39,7 +39,30 @@ void PluginListActivity::onEnter() {
             String mainPath = "/plugins/" + String(name) + "/main.lua";
             
             if (Storage.exists(mainPath.c_str())) {
-                luaPlugins.push_back(entryName);
+                std::string desc = "Lua Script Extension";
+                
+                // Read the first few bytes to find a DESCRIPTION tag
+                FsFile mainLua = Storage.open(mainPath.c_str());
+                if (mainLua) {
+                    char headerBuf[256] = {0};
+                    mainLua.read((uint8_t*)headerBuf, sizeof(headerBuf) - 1);
+                    mainLua.close();
+                    
+                    std::string headerStr(headerBuf);
+                    size_t pos = headerStr.find("-- DESCRIPTION:");
+                    if (pos != std::string::npos) {
+                        size_t start = pos + 15; // length of "-- DESCRIPTION:"
+                        while (start < headerStr.length() && (headerStr[start] == ' ' || headerStr[start] == '\t')) start++;
+                        size_t end = headerStr.find('\n', start);
+                        if (end != std::string::npos) {
+                            std::string extract = headerStr.substr(start, end - start);
+                            if (!extract.empty() && extract.back() == '\r') extract.pop_back();
+                            if (!extract.empty()) desc = extract;
+                        }
+                    }
+                }
+                
+                luaPlugins.push_back({entryName, desc});
                 LOG_INF("PLUGINS", "Found valid plugin: %s", name);
             }
         }
@@ -60,7 +83,7 @@ void PluginListActivity::loop() {
     }
 
     if (!luaPlugins.empty() && mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
-        std::string name = luaPlugins[selectedIndex];
+        std::string name = luaPlugins[selectedIndex].name;
         onLaunchPlugin(name);
         return;
     }
@@ -91,8 +114,8 @@ void PluginListActivity::render(Activity::RenderLock&&) {
         renderer.drawCenteredText(UI_12_FONT_ID, 300, "No Plugins Found");
         renderer.drawCenteredText(UI_10_FONT_ID, 350, "Check /plugins/ folder on SD");
     } else {
-        auto rowTitle = [this](int index) { return luaPlugins[index].c_str(); };
-        auto rowDesc = [](int index) { return std::string("Lua Script Extension"); };
+        auto rowTitle = [this](int index) { return luaPlugins[index].name.c_str(); };
+        auto rowDesc = [this](int index) { return luaPlugins[index].description.c_str(); };
         auto rowIcon = [](int index) { return UIIcon::Transfer; };
 
         const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
