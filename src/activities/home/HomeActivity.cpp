@@ -116,6 +116,8 @@ void HomeActivity::onEnter() {
   const auto& metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
 
+  skipNextButtonCheck = true;
+
   // Trigger first update
   requestUpdate();
 }
@@ -170,6 +172,13 @@ void HomeActivity::freeCoverBuffer() {
 }
 
 void HomeActivity::loop() {
+  if (skipNextButtonCheck) {
+    if (!mappedInput.isAnyPressed() && !mappedInput.wasAnyReleased()) {
+      skipNextButtonCheck = false;
+    }
+    return;
+  }
+
   const int bookCount = recentBooks.size();
   const int menuCount = 4;
 

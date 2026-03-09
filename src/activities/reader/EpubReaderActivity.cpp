@@ -210,7 +210,10 @@ void EpubReaderActivity::loop() {
           break;
         case 5: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::ROTATE_SCREEN); break;
         case 6: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT); break;
-        case 7: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::GO_HOME); return;
+        case 7: 
+          mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
+          onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::GO_HOME); 
+          return;
       }
       requestUpdate();
       return;
@@ -233,6 +236,8 @@ void EpubReaderActivity::loop() {
   // Front LEFT cluster: short=prev page, long=go home (snappy)
   if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_BACK, 800) || 
       mappedInput.wasLongPressedRaw(HalGPIO::BTN_CONFIRM, 800)) {
+    mappedInput.consumeButtonRaw(HalGPIO::BTN_BACK);
+    mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
     onGoHome();
     return;
   }

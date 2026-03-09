@@ -364,19 +364,19 @@ end
 
 local function handleGameInput()
     -- Side buttons: cycle layers
-    if input.wasReleased("page_back") then
+    if input.wasPressed("page_back") then
         curZ = (curZ > 0) and curZ - 1 or 3; needsDraw = true
-    elseif input.wasReleased("page_forward") then
+    elseif input.wasPressed("page_forward") then
         curZ = (curZ < 3) and curZ + 1 or 0; needsDraw = true
     end
 
     -- Left / Right: move cursor or select post-game option
     if gameStatus == "playing" then
-        if input.wasReleased("left") then
+        if input.wasPressed("left") then
             local i = curY * 4 + curX
             i = (i > 0) and i - 1 or 15
             curX = i % 4; curY = math.floor(i / 4); needsDraw = true
-        elseif input.wasReleased("right") then
+        elseif input.wasPressed("right") then
             local i = curY * 4 + curX
             i = (i < 15) and i + 1 or 0
             curX = i % 4; curY = math.floor(i / 4); needsDraw = true

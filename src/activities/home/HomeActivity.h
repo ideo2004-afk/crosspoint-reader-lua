@@ -20,6 +20,7 @@ class HomeActivity final : public Activity {
   bool firstRenderDone = false;
   bool coverRendered = false;      // Track if cover has been rendered once
   bool coverBufferStored = false;  // Track if cover buffer is stored
+  bool skipNextButtonCheck = false; 
   uint8_t* coverBuffer = nullptr;  // HomeActivity's own buffer for cover image
   uint32_t lastInputMs = 0;        // Cooldown for bounce
   std::vector<RecentBook> recentBooks;

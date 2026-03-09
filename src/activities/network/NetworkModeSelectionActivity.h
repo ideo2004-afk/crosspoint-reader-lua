@@ -17,8 +17,6 @@ class NetworkModeSelectionActivity final : public Activity {
   bool skipNextButtonCheck = false;
   
   const std::function<void(const NetworkMode mode)> onModeSelected;
-  const std::function<void()> onQubic;
-  const std::function<void()> onGoToMiniGo;
   const std::function<void(const std::string& name)> onLaunchLua;
   const std::function<void()> onCancel;
 
@@ -27,14 +25,10 @@ class NetworkModeSelectionActivity final : public Activity {
  public:
   explicit NetworkModeSelectionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                         const std::function<void(NetworkMode)>& onModeSelected,
-                                        const std::function<void()>& onQubic,
-                                        const std::function<void()>& onGoToMiniGo,
                                         const std::function<void(const std::string& name)>& onLaunchLua,
                                         const std::function<void()>& onCancel)
       : Activity("NetworkModeSelection", renderer, mappedInput),
         onModeSelected(onModeSelected),
-        onQubic(onQubic),
-        onGoToMiniGo(onGoToMiniGo),
         onLaunchLua(onLaunchLua),
         onCancel(onCancel) {}
         

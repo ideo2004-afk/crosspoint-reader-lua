@@ -30,8 +30,6 @@ enum class WebServerActivityState {
 class CrossPointWebServerActivity final : public ActivityWithSubactivity {
   WebServerActivityState state = WebServerActivityState::MODE_SELECTION;
   const std::function<void()> onGoBack;
-  const std::function<void()> onQubic;
-  const std::function<void()> onGoToMiniGo;
 
   // Network mode
   NetworkMode networkMode = NetworkMode::JOIN_NETWORK;
@@ -57,13 +55,9 @@ class CrossPointWebServerActivity final : public ActivityWithSubactivity {
 
  public:
   explicit CrossPointWebServerActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                                       const std::function<void()>& onGoBack,
-                                       const std::function<void()>& onQubic,
-                                       const std::function<void()>& onGoToMiniGo)
+                                       const std::function<void()>& onGoBack)
       : ActivityWithSubactivity("CrossPointWebServer", renderer, mappedInput),
-        onGoBack(onGoBack),
-        onQubic(onQubic),
-        onGoToMiniGo(onGoToMiniGo) {}
+        onGoBack(onGoBack) {}
   void onEnter() override;
   void onExit() override;
   void loop() override;

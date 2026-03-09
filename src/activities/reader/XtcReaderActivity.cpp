@@ -121,6 +121,7 @@ void XtcReaderActivity::loop() {
         pendingScreenshot = true;
         requestUpdate();
       } else if (menuSelectedIndex == 5) { // Exit
+        mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
         onGoHome();
       }
       return;
@@ -145,6 +146,8 @@ void XtcReaderActivity::loop() {
   // Front LEFT: short=prev, long=home (snappy)
   if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_BACK, 800) || 
       mappedInput.wasLongPressedRaw(HalGPIO::BTN_CONFIRM, 800)) {
+    mappedInput.consumeButtonRaw(HalGPIO::BTN_BACK);
+    mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
     onGoHome();
     return;
   }

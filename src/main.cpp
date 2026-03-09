@@ -27,8 +27,6 @@
 #include "activities/reader/ReaderActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
-#include "activities/util/QubicActivity.h"
-#include "activities/util/MiniGoActivity.h"
 #include "activities/util/LuaActivity.h"
 #include "activities/util/PluginListActivity.h"
 #include "components/UITheme.h"
@@ -217,16 +215,8 @@ void onGoToMyLibraryWithPath(const std::string& path) {
   enterNewActivity(new MyLibraryActivity(renderer, mappedInputManager, onGoHome, onGoToReader, path));
 }
 
-void onGoToQubic() {
-  enterNewActivity(new QubicActivity(renderer, mappedInputManager, onGoHome));
-}
-
-void onGoToMiniGo() {
-  enterNewActivity(new MiniGoActivity(renderer, mappedInputManager, onGoHome));
-}
-
 void onGoToToolbox() {
-  enterNewActivity(new CrossPointWebServerActivity(renderer, mappedInputManager, onGoHome, onGoToQubic, onGoToMiniGo));
+  enterNewActivity(new CrossPointWebServerActivity(renderer, mappedInputManager, onGoHome));
 }
 
 void onGoToLuaPlugins() {
