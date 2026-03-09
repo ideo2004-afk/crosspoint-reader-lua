@@ -6,7 +6,7 @@ local BLACK = 1
 local WHITE = 2
 
 local KOMI              = 7.5
-local AI_MAX_SIMS       = 200
+local AI_MAX_SIMS       = 400
 local AI_ROLLOUT_DEPTH  = 4
 local AI_EXPLORATION_C  = 1.414
 
@@ -694,7 +694,16 @@ local function renderBoard()
     if status == "playing" and not inEscMenu and not showHandicapSelection and not showSizeSelection then
         local cx = sx + cursorX*cs; local cy2 = sy + cursorY*cs
         local r = math.floor(cs/4)
-        gui.drawRoundedRect(cx-r, cy2-r, r*2, r*2, 2, r)
+        
+        -- Special cursor for black stones: Draw a small white stone inside
+        local stoneColor = board[cursorY * boardSize + cursorX + 1]
+        if stoneColor == BLACK then
+            local rSmall = math.floor(r * 0.5)
+            gui.fillRoundedRect(cx-rSmall, cy2-rSmall, rSmall*2, rSmall*2, rSmall, false) -- Draw white
+        else
+            gui.drawRoundedRect(cx-r, cy2-r, r*2, r*2, 2, r)
+        end
+        
         local inf = calcInfluence(board)
         gui.drawCenteredText(FONT_SMALL, sy + bds + 25, string.format("Territory Bias: %+.1f", inf))
     end
