@@ -8,6 +8,8 @@
 #include "MappedInputManager.h"
 #include "SettingsList.h"
 #include "activities/network/WifiSelectionActivity.h"
+#include "activities/network/FileTransferActivity.h"
+#include "activities/network/CalibreConnectActivity.h"
 #include "activities/settings/ButtonRemapActivity.h"
 #include "activities/settings/ReadingStatsActivity.h"
 #include "components/UITheme.h"
@@ -46,6 +48,9 @@ void SettingsActivity::onEnter() {
 
   // Append device-only ACTION items
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
+  systemSettings.push_back(SettingInfo::Action(StrId::STR_JOIN_NETWORK, SettingAction::WebTransfer));
+  systemSettings.push_back(SettingInfo::Action(StrId::STR_CALIBRE_WIRELESS, SettingAction::CalibreWireless));
+  systemSettings.push_back(SettingInfo::Action(StrId::STR_CREATE_HOTSPOT, SettingAction::CreateHotspot));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_READING_STATS, SettingAction::ReadingStats));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache));
 
@@ -178,6 +183,15 @@ void SettingsActivity::toggleCurrentSetting() {
     switch (setting.action) {
       case SettingAction::Network:
         enterSubActivity(new WifiSelectionActivity(renderer, mappedInput, onCompleteBool, false));
+        break;
+      case SettingAction::WebTransfer:
+        enterSubActivity(new FileTransferActivity(renderer, mappedInput, onComplete, false));
+        break;
+      case SettingAction::CalibreWireless:
+        enterSubActivity(new CalibreConnectActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::CreateHotspot:
+        enterSubActivity(new FileTransferActivity(renderer, mappedInput, onComplete, true));
         break;
       case SettingAction::ClearCache:
         enterSubActivity(new ClearCacheActivity(renderer, mappedInput, onComplete));

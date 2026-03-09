@@ -28,7 +28,6 @@ class HomeActivity final : public Activity {
   const std::function<void()> onMyLibraryOpen;
   const std::function<void()> onRecentsOpen;
   const std::function<void()> onSettingsOpen;
-  const std::function<void()> onFileTransferOpen;
   const std::function<void()> onPluginsOpen;
 
   int getMenuItemCount() const;
@@ -42,14 +41,13 @@ class HomeActivity final : public Activity {
   explicit HomeActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                         const std::function<void(const std::string& path)>& onSelectBook,
                         const std::function<void()>& onMyLibraryOpen, const std::function<void()>& onRecentsOpen,
-                        const std::function<void()>& onSettingsOpen, const std::function<void()>& onFileTransferOpen,
+                        const std::function<void()>& onSettingsOpen,
                         const std::function<void()>& onPluginsOpen)
       : Activity("Home", renderer, mappedInput),
         onSelectBook(onSelectBook),
         onMyLibraryOpen(onMyLibraryOpen),
         onRecentsOpen(onRecentsOpen),
         onSettingsOpen(onSettingsOpen),
-        onFileTransferOpen(onFileTransferOpen),
         onPluginsOpen(onPluginsOpen) {}
   void onEnter() override;
   void onExit() override;

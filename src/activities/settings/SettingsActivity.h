@@ -15,6 +15,9 @@ enum class SettingType { TOGGLE, ENUM, ACTION, VALUE, STRING };
 enum class SettingAction {
   None,
   Network,
+  WebTransfer,
+  CalibreWireless,
+  CreateHotspot,
   ClearCache,
   ReadingStats,
   ButtonRemap,

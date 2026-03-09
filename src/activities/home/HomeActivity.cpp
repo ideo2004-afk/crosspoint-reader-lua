@@ -309,7 +309,7 @@ void HomeActivity::render(Activity::RenderLock&&) {
 
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_RECENTS),
                                         "Plugins", tr(STR_SETTINGS_TITLE)};
-  std::vector<UIIcon> menuIcons = {Folder, Recent, Transfer, Settings};
+  std::vector<UIIcon> menuIcons = {Folder, Recent, Game, Settings};
 
   // Add 50px extra spacing below books (+50) for better visual separation
   int menuY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.verticalSpacing + 50;

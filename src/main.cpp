@@ -23,7 +23,6 @@
 #include "activities/home/HomeActivity.h"
 #include "activities/home/MyLibraryActivity.h"
 #include "activities/home/RecentBooksActivity.h"
-#include "activities/network/CrossPointWebServerActivity.h"
 #include "activities/reader/ReaderActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
@@ -215,10 +214,6 @@ void onGoToMyLibraryWithPath(const std::string& path) {
   enterNewActivity(new MyLibraryActivity(renderer, mappedInputManager, onGoHome, onGoToReader, path));
 }
 
-void onGoToToolbox() {
-  enterNewActivity(new CrossPointWebServerActivity(renderer, mappedInputManager, onGoHome));
-}
-
 void onGoToLuaPlugins() {
   enterNewActivity(new PluginListActivity(renderer, mappedInputManager, 
     [](const std::string& name) {
@@ -228,7 +223,7 @@ void onGoToLuaPlugins() {
 
 void onGoHome() {
   enterNewActivity(new HomeActivity(renderer, mappedInputManager, onGoToReader, onGoToMyLibrary, onGoToRecentBooks,
-                                     onGoToSettings, onGoToToolbox, onGoToLuaPlugins));
+                                     onGoToSettings, onGoToLuaPlugins));
 }
 
 void setupDisplayAndFonts() {
