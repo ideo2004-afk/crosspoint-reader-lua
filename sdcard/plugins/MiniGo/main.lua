@@ -6,7 +6,7 @@ local BLACK = 1
 local WHITE = 2
 
 local KOMI              = 7.5
-local AI_MAX_SIMS       = 400
+local AI_MAX_SIMS       = 300
 local AI_ROLLOUT_DEPTH  = 4
 local AI_EXPLORATION_C  = 1.414
 
@@ -698,7 +698,7 @@ local function renderBoard()
         -- Special cursor for black stones: Draw a small white stone inside
         local stoneColor = board[cursorY * boardSize + cursorX + 1]
         if stoneColor == BLACK then
-            local rSmall = math.floor(r * 0.5)
+            local rSmall = math.floor(r * 0.8)
             gui.fillRoundedRect(cx-rSmall, cy2-rSmall, rSmall*2, rSmall*2, rSmall, false) -- Draw white
         else
             gui.drawRoundedRect(cx-r, cy2-r, r*2, r*2, 2, r)
@@ -829,7 +829,7 @@ local function handleHandicapInput()
                     board[pos] = color; lastMoveX,lastMoveY=x,y
                 end
             end
-            placeRandom((boardSize==9) and 6 or 4, BLACK)
+            placeRandom((boardSize==9) and 8 or 5, BLACK)
             placeRandom(2, WHITE)
         else
             local count = handicapIdx + 1
