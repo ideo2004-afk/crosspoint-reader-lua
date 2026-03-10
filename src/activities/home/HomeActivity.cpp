@@ -118,6 +118,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
 
 void HomeActivity::onEnter() {
   Activity::onEnter();
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);  // Clear ghosting on enter
 
   bookSelectorIndex = 0;
   menuSelectorIndex = 0;

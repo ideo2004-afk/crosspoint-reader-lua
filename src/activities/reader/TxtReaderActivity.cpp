@@ -27,8 +27,7 @@ constexpr uint8_t CACHE_VERSION = 2;          // Increment when cache format cha
 
 void TxtReaderActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
-  renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);  // Clear ghosting before reader content
 
   if (!txt) {
     return;
@@ -82,8 +81,6 @@ void TxtReaderActivity::onExit() {
 
   // Reset orientation back to portrait for the rest of the UI
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-  renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 
   pageOffsets.clear();
   currentPageLines.clear();

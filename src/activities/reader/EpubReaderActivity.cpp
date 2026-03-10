@@ -62,8 +62,7 @@ void applyReaderOrientation(GfxRenderer& renderer, const uint8_t orientation) {
 void EpubReaderActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
   renderer.setDarkMode(false);  // Reader manages its own dark mode inversion
-  renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);  // Clear ghosting before reader content
 
   if (!epub) {
     return;
@@ -127,8 +126,6 @@ void EpubReaderActivity::onExit() {
   // Reset orientation back to portrait for the rest of the UI
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
   renderer.setDarkMode(SETTINGS.darkMode);  // Restore renderer dark mode for UI
-  renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();

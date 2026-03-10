@@ -28,9 +28,6 @@ void LuaActivity::onEnter() {
 void LuaActivity::onExit() {
     Activity::onExit();  // Stops render task before Lua state is closed
     LuaManager::getInstance().end();  // Closes Lua VM and frees all Lua memory
-
-    renderer.clearScreen();
-    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 }
 
 void LuaActivity::loop() {
