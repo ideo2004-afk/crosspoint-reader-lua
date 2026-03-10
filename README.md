@@ -1,197 +1,111 @@
-# CrossPoint Reader
+# XTEINK X4 Reader (Enhanced CrossPoint)
 
-Firmware for the **Xteink X4** e-paper display reader (unaffiliated with Xteink).
+**XTEINK X4 Reader** is a high-performance, plugin-driven firmware for the **Xteink X4** e-paper display reader. This project is a heavily modified fork of [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader), specifically optimized for the X4 hardware with expanded capabilities in reading, gaming, and extensibility.
+
 Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
-
-CrossPoint Reader is a purpose-built firmware designed to be a drop-in, fully open-source replacement for the official
-Xteink firmware. It aims to match or improve upon the standard EPUB reading experience.
-
-![](./docs/images/cover.jpg)
-
-## Screenshots
-
-<p align="center">
-  <img src="./docs/images/home_flow_theme.png" width="200" alt="Flow Theme Home"/>
-  <img src="./docs/images/reader_vertical.png" width="200" alt="Vertical Reading"/>
-  <img src="./docs/images/file_explorer.png" width="200" alt="File Explorer"/>
-  <img src="./docs/images/qubic_game.png" width="200" alt="Qubic Game"/>
-</p>
-
-## Motivation
-
-E-paper devices are fantastic for reading, but most commercially available readers are closed systems with limited
-customisation. The **Xteink X4** is an affordable, e-paper device, however the official firmware remains closed.
-CrossPoint exists partly as a fun side-project and partly to open up the ecosystem and truely unlock the device's
-potential.
-
-CrossPoint Reader aims to:
-
-- Provide a **fully open-source alternative** to the official firmware.
-- Offer a **document reader** capable of handling EPUB content on constrained hardware.
-- Support **customisable font, layout, and display** options.
-- Run purely on the **Xteink X4 hardware**.
-
-This project is **not affiliated with Xteink**; it's built as a community project.
-
-## Features & Usage
-
-- [x] EPUB parsing and rendering (EPUB 2 and EPUB 3)
-- [x] Image support within EPUB
-- [x] Saved reading position
-- [x] File explorer with file picker
-  - [x] Basic EPUB picker from root directory
-  - [x] Support nested folders
-  - [ ] EPUB picker with cover art
-- [x] Custom sleep screen
-  - [x] Cover sleep screen
-  - [x] **Page sleep mode**: Freeze current screen instantly with a minimal indicator (best for instant resume)
-- [x] Wifi book upload
-- [x] Wifi OTA updates
-- [x] High-performance XTC Reader
-  - [x] **Memory Breakthrough**: 50% reduction in page table memory, enabling stable reading of 4000+ page books on constrained hardware.
-  - [x] **Instant Start**: Optimized refresh logic for near-instant transitions when entering books.
-- [x] **Snappy Input Response**: Reduced input cooldown (200ms) and long-press thresholds (350ms) for a more responsive, high-performance feel.
-- [x] Configurable font, layout, and display options
-  - [x] Customisable Themes (e.g., Flow Theme with rounded covers)
-  - [x] Enhanced 1-bit image rendering (Floyd-Steinberg dithering, contrast & gamma tuning)
-  - [ ] User provided fonts
-  - [ ] Full UTF support
-- [x] Screen rotation
-
-Multi-language support: Read EPUBs in various languages, including English, Spanish, French, German, Italian, Portuguese, Russian, Ukrainian, Polish, Swedish, Norwegian, [and more](./USER_GUIDE.md#supported-languages).
-
-See [the user guide](./USER_GUIDE.md) for instructions on operating CrossPoint.
-
-For more details about the scope of the project, see the [SCOPE.md](SCOPE.md) document.
-
-## Installing
-
-### Web (latest firmware)
-
-1. Connect your Xteink X4 to your computer via USB-C and wake/unlock the device
-2. Go to https://xteink.dve.al/ and click "Flash CrossPoint firmware"
-
-To revert back to the official firmware, you can flash the latest official firmware from https://xteink.dve.al/, or swap
-back to the other partition using the "Swap boot partition" button here https://xteink.dve.al/debug.
-
-### Web (specific firmware version)
-
-1. Connect your Xteink X4 to your computer via USB-C
-2. Download the `firmware.bin` file from the release of your choice via the [releases page](https://github.com/crosspoint-reader/crosspoint-reader/releases)
-3. Go to https://xteink.dve.al/ and flash the firmware file using the "OTA fast flash controls" section
-
-To revert back to the official firmware, you can flash the latest official firmware from https://xteink.dve.al/, or swap
-back to the other partition using the "Swap boot partition" button here https://xteink.dve.al/debug.
-
-### Manual
-
-See [Development](#development) below.
-
-## Development
-
-### Prerequisites
-
-- **PlatformIO Core** (`pio`) or **VS Code + PlatformIO IDE**
-- Python 3.8+
-- USB-C cable for flashing the ESP32-C3
-- Xteink X4
-
-### Checking out the code
-
-CrossPoint uses PlatformIO for building and flashing the firmware. To get started, clone the repository:
-
-```
-git clone --recursive https://github.com/crosspoint-reader/crosspoint-reader
-
-# Or, if you've already cloned without --recursive:
-git submodule update --init --recursive
-```
-
-### Flashing your device
-
-Connect your Xteink X4 to your computer via USB-C and run the following command.
-
-```sh
-pio run --target upload
-```
-
-### Debugging
-
-After flashing the new features, it’s recommended to capture detailed logs from the serial port.
-
-First, make sure all required Python packages are installed:
-
-```python
-python3 -m pip install pyserial colorama matplotlib
-```
-
-after that run the script:
-
-```sh
-# For Linux
-# This was tested on Debian and should work on most Linux systems.
-python3 scripts/debugging_monitor.py
-
-# For macOS
-python3 scripts/debugging_monitor.py /dev/cu.usbmodem2101
-```
-
-Minor adjustments may be required for Windows.
-
-## Internals
-
-CrossPoint Reader is pretty aggressive about caching data down to the SD card to minimise RAM usage. The ESP32-C3 only
-has ~380KB of usable RAM, so we have to be careful. A lot of the decisions made in the design of the firmware were based
-on this constraint.
-
-### Data caching
-
-The first time chapters of a book are loaded, they are cached to the SD card. Subsequent loads are served from the
-cache. This cache directory exists at `.crosspoint` on the SD card. The structure is as follows:
-
-```
-.crosspoint/
-├── epub_12471232/       # Each EPUB is cached to a subdirectory named `epub_<hash>`
-│   ├── progress.bin     # Stores reading progress (chapter, page, etc.)
-│   ├── cover.bmp        # Book cover image (once generated)
-│   ├── book.bin         # Book metadata (title, author, spine, table of contents, etc.)
-│   └── sections/        # All chapter data is stored in the sections subdirectory
-│       ├── 0.bin        # Chapter data (screen count, all text layout info, etc.)
-│       ├── 1.bin        #     files are named by their index in the spine
-│       └── ...
-│
-└── epub_189013891/
-```
-
-Deleting the `.crosspoint` directory will clear the entire cache.
-
-Due the way it's currently implemented, the cache is not automatically cleared when a book is deleted and moving a book
-file will use a new cache directory, resetting the reading progress.
-
-For more details on the internal file structures, see the [file formats document](./docs/file-formats.md).
-
-## Contributing
-
-Contributions are very welcome!
-
-If you are new to the codebase, start with the [contributing docs](./docs/contributing/README.md).
-
-If you're looking for a way to help out, take a look at the [ideas discussion board](https://github.com/crosspoint-reader/crosspoint-reader/discussions/categories/ideas).
-If there's something there you'd like to work on, leave a comment so that we can avoid duplicated effort.
-
-Everyone here is a volunteer, so please be respectful and patient. For more details on our goverance and community
-principles, please see [GOVERNANCE.md](GOVERNANCE.md).
-
-### To submit a contribution:
-
-1. Fork the repo
-2. Create a branch (`feature/dithering-improvement`)
-3. Make changes
-4. Submit a PR
 
 ---
 
-CrossPoint Reader is **not affiliated with Xteink or any manufacturer of the X4 hardware**.
+## 🚀 Key Innovations & Features
 
-Huge shoutout to [**diy-esp32-epub-reader** by atomic14](https://github.com/atomic14/diy-esp32-epub-reader), which was a project I took a lot of inspiration from as I
-was making CrossPoint.
+### 1. iPod-Inspired "Flow Theme"
+
+Experience a premium, classic interface inspired by the iPod. The **Flow Theme** features smooth animations and a refined layout designed for the X4's e-ink screen.
+
+### 2. Advanced Recent Page
+
+Stay organized with a beautiful "Recent" view. Browse up to **36 of your most recently read books** with full cover art support for quick access.
+
+### 3. Heavyweight XTC Support
+
+Read massive volumes without compromise. Our optimized **XTC binary format** supports files over **200MB** and **2000+ pages**, ensuring stability on constrained hardware.
+
+### 4. Contextual Menu & Dark Mode
+
+Access tools without leaving the page. Both XTC and EPUB formats support a **floating inner-page menu** and a dedicated **Dark Mode** for comfortable night reading.
+
+### 5. Dynamic Lua Plugin System
+
+XTEINK X4 is a platform, not just a reader. The integrated **Lua scripting engine** allows for dynamic plugins that can extend core logic and create entirely new interfaces.
+
+### 6. MiniGo (Lua Plugin)
+
+A full-featured **9x9 Go game** powered by a professional **MCTS (Monte Carlo Tree Search)** engine. Challenge the AI directly on your reader.
+
+### 7. Qubic (Lua Plugin)
+
+Enjoy the classic **3D Tic-Tac-Toe** logic game, reimagined for the e-ink experience.
+
+### 8. Flashcard (Lua Plugin)
+
+Turn your reading materials into learning opportunities with an integrated **SRS (Spaced Repetition System)** Flashcard application.
+
+### 9. System Intelligence
+
+- **Reading Time Tracking**: The system automatically logs and calculates your reading duration for every book.
+- **Smart Maintenance**: Automatic handling of reading records, metadata, and cache files to keep the system lean and responsive.
+
+### 10. Core Performance
+
+- **Memory Breakthrough**: 50% reduction in page table memory usage.
+- **Instant Start**: Optimized refresh logic for near-instant book opening.
+- **Snappy Response**: Reduced input cooldown (200ms) for a more responsive feel.
+
+---
+
+## 🖼️ Visual Showcase
+
+### System Interface
+
+|                  Flow Theme                   |          Recent Browser (36 Books)           |
+| :-------------------------------------------: | :------------------------------------------: |
+| ![Flow Theme](./screenshots/01-flowtheme.png) | ![Recent Books](./screenshots/02-recent.png) |
+
+### Reading Experience
+
+|            High-Capacity XTC             |               Floating Menu                |                  Dark Mode                  |
+| :--------------------------------------: | :----------------------------------------: | :-----------------------------------------: |
+| ![XTC Reading](./screenshots/03-xtc.png) | ![XTC Menu](./screenshots/04-xtc_menu.png) | ![Dark Mode](./screenshots/05-darkmode.png) |
+
+### Gaming & Apps (Lua Plugins)
+
+|            MiniGo (MCTS AI)            |        Qubic (3D Tic-Tac-Toe)        |               Flashcard (SRS)                |
+| :------------------------------------: | :----------------------------------: | :------------------------------------------: |
+| ![MiniGo](./screenshots/06-minigo.png) | ![Qubic](./screenshots/06-qubic.png) | ![Flashcard](./screenshots/06-flashcard.png) |
+
+---
+
+## 🛠 Workflow: EPUB to XTC
+
+To get the most out of the XTEINK X4, we recommend converting your EPUBs to XTC.
+See the [EPUB to XTC Conversion Guide](../README.md#epub-轉檔-xtc-指南) in the root directory for the SOP.
+
+---
+
+## 💾 Installation & Development
+
+### Web Flash
+
+Visit [xteink.dve.al](https://xteink.dve.al/) for one-click setup and updates.
+
+### Manual Build
+
+```sh
+git clone --recursive https://github.com/lee/xteink-x4-reader
+pio run --target upload
+```
+
+---
+
+## ⚖️ Disclaimer & Acknowledgments
+
+This project is **not affiliated with Xteink** or the original CrossPoint authors. It is a community-driven enhancement.
+
+Huge thanks to:
+
+- The original **CrossPoint Reader** team.
+- **atomic14** for the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub-reader).
+
+---
+
+_XTEINK X4: Unlock the true potential of your E-reader._
