@@ -16,7 +16,7 @@ constexpr uint8_t RECENT_BOOKS_FILE_VERSION = 3;
 constexpr char RECENT_BOOKS_FILE_BIN[] = "/.crosspoint/recent.bin";
 constexpr char RECENT_BOOKS_FILE_JSON[] = "/.crosspoint/recent.json";
 constexpr char RECENT_BOOKS_FILE_BAK[] = "/.crosspoint/recent.bin.bak";
-constexpr int MAX_RECENT_BOOKS = 10;
+constexpr int MAX_RECENT_BOOKS = 36;
 }  // namespace
 
 RecentBooksStore RecentBooksStore::instance;
@@ -87,6 +87,45 @@ RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
     return RecentBook{path, lastBookFileName, "", ""};
   }
   return RecentBook{path, "", "", ""};
+}
+
+int RecentBooksStore::cleanupMissingBooks() {
+  int removed = 0;
+  auto it = recentBooks.begin();
+  while (it != recentBooks.end()) {
+    if (Storage.exists(it->path.c_str())) {
+      ++it;
+      continue;
+    }
+
+    // Compute cache directory path (same formula as Epub/Xtc/Txt constructors)
+    const std::string hash = std::to_string(std::hash<std::string>{}(it->path));
+    std::string cacheDir;
+    if (StringUtils::checkFileExtension(it->path, ".epub")) {
+      cacheDir = "/.crosspoint/epub_" + hash;
+    } else if (StringUtils::checkFileExtension(it->path, ".xtc") ||
+               StringUtils::checkFileExtension(it->path, ".xtch")) {
+      cacheDir = "/.crosspoint/xtc_" + hash;
+    } else if (StringUtils::checkFileExtension(it->path, ".txt") ||
+               StringUtils::checkFileExtension(it->path, ".md")) {
+      cacheDir = "/.crosspoint/txt_" + hash;
+    }
+
+    if (!cacheDir.empty() && Storage.exists(cacheDir.c_str())) {
+      LOG_INF("RBS", "Removing orphan cache: %s", cacheDir.c_str());
+      Storage.removeDir(cacheDir.c_str());
+    }
+
+    LOG_INF("RBS", "Removing missing book: %s", it->path.c_str());
+    it = recentBooks.erase(it);
+    removed++;
+  }
+
+  if (removed > 0) {
+    LOG_INF("RBS", "Cleaned up %d missing book(s), saving recent.json", removed);
+    saveToFile();
+  }
+  return removed;
 }
 
 bool RecentBooksStore::loadFromFile() {

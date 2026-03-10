@@ -369,8 +369,8 @@ bool Xtc::generateThumbBmp(int height) const {
   }
   uint8_t* pageBuffer = static_cast<uint8_t*>(malloc(bitmapSize));
   if (!pageBuffer) {
-    LOG_ERR("XTC", "Failed to allocate page buffer for thumbnail (%lu bytes)", bitmapSize);
-    return false;
+    LOG_INF("XTC", "Page buffer too large (%lu bytes), using streaming thumbnail", bitmapSize);
+    return generateThumbBmpStreaming(height);
   }
 
 #line 372
@@ -575,6 +575,230 @@ bool Xtc::generateThumbBmp(int height) const {
   free(pageBuffer);
 
   LOG_DBG("XTC", "Generated thumb BMP: %s", getThumbBmpPath(height).c_str());
+  return true;
+}
+
+// Streaming fallback for large pages that exceed available heap.
+// Two-pass approach: Pass 1 detects white-margin bounding box (same
+// thresholds as the non-streaming path); Pass 2 renders the thumbnail
+// using the detected content region. Peak working memory is ~1 source
+// row + colBlacks array (pw * 4 bytes) — well under 8 KB for 480-wide pages.
+// Only supports 1-bit XTC — 2-bit BPC uses column-major layout which
+// requires random access and cannot be streamed row by row.
+bool Xtc::generateThumbBmpStreaming(int height) const {
+  const uint8_t  bd  = parser->getBitDepth();
+  const uint16_t pw  = parser->getWidth();
+  const uint16_t ph  = parser->getHeight();
+
+  if (bd != 1) {
+    LOG_ERR("XTC", "Streaming thumbnail not supported for 2-bit XTC");
+    return false;
+  }
+
+  const int      thumbW      = static_cast<int>(height * 0.7f);
+  const int      thumbH      = height;
+  const uint32_t srcRowBytes = (static_cast<uint32_t>(pw) + 7) / 8;
+  const uint32_t dstRowSize  = (static_cast<uint32_t>(thumbW) + 31) / 32 * 4;
+
+  // One source row buffer, reused across both passes
+  std::vector<uint8_t> srcRowBuf(srcRowBytes, 0xFF);
+
+  // ── Pass 1: accumulate column black-pixel counts + Y-bounds ──────────────
+  // colBlacks[x] = number of black pixels in column x across all rows.
+  // Uses pw * 4 bytes (1920 B for 480-wide pages) — freed before Pass 2.
+  std::vector<uint32_t> colBlacks(pw, 0);
+  uint32_t contentYStart = ph;   // Initialised to "not found"
+  uint32_t contentYEnd   = 0;
+  const int yThreshold   = std::max(2, (int)pw / 200);  // Same as non-streaming path
+  const int xThreshold   = std::max(2, (int)ph / 200);
+
+  uint32_t accumulated = 0;
+  uint32_t curSrcRow   = 0;
+
+  auto processRow1 = [&]() {
+    int rowBlacks = 0;
+    for (uint16_t x = 0; x < pw; x++) {
+      if (!((srcRowBuf[x / 8] >> (7 - x % 8)) & 1)) {
+        colBlacks[x]++;
+        rowBlacks++;
+      }
+    }
+    if (rowBlacks > yThreshold) {
+      if (curSrcRow < contentYStart) contentYStart = curSrcRow;
+      contentYEnd = curSrcRow;   // Rows arrive in order; last wins
+    }
+    curSrcRow++;
+    accumulated = 0;
+    std::fill(srcRowBuf.begin(), srcRowBuf.end(), 0xFF);
+  };
+
+  const_cast<xtc::XtcParser*>(parser.get())->loadPageStreaming(
+      0,
+      [&](const uint8_t* data, size_t size, size_t) {
+        size_t pos = 0;
+        while (pos < size) {
+          size_t avail = std::min<uint32_t>(srcRowBytes - accumulated,
+                                            static_cast<uint32_t>(size - pos));
+          memcpy(srcRowBuf.data() + accumulated, data + pos, avail);
+          accumulated += avail;
+          pos += avail;
+          if (accumulated == srcRowBytes) processRow1();
+        }
+      },
+      4096);
+
+  // ── Compute X bounds from colBlacks, then free it ────────────────────────
+  uint32_t contentXStart = pw, contentXEnd = 0;
+  for (uint16_t x = 0; x < pw; x++) {
+    if ((int)colBlacks[x] > xThreshold) {
+      if (x < contentXStart) contentXStart = x;
+      contentXEnd = x;
+    }
+  }
+  colBlacks.clear();  // Free ~1920 bytes before opening the output file
+
+  // Fallback if page is entirely white or detection failed
+  if (contentXStart >= contentXEnd || contentYStart >= contentYEnd) {
+    contentXStart = 0; contentXEnd = pw - 1;
+    contentYStart = 0; contentYEnd = ph - 1;
+  }
+
+  // Safety margin (2px) — same as non-streaming path
+  contentXStart = (contentXStart > 2) ? contentXStart - 2 : 0;
+  contentYStart = (contentYStart > 2) ? contentYStart - 2 : 0;
+  contentXEnd   = (contentXEnd + 2 < pw) ? contentXEnd + 2 : pw - 1;
+  contentYEnd   = (contentYEnd + 2 < ph) ? contentYEnd + 2 : ph - 1;
+
+  const uint32_t contentWidth  = contentXEnd - contentXStart + 1;
+  const uint32_t contentHeight = contentYEnd - contentYStart + 1;
+
+  // Scale to fill target box — same max(scaleX, scaleY) logic as non-streaming path
+  const float scaleX = (float)thumbW / (float)contentWidth;
+  const float scaleY = (float)thumbH / (float)contentHeight;
+  const float scale  = std::max(scaleX, scaleY);
+
+  const int32_t scaledWidth  = (int32_t)((float)contentWidth  * scale);
+  const int32_t scaledHeight = (int32_t)((float)contentHeight * scale);
+  const int32_t offsetX      = (thumbW - scaledWidth)  / 2;
+  const int32_t offsetY      = (thumbH - scaledHeight) / 2;
+  const uint32_t scaleInv_fp = (uint32_t)(65536.0f / scale);  // Fixed-point 1/scale
+
+  LOG_INF("XTC", "Streaming thumb bbox: x[%lu..%lu] y[%lu..%lu] scale=%.3f offset=(%ld,%ld)",
+          contentXStart, contentXEnd, contentYStart, contentYEnd, scale,
+          (long)offsetX, (long)offsetY);
+
+  // ── Open BMP output file ──────────────────────────────────────────────────
+  setupCacheDir();
+  FsFile thumbBmp;
+  if (!Storage.openFileForWrite("XTC", getThumbBmpPath(height), thumbBmp)) {
+    LOG_ERR("XTC", "Streaming: failed to create thumb BMP file");
+    return false;
+  }
+
+  // BMP header — identical format to non-streaming path
+  const uint32_t imageSize = dstRowSize * static_cast<uint32_t>(thumbH);
+  const uint32_t fileSize  = 14 + 40 + 8 + imageSize;
+  thumbBmp.write('B'); thumbBmp.write('M');
+  write32(thumbBmp, fileSize);
+  write32(thumbBmp, 0);
+  write32(thumbBmp, 62);
+  write32(thumbBmp, 40);
+  write32Signed(thumbBmp, thumbW);
+  write32Signed(thumbBmp, -thumbH);
+  write16(thumbBmp, 1);
+  write16(thumbBmp, 1);
+  write32(thumbBmp, 0);
+  write32(thumbBmp, imageSize);
+  write32(thumbBmp, 2835);
+  write32(thumbBmp, 2835);
+  write32(thumbBmp, 2);
+  write32(thumbBmp, 2);
+  // Color table: index 0 = black, index 1 = white
+  thumbBmp.write((uint8_t)0x00); thumbBmp.write((uint8_t)0x00);
+  thumbBmp.write((uint8_t)0x00); thumbBmp.write((uint8_t)0x00);
+  thumbBmp.write((uint8_t)0xFF); thumbBmp.write((uint8_t)0xFF);
+  thumbBmp.write((uint8_t)0xFF); thumbBmp.write((uint8_t)0x00);
+
+  // ── Pass 2: render thumbnail with content-aware mapping ──────────────────
+  std::vector<uint8_t> dstRowBuf(dstRowSize, 0xFF);
+  std::fill(srcRowBuf.begin(), srcRowBuf.end(), 0xFF);
+  accumulated        = 0;
+  curSrcRow          = 0;
+  uint32_t nextThumbRow = 0;
+
+  // Called when a complete source row is ready in srcRowBuf (= curSrcRow).
+  // Emits all thumbnail rows whose nearest-neighbour source row == curSrcRow.
+  auto flushSrcRow2 = [&]() {
+    while (nextThumbRow < static_cast<uint32_t>(thumbH)) {
+      const int32_t srcYOffset = (int32_t)nextThumbRow - offsetY;
+      const int32_t neededSrcY =
+          (int32_t)contentYStart + ((srcYOffset * (int32_t)scaleInv_fp) >> 16);
+
+      if (neededSrcY < 0) {
+        // Thumb row maps before the page top — white padding
+        std::fill(dstRowBuf.begin(), dstRowBuf.end(), 0xFF);
+        thumbBmp.write(dstRowBuf.data(), dstRowSize);
+        nextThumbRow++;
+        continue;
+      }
+      if (neededSrcY > (int32_t)curSrcRow) break;   // Need a later source row
+      if (neededSrcY < (int32_t)curSrcRow) {
+        // Source row already passed (only happens at top padding) — white
+        std::fill(dstRowBuf.begin(), dstRowBuf.end(), 0xFF);
+        thumbBmp.write(dstRowBuf.data(), dstRowSize);
+        nextThumbRow++;
+        continue;
+      }
+
+      // neededSrcY == curSrcRow — render this thumbnail row
+      std::fill(dstRowBuf.begin(), dstRowBuf.end(), 0xFF);
+      for (int32_t dx = 0; dx < thumbW; dx++) {
+        const int32_t srcXOffset = dx - offsetX;
+        const int32_t srcX =
+            (int32_t)contentXStart + ((srcXOffset * (int32_t)scaleInv_fp) >> 16);
+        if (srcX < 0 || srcX >= (int32_t)pw) continue;
+        if (!((srcRowBuf[srcX / 8] >> (7 - srcX % 8)) & 1))
+          dstRowBuf[dx / 8] &= ~(0x80 >> (dx % 8));  // Black pixel
+      }
+      thumbBmp.write(dstRowBuf.data(), dstRowSize);
+      nextThumbRow++;
+    }
+    curSrcRow++;
+    accumulated = 0;
+    std::fill(srcRowBuf.begin(), srcRowBuf.end(), 0xFF);
+  };
+
+  xtc::XtcError err = const_cast<xtc::XtcParser*>(parser.get())->loadPageStreaming(
+      0,
+      [&](const uint8_t* data, size_t size, size_t) {
+        size_t pos = 0;
+        while (pos < size) {
+          size_t avail = std::min<uint32_t>(srcRowBytes - accumulated,
+                                            static_cast<uint32_t>(size - pos));
+          memcpy(srcRowBuf.data() + accumulated, data + pos, avail);
+          accumulated += avail;
+          pos += avail;
+          if (accumulated == srcRowBytes) flushSrcRow2();
+        }
+      },
+      4096);
+
+  // Pad any remaining thumbnail rows with white
+  std::fill(dstRowBuf.begin(), dstRowBuf.end(), 0xFF);
+  while (nextThumbRow < static_cast<uint32_t>(thumbH)) {
+    thumbBmp.write(dstRowBuf.data(), dstRowSize);
+    nextThumbRow++;
+  }
+
+  thumbBmp.close();
+
+  if (err != xtc::XtcError::OK) {
+    LOG_ERR("XTC", "Streaming thumbnail failed: %s", xtc::errorToString(err));
+    Storage.remove(getThumbBmpPath(height).c_str());
+    return false;
+  }
+
+  LOG_INF("XTC", "Generated streaming thumb BMP (bbox): %s", getThumbBmpPath(height).c_str());
   return true;
 }
 

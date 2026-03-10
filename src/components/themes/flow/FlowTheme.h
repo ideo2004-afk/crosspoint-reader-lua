@@ -24,7 +24,7 @@ constexpr ThemeMetrics values = {.batteryWidth = 16,
                                  .homeTopPadding = 56,
                                  .homeCoverHeight = 314,      // 25-kai book ratio (~0.7)
                                  .homeCoverTileHeight = 360,  // Cover + Title area
-                                 .homeRecentBooksCount = 6,    // Up to 6 books in carousel
+                                 .homeRecentBooksCount = 10,   // Up to 10 books in carousel
                                  .buttonHintsHeight = 40,
                                  .sideButtonHintsWidth = 30,
                                  .progressBarHeight = 16,

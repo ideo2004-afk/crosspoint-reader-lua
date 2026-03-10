@@ -20,16 +20,16 @@ constexpr unsigned long GO_HOME_MS = 1000;
 }  // namespace
 
 void RecentBooksActivity::loadRecentBooks() {
+  // Remove entries whose files are gone and delete their cache dirs
+  RECENT_BOOKS.cleanupMissingBooks();
+
   recentBooks.clear();
   const auto& books = RECENT_BOOKS.getBooks();
-  recentBooks.reserve(std::min((size_t)9, books.size()));
+  const int maxBooks = BOOKS_PER_PAGE * 4;  // Up to 4 pages
+  recentBooks.reserve(std::min((int)books.size(), maxBooks));
 
   for (const auto& book : books) {
-    if (recentBooks.size() >= 9) break;
-    // Skip if file no longer exists
-    if (!Storage.exists(book.path.c_str())) {
-      continue;
-    }
+    if ((int)recentBooks.size() >= maxBooks) break;
     recentBooks.push_back(book);
   }
 }
@@ -161,56 +161,66 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
   const int gridTopOffset = 20;
   
   // Calculate grid layout sizes
-  int columns = 3;
-  int rows = 3;
-  
-  // Hardcoded for 3x3 layout fit (e.g. 1404x1872 standard res aspect ratio)
-  int coverWidth = (pageWidth - (metrics.contentSidePadding * 2) - (metrics.verticalSpacing * (columns - 1))) / columns;
+  const int columns = 3;
+  const int coverWidth = (pageWidth - (metrics.contentSidePadding * 2) - (metrics.verticalSpacing * (columns - 1))) / columns;
   // Preserve rough 3:4 aspect ratio for covers
-  int coverHeight = (coverWidth * 4) / 3;
+  const int coverHeight = (coverWidth * 4) / 3;
+  const int rowSpacing  = metrics.verticalSpacing + 15;
 
-  // Recent tab
+  // Pagination
+  const int totalBooks  = static_cast<int>(recentBooks.size());
+  const int totalPages  = (totalBooks + BOOKS_PER_PAGE - 1) / BOOKS_PER_PAGE;
+  const int currentPage = (totalPages > 0) ? (selectorIndex / BOOKS_PER_PAGE) : 0;
+  const int pageStart   = currentPage * BOOKS_PER_PAGE;
+  const int pageCount   = std::min(BOOKS_PER_PAGE, totalBooks - pageStart);
+
+  // Recent tab grid
   if (recentBooks.empty()) {
     renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, contentTop + 20, tr(STR_NO_RECENT_BOOKS));
   } else {
-    for (size_t i = 0; i < recentBooks.size(); ++i) {
-      if (i >= 9) break;
+    for (int i = 0; i < pageCount; ++i) {
+      const int bookIdx = pageStart + i;
+      const int col = i % columns;
+      const int row = i / columns;
 
-      int col = i % columns;
-      int row = i / columns;
-      
-      // Increase vertical spacing between rows for a less cramped look
-      int rowSpacing = metrics.verticalSpacing + 15; 
-      
-      int x = metrics.contentSidePadding + (col * (coverWidth + metrics.verticalSpacing));
-      int y = contentTop + gridTopOffset + (row * (coverHeight + rowSpacing));
+      const int x = metrics.contentSidePadding + col * (coverWidth + metrics.verticalSpacing);
+      const int y = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
 
       Rect coverRect(x, y, coverWidth, coverHeight);
 
       // Draw cover image or fallback icon
-      if (!recentBooks[i].coverBmpPath.empty()) {
-        std::string coverPath = UITheme::getCoverThumbPath(recentBooks[i].coverBmpPath, coverHeight);
+      if (!recentBooks[bookIdx].coverBmpPath.empty()) {
+        std::string coverPath = UITheme::getCoverThumbPath(recentBooks[bookIdx].coverBmpPath, coverHeight);
         if (Storage.exists(coverPath.c_str())) {
           FsFile file;
           if (Storage.openFileForRead("HOME", coverPath, file)) {
             Bitmap bmp(file);
             if (bmp.parseHeaders() == BmpReaderError::Ok) {
-               renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2, bmp.getWidth(), bmp.getHeight());
+              renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
+                                  bmp.getWidth(), bmp.getHeight());
             }
             file.close();
           }
         } else {
-             renderer.drawIcon(BookIcon, x + (coverWidth-32)/2, y + (coverHeight-32)/2, 32, 32);
+          renderer.drawIcon(BookIcon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
         }
       } else {
-        renderer.drawIcon(BookIcon, x + (coverWidth-32)/2, y + (coverHeight-32)/2, 32, 32);
+        renderer.drawIcon(BookIcon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
       }
 
-      // Draw selection box around active element (1px thick)
-      if (i == selectorIndex) {
-        // drawRect takes a bool state for black (true) vs white (false)
+      // Selection box
+      if (bookIdx == selectorIndex) {
         renderer.drawRect(coverRect.x - 4, coverRect.y - 4, coverRect.width + 8, coverRect.height + 8, true);
       }
+    }
+
+    // Page indicator  e.g. "2 / 4"
+    if (totalPages > 1) {
+      char pageStr[12];
+      snprintf(pageStr, sizeof(pageStr), "%d / %d", currentPage + 1, totalPages);
+      const int tw = renderer.getTextWidth(SMALL_FONT_ID, pageStr);
+      const int ty = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 16;
+      renderer.drawText(SMALL_FONT_ID, (pageWidth - tw) / 2, ty, pageStr);
     }
   }
 

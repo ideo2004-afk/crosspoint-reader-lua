@@ -48,6 +48,10 @@ class RecentBooksStore {
   bool loadFromFile();
   RecentBook getDataFromBook(std::string path) const;
 
+  // Remove books whose files no longer exist, delete their cache dirs, save.
+  // Returns the number of entries removed.
+  int cleanupMissingBooks();
+
  private:
   bool loadFromBinaryFile();
 };

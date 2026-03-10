@@ -4,10 +4,24 @@
 #include <HalStorage.h>
 #include <GfxRenderer.h>
 #include <Bitmap.h>
+#include <WiFi.h>
 #include "MappedInputManager.h"
 #include "Logging.h"
 #include "fontIds.h"
 #include "components/UITheme.h"
+#include "WifiCredentialStore.h"
+#include "network/HttpDownloader.h"
+#include <HTTPClient.h>
+#include <NetworkClient.h>
+#include <NetworkClientSecure.h>
+
+// ─── net module state ─────────────────────────────────────────────────────────
+namespace {
+    enum class NetWifiState { IDLE, CONNECTING, CONNECTED, FAILED };
+    NetWifiState s_wifiState = NetWifiState::IDLE;
+    int  s_credIdx   = 0;   // index into credentials list being tried
+    bool s_ownedWifi = false; // true if net.wifiConnect() started this session
+}  // namespace
 
 // ─── Registry helpers ─────────────────────────────────────────────────────────
 
@@ -326,6 +340,142 @@ static int l_fs_write_file(lua_State* L) {
     return 1;
 }
 
+// ─── net.* ───────────────────────────────────────────────────────────────────
+
+// net.wifiConnect() — starts async connection using saved credentials.
+// Call net.wifiStatus() each frame to poll progress.
+static int l_net_wifi_connect(lua_State*) {
+    WIFI_STORE.loadFromFile();
+    const auto& creds = WIFI_STORE.getCredentials();
+    if (creds.empty()) {
+        s_wifiState = NetWifiState::FAILED;
+        return 0;
+    }
+    WiFi.mode(WIFI_STA);
+    s_credIdx = 0;
+    s_ownedWifi = true;
+    // Try last-connected first
+    const std::string& last = WIFI_STORE.getLastConnectedSsid();
+    if (!last.empty()) {
+        for (int i = 0; i < (int)creds.size(); i++) {
+            if (creds[i].ssid == last) { s_credIdx = i; break; }
+        }
+    }
+    const auto& c = creds[s_credIdx];
+    WiFi.begin(c.ssid.c_str(), c.password.empty() ? nullptr : c.password.c_str());
+    s_wifiState = NetWifiState::CONNECTING;
+    LOG_INF("NET", "Connecting to %s...", c.ssid.c_str());
+    return 0;
+}
+
+// net.wifiStatus() → "idle" | "connecting" | "connected" | "failed"
+static int l_net_wifi_status(lua_State* L) {
+    if (s_wifiState == NetWifiState::CONNECTING) {
+        wl_status_t ws = WiFi.status();
+        if (ws == WL_CONNECTED) {
+            s_wifiState = NetWifiState::CONNECTED;
+            WIFI_STORE.setLastConnectedSsid(WiFi.SSID().c_str());
+            LOG_INF("NET", "Connected: %s", WiFi.localIP().toString().c_str());
+        } else if (ws == WL_CONNECT_FAILED || ws == WL_NO_SSID_AVAIL) {
+            // Try next credential
+            const auto& creds = WIFI_STORE.getCredentials();
+            s_credIdx++;
+            if (s_credIdx < (int)creds.size()) {
+                const auto& c = creds[s_credIdx];
+                WiFi.begin(c.ssid.c_str(), c.password.empty() ? nullptr : c.password.c_str());
+                LOG_INF("NET", "Trying %s...", c.ssid.c_str());
+            } else {
+                s_wifiState = NetWifiState::FAILED;
+                LOG_ERR("NET", "All credentials failed");
+            }
+        }
+    }
+    const char* str = "idle";
+    if      (s_wifiState == NetWifiState::CONNECTING) str = "connecting";
+    else if (s_wifiState == NetWifiState::CONNECTED)  str = "connected";
+    else if (s_wifiState == NetWifiState::FAILED)     str = "failed";
+    lua_pushstring(L, str);
+    return 1;
+}
+
+// net.wifiDisconnect()
+static int l_net_wifi_disconnect(lua_State*) {
+    if (s_ownedWifi) {
+        WiFi.disconnect(false);
+        WiFi.mode(WIFI_OFF);
+        s_ownedWifi = false;
+    }
+    s_wifiState = NetWifiState::IDLE;
+    return 0;
+}
+
+// net.get(url [, headers_table]) → body_string or nil
+// headers_table: { ["X-Api-Key"] = "value", ... }
+static int l_net_get(lua_State* L) {
+    const char* url = luaL_checkstring(L, 1);
+    // Optional headers table (arg 2)
+    std::vector<std::pair<std::string,std::string>> headers;
+    if (lua_istable(L, 2)) {
+        lua_pushnil(L);
+        while (lua_next(L, 2)) {
+            const char* k = lua_tostring(L, -2);
+            const char* v = lua_tostring(L, -1);
+            if (k && v) headers.push_back({k, v});
+            lua_pop(L, 1);
+        }
+    }
+    std::string body;
+    // Build a temporary HttpDownloader-style request with extra headers
+    // We use fetchUrl which handles HTTP/HTTPS automatically
+    if (!headers.empty()) {
+        // For custom headers we inline the request
+        std::unique_ptr<NetworkClient> client;
+        bool isHttps = std::string(url).find("https://") == 0;
+        if (isHttps) {
+            auto* sc = new NetworkClientSecure(); sc->setInsecure(); client.reset(sc);
+        } else {
+            client.reset(new NetworkClient());
+        }
+        HTTPClient http;
+        http.begin(*client, url);
+        http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+        http.addHeader("User-Agent", "CrossPoint-ESP32-" CROSSPOINT_VERSION);
+        for (auto& h : headers) http.addHeader(h.first.c_str(), h.second.c_str());
+        int code = http.GET();
+        if (code == HTTP_CODE_OK) {
+            body = http.getString().c_str();
+            lua_pushstring(L, body.c_str());
+        } else {
+            LOG_ERR("NET", "GET failed: %d", code);
+            lua_pushnil(L);
+        }
+        http.end();
+    } else {
+        if (HttpDownloader::fetchUrl(url, body)) {
+            lua_pushstring(L, body.c_str());
+        } else {
+            lua_pushnil(L);
+        }
+    }
+    return 1;
+}
+
+// net.urlencode(str) → encoded string
+static int l_net_urlencode(lua_State* L) {
+    const char* s = luaL_checkstring(L, 1);
+    std::string out;
+    while (*s) {
+        unsigned char c = (unsigned char)*s++;
+        if (isalnum(c) || c=='-' || c=='_' || c=='.' || c=='~') {
+            out += (char)c;
+        } else {
+            char buf[4]; snprintf(buf, sizeof(buf), "%%%02X", c); out += buf;
+        }
+    }
+    lua_pushstring(L, out.c_str());
+    return 1;
+}
+
 } // extern "C"
 
 // ─── LuaManager ──────────────────────────────────────────────────────────────
@@ -372,6 +522,13 @@ void LuaManager::end() {
     if (L) { lua_close(L); L = nullptr; }
     initialized = false;
     wantsExit = false;
+    // Clean up WiFi if net module started it
+    if (s_ownedWifi) {
+        WiFi.disconnect(false);
+        WiFi.mode(WIFI_OFF);
+        s_ownedWifi = false;
+    }
+    s_wifiState = NetWifiState::IDLE;
 }
 
 void LuaManager::registerBindings() {
@@ -421,6 +578,15 @@ void LuaManager::registerBindings() {
     lua_pushcfunction(L, l_fs_read_file);  lua_setfield(L, -2, "readFile");
     lua_pushcfunction(L, l_fs_write_file); lua_setfield(L, -2, "writeFile");
     lua_setglobal(L, "fs");
+
+    // net.*
+    lua_newtable(L);
+    lua_pushcfunction(L, l_net_wifi_connect);    lua_setfield(L, -2, "wifiConnect");
+    lua_pushcfunction(L, l_net_wifi_status);     lua_setfield(L, -2, "wifiStatus");
+    lua_pushcfunction(L, l_net_wifi_disconnect); lua_setfield(L, -2, "wifiDisconnect");
+    lua_pushcfunction(L, l_net_get);             lua_setfield(L, -2, "get");
+    lua_pushcfunction(L, l_net_urlencode);       lua_setfield(L, -2, "urlencode");
+    lua_setglobal(L, "net");
 
     // Refresh mode constants
     lua_pushinteger(L, HalDisplay::FULL_REFRESH); lua_setglobal(L, "REFRESH_FULL");

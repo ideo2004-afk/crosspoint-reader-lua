@@ -72,8 +72,13 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
           GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
           bool success = epub.generateThumbBmp(coverHeight);
           if (!success) {
-            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
-            book.coverBmpPath = "";
+            // Only clear coverBmpPath if the book file itself is gone.
+            // For transient failures (memory, read error) keep the path
+            // so generation can succeed on the next fresh launch.
+            if (!Storage.exists(book.path.c_str())) {
+              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+              book.coverBmpPath = "";
+            }
           }
           coverRendered = false;
           requestUpdate();
@@ -90,8 +95,13 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
             bool success = xtc.generateThumbBmp(coverHeight);
             if (!success) {
-              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
-              book.coverBmpPath = "";
+              // Only clear coverBmpPath if the book file itself is gone.
+              // Large XTC files may fail due to heap fragmentation after
+              // reading — keep the path so generation retries on next launch.
+              if (!Storage.exists(book.path.c_str())) {
+                RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+                book.coverBmpPath = "";
+              }
             }
             coverRendered = false;
             requestUpdate();
@@ -112,6 +122,9 @@ void HomeActivity::onEnter() {
   bookSelectorIndex = 0;
   menuSelectorIndex = 0;
   focusZone = Zone::BOOKS;
+  firstRenderDone = false;
+  recentsLoaded   = false;
+  recentsLoading  = false;
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
@@ -197,17 +210,19 @@ void HomeActivity::loop() {
   // [ B2 B1 B3 ] -> Left -> [ B4 B2 B1 ]
 
   // Side buttons (usually physical 4 and 5) - Strictly for book covers
-  if (mappedInput.wasReleasedRaw(HalGPIO::BTN_UP) || mappedInput.wasReleasedRaw(4)) { 
+  if (mappedInput.wasPressedRaw(HalGPIO::BTN_UP) || mappedInput.wasPressedRaw(4)) {
     if (bookCount > 0) {
-      focusZone = Zone::BOOKS; // Jump focus to books zone when side buttons are used
+      focusZone = Zone::BOOKS;
       bookSelectorIndex = getNextBookIdx(bookSelectorIndex, bookCount);
+      coverBufferStored = false;  // Force cover re-render for new selection
       requestUpdate();
     }
   }
-  if (mappedInput.wasReleasedRaw(HalGPIO::BTN_DOWN) || mappedInput.wasReleasedRaw(5)) {
+  if (mappedInput.wasPressedRaw(HalGPIO::BTN_DOWN) || mappedInput.wasPressedRaw(5)) {
     if (bookCount > 0) {
-      focusZone = Zone::BOOKS; // Jump focus to books zone when side buttons are used
+      focusZone = Zone::BOOKS;
       bookSelectorIndex = getPrevBookIdx(bookSelectorIndex, bookCount);
+      coverBufferStored = false;  // Force cover re-render for new selection
       requestUpdate();
     }
   }
@@ -239,7 +254,7 @@ void HomeActivity::loop() {
   }
 
   // Button 3 (Up) - Vertical movement
-  if (mappedInput.wasReleased(MappedInputManager::Button::Left)) { 
+  if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
     if (focusZone == Zone::MENU) {
       if (menuSelectorIndex > 0) {
         menuSelectorIndex--;
@@ -257,7 +272,7 @@ void HomeActivity::loop() {
   }
 
   // Button 4 (Down) - Vertical movement
-  if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+  if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
     if (focusZone == Zone::BOOKS) {
       // Move focus down to menu zone
       focusZone = Zone::MENU;

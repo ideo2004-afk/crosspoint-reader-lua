@@ -11,8 +11,10 @@
 
 class RecentBooksActivity final : public Activity {
  private:
+  static constexpr int BOOKS_PER_PAGE = 9;
+
   ButtonNavigator buttonNavigator;
-  size_t selectorIndex = 0;
+  int selectorIndex = 0;
   std::vector<RecentBook> recentBooks;
 
   const std::function<void(const std::string& path)> onSelectBook;

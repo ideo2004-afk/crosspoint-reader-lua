@@ -26,6 +26,9 @@ class Xtc {
   std::unique_ptr<xtc::XtcParser> parser;
   bool loaded;
 
+  // Streaming fallback for large pages that exceed available heap
+  bool generateThumbBmpStreaming(int height) const;
+
  public:
   explicit Xtc(std::string filepath, const std::string& cacheDir) : filepath(std::move(filepath)), loaded(false) {
     // Create cache key based on filepath (same as Epub)
