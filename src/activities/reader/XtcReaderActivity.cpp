@@ -35,6 +35,11 @@ constexpr unsigned long goHomeMs = 1000;
 
 void XtcReaderActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
+  renderer.setDarkMode(false);  // Reader manages its own dark mode inversion
+
+  // Clear ghosting (especially visible in dark mode) before displaying content
+  renderer.clearScreen();
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 
   if (!xtc) {
     return;
@@ -61,6 +66,9 @@ void XtcReaderActivity::onEnter() {
 
 void XtcReaderActivity::onExit() {
   ActivityWithSubactivity::onExit();
+  renderer.setDarkMode(SETTINGS.darkMode);  // Restore renderer dark mode for UI
+  renderer.clearScreen();
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 
   if (sessionStartMillis > 0 && xtc) {
     uint32_t elapsedSeconds = (millis() - sessionStartMillis) / 1000;

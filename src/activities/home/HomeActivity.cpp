@@ -214,7 +214,8 @@ void HomeActivity::loop() {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
       bookSelectorIndex = getNextBookIdx(bookSelectorIndex, bookCount);
-      coverBufferStored = false;  // Force cover re-render for new selection
+      coverBufferStored = false;
+      coverRendered = false;  // Force full re-render from SD for new selection
       requestUpdate();
     }
   }
@@ -222,7 +223,8 @@ void HomeActivity::loop() {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
       bookSelectorIndex = getPrevBookIdx(bookSelectorIndex, bookCount);
-      coverBufferStored = false;  // Force cover re-render for new selection
+      coverBufferStored = false;
+      coverRendered = false;  // Force full re-render from SD for new selection
       requestUpdate();
     }
   }

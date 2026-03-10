@@ -7,7 +7,6 @@
 
 #include "Xtc.h"
 
-#include <BitmapHelpers.h>
 #include <HalStorage.h>
 #line 11
 #include <Logging.h>
@@ -514,8 +513,6 @@ bool Xtc::generateThumbBmp(int height) const {
 
   uint32_t scaleInv_fp = static_cast<uint32_t>(65536.0f / scale);
 
-  FloydSteinberg1BitDitherer ditherer(THUMB_TARGET_WIDTH);
-
   for (int32_t dstY = 0; dstY < THUMB_TARGET_HEIGHT; dstY++) {
     // Fill row with white
     memset(rowBuffer, 0xFF, rowSize);
@@ -560,12 +557,10 @@ bool Xtc::generateThumbBmp(int height) const {
         }
 
         uint8_t avgGray = (totalCount > 0) ? static_cast<uint8_t>(graySum / totalCount) : 255;
-        const uint8_t bit = ditherer.processPixel(avgGray, dstX);
-        if (bit == 0) {
+        if (avgGray < 128) {
           rowBuffer[dstX / 8] &= ~(1 << (7 - (dstX % 8))); // Black
         }
       }
-      ditherer.nextRow();
     }
     thumbBmp.write(rowBuffer, rowSize);
   }

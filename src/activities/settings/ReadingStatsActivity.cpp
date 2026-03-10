@@ -71,7 +71,7 @@ void ReadingStatsActivity::render(Activity::RenderLock&&) {
            static_cast<unsigned long>(totalHours), static_cast<unsigned long>(totalMins));
 
   int headerBottom = metrics.topPadding + metrics.headerHeight + 10;
-  renderer.drawText(UI_12_FONT_ID, 10, headerBottom, totalTimeStr, !SETTINGS.darkMode, EpdFontFamily::BOLD);
+  renderer.drawText(UI_12_FONT_ID, 10, headerBottom, totalTimeStr, true, EpdFontFamily::BOLD);
 
   int listStartY = headerBottom + renderer.getLineHeight(UI_12_FONT_ID) + 10;
   int listHeight = pageHeight - listStartY - metrics.verticalSpacing;

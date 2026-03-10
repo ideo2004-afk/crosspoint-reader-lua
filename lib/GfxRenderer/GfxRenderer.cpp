@@ -231,7 +231,8 @@ static void renderCharImpl(const GfxRenderer& renderer, GfxRenderer::RenderMode 
 
 // IMPORTANT: This function is in critical rendering path and is called for every pixel. Please keep it as simple and
 // efficient as possible.
-void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
+void GfxRenderer::drawPixel(const int x, const int y, bool state) const {
+  if (_invertEnabled) state = !state;
   int phyX = 0;
   int phyY = 0;
 
@@ -656,8 +657,9 @@ void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, co
 
 void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height,
                            const TextColor color) const {
-  if (color == Black) {
+  if (color == Black && !_invertEnabled) {
     // Optimization: black icons can use the faster hardware-accelerated path
+    // (only when inversion is inactive — hardware path bypasses drawPixel)
     display.drawImageTransparent(bitmap, y, getScreenWidth() - width - x, height, width);
     return;
   }
@@ -767,6 +769,8 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
 
       if (renderMode == BW && val < 3) {
         drawPixel(screenX, screenY);
+      } else if (renderMode == BW && val == 3 && _darkMode && !_invertEnabled) {
+        drawPixel(screenX, screenY, false);  // Explicit white for dark-bg cover exception
       } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
         drawPixel(screenX, screenY, false);
       } else if (renderMode == GRAYSCALE_LSB && val == 1) {
@@ -835,12 +839,15 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y,
       // Get 2-bit value (result of readNextRow quantization)
       const uint8_t val = outputRow[bmpX / 4] >> (6 - ((bmpX * 2) % 8)) & 0x3;
 
-      // For 1-bit source: 0 or 1 -> map to black (0,1,2) or white (3)
-      // val < 3 means black pixel (draw it)
+      // For 1-bit source: val < 3 = black, val == 3 = white.
+      // White pixels normally rely on the background being white.
+      // When dark mode is active but inversion is suppressed (e.g. cover art),
+      // background is black so white pixels must be drawn explicitly.
       if (val < 3) {
         drawPixel(screenX, screenY, true);
+      } else if (_darkMode && !_invertEnabled) {
+        drawPixel(screenX, screenY, false);
       }
-      // White pixels (val == 3) are not drawn (leave background)
     }
   }
 
@@ -1037,7 +1044,7 @@ static unsigned long start_ms = 0;
 
 void GfxRenderer::clearScreen(const uint8_t color) const {
   start_ms = millis();
-  display.clearScreen(color);
+  display.clearScreen(_darkMode ? ~color : color);
 }
 
 void GfxRenderer::invertScreen() const {

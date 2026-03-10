@@ -44,6 +44,8 @@ class GfxRenderer {
   RenderMode renderMode;
   Orientation orientation;
   bool fadingFix;
+  bool _darkMode = false;
+  bool _invertEnabled = false;
   uint8_t* frameBuffer = nullptr;
   uint8_t* bwBufferChunks[BW_BUFFER_NUM_CHUNKS] = {nullptr};
   std::map<int, EpdFontFamily> fontMap;
@@ -85,6 +87,11 @@ class GfxRenderer {
 
   // Fading fix control
   void setFadingFix(const bool enabled) { fadingFix = enabled; }
+
+  // Dark mode control
+  void setDarkMode(bool dm) { _darkMode = dm; _invertEnabled = dm; }
+  void setInvertEnabled(bool e) { _invertEnabled = e; }
+  bool isDarkMode() const { return _darkMode; }
 
   // Screen ops
   int getScreenWidth() const;

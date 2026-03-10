@@ -262,6 +262,7 @@ void setup() {
   SETTINGS.loadFromFile(); I18N.loadSettings(); UITheme::getInstance().reload();
   FontMgr.scanFonts(); FontMgr.loadSettings();
   renderer.setFadingFix(SETTINGS.fadingFix);
+  renderer.setDarkMode(SETTINGS.darkMode);
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   if (gpio.getWakeupReason() == HalGPIO::WakeupReason::PowerButton) verifyPowerButtonDuration();
   else if (gpio.getWakeupReason() == HalGPIO::WakeupReason::AfterUSBPower) powerManager.startDeepSleep(gpio);

@@ -221,6 +221,7 @@ void SettingsActivity::toggleCurrentSetting() {
   }
 
   SETTINGS.saveToFile();
+  renderer.setDarkMode(SETTINGS.darkMode);
 }
 
 void SettingsActivity::render(Activity::RenderLock&&) {
@@ -284,7 +285,7 @@ void SettingsActivity::render(Activity::RenderLock&&) {
       size_t len = strlen(text);
       if (len > 0 && text[len-1] == ':') isHeader = true;
 
-      renderer.drawText(UI_10_FONT_ID, 15, labelY, text, !SETTINGS.darkMode, isHeader ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
+      renderer.drawText(UI_10_FONT_ID, 15, labelY, text, true, isHeader ? EpdFontFamily::BOLD : EpdFontFamily::REGULAR);
       labelY += renderer.getLineHeight(UI_10_FONT_ID) + 2;
     }
   }

@@ -108,11 +108,10 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
             }
             file.close();
         }
-        
+
         if (!success) {
-            // Draw a simple trapezoid if no image
+            // Draw a simple trapezoid fill if no image
             renderer.fillRect(drawX, drawY, w, hMax, false);
-            renderer.drawRect(drawX, drawY, w, hMax, true);
         }
     };
 
@@ -137,6 +136,8 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         int drawY = centerY;
         
         // Clear background for center cover to ensure it "covers" sides
+        // Inversion disabled here so fillRect draws true white, not dark-mode-inverted black
+        renderer.setInvertEnabled(false);
         renderer.fillRect(drawX, drawY, centerCoverWidth, centerCoverHeight, false);
 
         bool success = false;
@@ -148,6 +149,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
             }
             file.close();
         }
+        renderer.setInvertEnabled(renderer.isDarkMode());
         
         if (success) {
             cutRoundedCorners(renderer, drawX, drawY, centerCoverWidth, centerCoverHeight, bookCornerRadius);

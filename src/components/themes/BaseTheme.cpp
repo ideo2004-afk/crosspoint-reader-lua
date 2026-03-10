@@ -402,8 +402,10 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         if (bitmap.parseHeaders() == BmpReaderError::Ok) {
           LOG_DBG("THEME", "Rendering bmp");
 
-          // Draw the cover image (bookWidth and bookHeight already match image aspect ratio)
+          // Draw the cover image without dark mode inversion (preserve original cover art)
+          renderer.setInvertEnabled(false);
           renderer.drawBitmap(bitmap, bookX, bookY, bookWidth, bookHeight);
+          renderer.setInvertEnabled(renderer.isDarkMode());
 
           // Draw border around the card
           renderer.drawRect(bookX, bookY, bookWidth, bookHeight);

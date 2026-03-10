@@ -619,31 +619,47 @@ bool LuaManager::callFunction(const char* funcName) {
     return true;
 }
 
+namespace {
+struct LuaFileReader {
+    FsFile file;
+    uint8_t buf[512];
+};
+
+static const char* lua_chunk_reader(lua_State*, void* ud, size_t* sz) {
+    auto* r = static_cast<LuaFileReader*>(ud);
+    int n = r->file.read(r->buf, sizeof(r->buf));
+    *sz = (n > 0) ? (size_t)n : 0;
+    return (*sz > 0) ? reinterpret_cast<const char*>(r->buf) : nullptr;
+}
+}  // namespace
+
 bool LuaManager::runPlugin(const std::string& pluginName) {
     if (!initialized && !begin()) return false;
 
     std::string path = "/plugins/" + pluginName + "/main.lua";
-    LOG_INF("LUA", "Opening: %s", path.c_str());
+    LOG_INF("LUA", "Opening: %s  heap: %d", path.c_str(), ESP.getFreeHeap());
 
-    FsFile file = Storage.open(path.c_str());
-    if (!file) { LOG_ERR("LUA", "File missing: %s", path.c_str()); return false; }
+    LuaFileReader reader;
+    reader.file = Storage.open(path.c_str());
+    if (!reader.file) { LOG_ERR("LUA", "File missing: %s", path.c_str()); return false; }
 
-    size_t size = file.size();
-    char* buf = (char*)malloc(size + 1);
-    if (!buf) { LOG_ERR("LUA", "OOM for script buffer"); file.close(); return false; }
-
-    file.read((uint8_t*)buf, size);
-    buf[size] = '\0';
-    file.close();
-
-    int res = luaL_dostring(L, buf);
-    free(buf);
+    std::string chunkName = "@" + pluginName;
+    int res = lua_load(L, lua_chunk_reader, &reader, chunkName.c_str(), nullptr);
+    reader.file.close();
 
     if (res != LUA_OK) {
-        LOG_ERR("LUA", "Parse error: %s", lua_tostring(L, -1));
+        LOG_ERR("LUA", "Load error: %s", lua_tostring(L, -1));
         lua_pop(L, 1);
         return false;
     }
-    LOG_INF("LUA", "Script loaded OK");
+
+    res = lua_pcall(L, 0, 0, 0);
+    if (res != LUA_OK) {
+        LOG_ERR("LUA", "Run error: %s", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return false;
+    }
+
+    LOG_INF("LUA", "Script loaded OK  heap: %d", ESP.getFreeHeap());
     return true;
 }

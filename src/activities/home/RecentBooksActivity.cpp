@@ -196,8 +196,10 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
           if (Storage.openFileForRead("HOME", coverPath, file)) {
             Bitmap bmp(file);
             if (bmp.parseHeaders() == BmpReaderError::Ok) {
+              renderer.setInvertEnabled(false);
               renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
                                   bmp.getWidth(), bmp.getHeight());
+              renderer.setInvertEnabled(renderer.isDarkMode());
             }
             file.close();
           }

@@ -35,6 +35,8 @@ inline std::vector<SettingInfo> getSettingsList() {
                         "uiTheme", StrId::STR_CAT_DISPLAY),
       SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
                           StrId::STR_CAT_DISPLAY),
+      SettingInfo::Toggle(StrId::STR_DARK_MODE, &CrossPointSettings::darkMode, "darkMode",
+                          StrId::STR_CAT_DISPLAY),
 
       // --- Reader ---
       SettingInfo::Action(StrId::STR_EXT_READER_FONT, SettingAction::FontSelectReader, StrId::STR_CAT_READER),
