@@ -66,7 +66,7 @@ inline std::vector<SettingInfo> getSettingsList() {
 
       // --- Controls ---
       SettingInfo::Enum(StrId::STR_SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
-                        {StrId::STR_IGNORE, StrId::STR_SLEEP}, "shortPwrBtn",
+                        {StrId::STR_IGNORE, StrId::STR_SLEEP, StrId::STR_PAGE_TURN}, "shortPwrBtn",
                         StrId::STR_CAT_CONTROLS),
       SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::ButtonRemap, StrId::STR_CAT_CONTROLS),
                         

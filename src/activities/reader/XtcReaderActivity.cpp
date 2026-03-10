@@ -98,7 +98,7 @@ void XtcReaderActivity::loop() {
     return;
   }
 
-  const unsigned long longPressMs = 350;
+  const unsigned long longPressMs = 600;
 
   // === Menu Input Handling ===
   if (inMenu) {
@@ -159,15 +159,15 @@ void XtcReaderActivity::loop() {
                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_CONFIRM, 800);
 
   // Front RIGHT: short=next, long=menu (snappy)
-  if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_LEFT, 350) || 
-      mappedInput.wasLongPressedRaw(HalGPIO::BTN_RIGHT, 350)) {
+  if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_LEFT, 600) ||
+      mappedInput.wasLongPressedRaw(HalGPIO::BTN_RIGHT, 600)) {
     inMenu = true;
     menuSelectedIndex = 0;
     requestUpdate();
     return;
   }
-  const bool frontRightShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_LEFT, 500) || 
-                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_RIGHT, 500);
+  const bool frontRightShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_LEFT, 600) ||
+                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_RIGHT, 600);
 
   // Side UP: short=next, long=next bookmark
   const bool sideUpShort   = mappedInput.wasShortPressedRaw(HalGPIO::BTN_UP, 500);
@@ -175,6 +175,10 @@ void XtcReaderActivity::loop() {
   // Side DOWN: short=prev, long=toggle bookmark
   const bool sideDownShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_DOWN, 500);
   const bool sideDownLong  = mappedInput.wasLongPressedRaw(HalGPIO::BTN_DOWN, 500);
+
+  // Power button short press = next page (when configured)
+  const bool powerNextShort = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
+                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
 
   // Combination keys for bookmarks:
   // LB (LEFT Cluster: Back/Confirm) + Side DOWN (RD) = Toggle Bookmark
@@ -225,7 +229,7 @@ void XtcReaderActivity::loop() {
     toggleBookmark();
     return;
   }
- else if (frontRightShort || sideUpShort)  skipAmount = 1;
+ else if (frontRightShort || sideUpShort || powerNextShort)  skipAmount = 1;
   else if (frontLeftShort  || sideDownShort) skipAmount = -1;
 
   if (skipAmount == 0) return;

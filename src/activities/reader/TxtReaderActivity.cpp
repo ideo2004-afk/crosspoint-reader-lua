@@ -120,6 +120,10 @@ void TxtReaderActivity::loop() {
   const bool sideDownShort = mappedInput.wasReleasedRaw(HalGPIO::BTN_DOWN) && mappedInput.getHeldTime() < longPressMs;
   const bool sideDownLong  = mappedInput.wasLongPressed(MappedInputManager::Button::Down, longPressMs);
 
+  // Power button short press = next page (when configured)
+  const bool powerNextShort = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
+                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
+
   const bool lbPressed = mappedInput.isPressedAnyOf(HalGPIO::BTN_BACK, HalGPIO::BTN_CONFIRM);
 
   if (lbPressed && mappedInput.wasReleasedRaw(HalGPIO::BTN_UP)) {
@@ -144,7 +148,7 @@ void TxtReaderActivity::loop() {
   int delta = 0;
   if (sideUpLong)           delta = 10;
   else if (sideDownLong)    delta = -10;
-  else if (frontRightShort || sideUpShort)  delta = 1;
+  else if (frontRightShort || sideUpShort || powerNextShort)  delta = 1;
   else if (frontLeftShort  || sideDownShort) delta = -1;
 
   int targetPage = static_cast<int>(currentPage) + delta;

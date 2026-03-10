@@ -187,7 +187,7 @@ void EpubReaderActivity::loop() {
   // Front RIGHT cluster (LEFT + RIGHT): short=next page, long=reader menu
   // Side UP:   short=next page, long=+10 pages
   // Side DOWN: short=prev page, long=-10 pages
-  const unsigned long longPressMs = 350;
+  const unsigned long longPressMs = 600;
 
   // === Menu Input Handling ===
   if (inMenu) {
@@ -248,16 +248,16 @@ void EpubReaderActivity::loop() {
                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_CONFIRM, 800);
 
   // Front RIGHT cluster: short=next page, long=menu (snappy)
-  if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_LEFT, 350) || 
-      mappedInput.wasLongPressedRaw(HalGPIO::BTN_RIGHT, 350)) {
+  if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_LEFT, 600) ||
+      mappedInput.wasLongPressedRaw(HalGPIO::BTN_RIGHT, 600)) {
     renderer.storeBwBuffer();
     inMenu = true;
     menuSelectedIndex = 0;
     requestUpdate();
     return;
   }
-  const bool frontRightShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_LEFT, 350) || 
-                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_RIGHT, 350);
+  const bool frontRightShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_LEFT, 600) ||
+                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_RIGHT, 600);
 
   // Side UP: short = next page, long = +10 pages
   const bool sideUpShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_UP, 500);
@@ -266,6 +266,10 @@ void EpubReaderActivity::loop() {
   // Side DOWN: short = prev page, long = -10 pages
   const bool sideDownShort = mappedInput.wasShortPressedRaw(HalGPIO::BTN_DOWN, 500);
   const bool sideDownLong  = mappedInput.wasLongPressedRaw(HalGPIO::BTN_DOWN, 500);
+
+  // Power button short press = next page (when configured)
+  const bool powerNextShort = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
+                               mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
 
   // Combination keys for bookmarks and navigation:
   // LB (LEFT Cluster: Back/Confirm) + Side DOWN (RD) = Toggle Bookmark
@@ -336,7 +340,7 @@ void EpubReaderActivity::loop() {
     return;
   }
 
-  if (!frontLeftShort && !frontRightShort && !sideUpShort && !sideUpLong && !sideDownShort && !sideDownLong) {
+  if (!frontLeftShort && !frontRightShort && !sideUpShort && !sideUpLong && !sideDownShort && !sideDownLong && !powerNextShort) {
     return;
   }
 
@@ -348,7 +352,7 @@ void EpubReaderActivity::loop() {
   } else if (sideDownLong) {
     toggleBookmark();
     return;
-  } else if (frontRightShort || sideUpShort) delta = 1;
+  } else if (frontRightShort || sideUpShort || powerNextShort) delta = 1;
   else if (frontLeftShort || sideDownShort) delta = -1;
 
   if (delta == 0) {
@@ -755,8 +759,9 @@ void EpubReaderActivity::renderMenu() const {
   renderer.fillRoundedRect(mx, my, mw, mh, 10, Color::White);
   renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, true); // Use bool for border state
 
-  const char* options[] = {"Resume", "Table of Contents", "Next 10%", "Back 10%", 
-                           "Dark/Day", "Orientation", "Screenshot", "Exit"};
+  const bool darkMode = SETTINGS.darkMode;
+  const char* options[] = {"Resume", "Table of Contents", "Next 10%", "Back 10%",
+                           darkMode ? "Day Mode" : "Dark Mode", "Orientation", "Screenshot", "Exit"};
   
   for (int i = 0; i < 8; i++) {
     int ry = my + 15 + (i * 50);
