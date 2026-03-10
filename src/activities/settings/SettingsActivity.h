@@ -21,6 +21,7 @@ enum class SettingAction {
   ClearCache,
   ReadingStats,
   ButtonRemap,
+  FontSelectReader,
 };
 
 struct SettingInfo {

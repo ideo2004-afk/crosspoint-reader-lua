@@ -5,6 +5,7 @@
 
 #include "ClearCacheActivity.h"
 #include "CrossPointSettings.h"
+#include "FontSelectActivity.h"
 #include "MappedInputManager.h"
 #include "SettingsList.h"
 #include "activities/network/WifiSelectionActivity.h"
@@ -74,8 +75,14 @@ void SettingsActivity::onExit() {
 
 void SettingsActivity::loop() {
   // Must call parent loop() to promote pendingSubActivity -> subActivity
+  const bool hadSubActivity = subActivity != nullptr;
   ActivityWithSubactivity::loop();
   if (subActivity) {
+    return;
+  }
+  // If we just returned from a subactivity this tick, skip input processing to
+  // prevent the Confirm press that closed the subactivity from also firing here
+  if (hadSubActivity) {
     return;
   }
   bool hasChangedCategory = false;
@@ -201,6 +208,9 @@ void SettingsActivity::toggleCurrentSetting() {
         break;
       case SettingAction::ButtonRemap:
         enterSubActivity(new ButtonRemapActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::FontSelectReader:
+        enterSubActivity(new FontSelectActivity(renderer, mappedInput, FontSelectActivity::SelectMode::Reader, onComplete));
         break;
       case SettingAction::None:
         // Do nothing

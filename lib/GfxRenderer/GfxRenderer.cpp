@@ -1,7 +1,35 @@
 #include "GfxRenderer.h"
 
+#include <FontManager.h>
 #include <Logging.h>
 #include <Utf8.h>
+
+// UI font IDs - values must match src/fontIds.h
+// UI fonts do NOT use the external reader font; only reader fonts do.
+// UI fonts may use the external UI font for CJK characters.
+static constexpr int UI_FONT_IDS[] = {
+    -1246724383,  // UI_10_FONT_ID
+    -359249323,   // UI_12_FONT_ID
+    1073217904,   // SMALL_FONT_ID
+};
+static constexpr int UI_FONT_COUNT = sizeof(UI_FONT_IDS) / sizeof(UI_FONT_IDS[0]);
+
+// Check if a Unicode codepoint is CJK or related
+static bool isCjkCodepoint(const uint32_t cp) {
+  if (cp >= 0x4E00 && cp <= 0x9FFF) return true;   // CJK Unified Ideographs
+  if (cp >= 0x3400 && cp <= 0x4DBF) return true;   // CJK Extension A
+  if (cp >= 0x3000 && cp <= 0x303F) return true;   // CJK Punctuation
+  if (cp >= 0x3040 && cp <= 0x309F) return true;   // Hiragana
+  if (cp >= 0x30A0 && cp <= 0x30FF) return true;   // Katakana
+  if (cp >= 0xF900 && cp <= 0xFAFF) return true;   // CJK Compatibility Ideographs
+  if (cp >= 0xFF00 && cp <= 0xFFEF) return true;   // Fullwidth forms
+  if (cp >= 0x2000 && cp <= 0x206F) return true;   // General Punctuation
+  if (cp >= 0x2150 && cp <= 0x218F) return true;   // Number Forms
+  if (cp >= 0x2460 && cp <= 0x24FF) return true;   // Enclosed Alphanumerics
+  if (cp >= 0x3200 && cp <= 0x32FF) return true;   // Enclosed CJK Letters
+  if (cp >= 0x3300 && cp <= 0x33FF) return true;   // CJK Compatibility
+  return false;
+}
 
 const uint8_t* GfxRenderer::getGlyphBitmap(const EpdFontData* fontData, const EpdGlyph* glyph) const {
   if (fontData->groups != nullptr) {
@@ -292,7 +320,7 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
 
       int combiningX = lastBaseX + lastBaseAdvance / 2;
       int combiningY = lastBaseY - raiseBy;
-      renderChar(font, cp, &combiningX, &combiningY, color, style);
+      renderChar(fontId, font, cp, &combiningX, &combiningY, color, style);
       continue;
     }
 
@@ -314,7 +342,7 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y, const cha
     lastBaseAdvance = glyph ? glyph->advanceX : 0;
     lastBaseTop = glyph ? glyph->top : 0;
 
-    renderChar(*activeFont, cp, &xPos, &yPos, color, style);
+    renderChar(fontId, *activeFont, cp, &xPos, &yPos, color, style);
     prevCp = cp;
   }
 }
@@ -1307,8 +1335,74 @@ void GfxRenderer::cleanupGrayscaleWithFrameBuffer() const {
   }
 }
 
-void GfxRenderer::renderChar(const EpdFontFamily& fontFamily, uint32_t cp, int* x, int* y, Color color,
-                             EpdFontFamily::Style style) const {
+bool GfxRenderer::isReaderFont(const int fontId) {
+  for (int i = 0; i < UI_FONT_COUNT; i++) {
+    if (UI_FONT_IDS[i] == fontId) return false;  // UI font
+  }
+  return true;  // All non-UI fonts are reader fonts
+}
+
+void GfxRenderer::renderExternalGlyph(const uint8_t* bitmap, ExternalFont* font, int* x, int y, Color color,
+                                      int advance, int minX) const {
+  const uint8_t width = font->getCharWidth();
+  const uint8_t height = font->getCharHeight();
+  const uint8_t bytesPerRow = font->getBytesPerRow();
+
+  // Baseline alignment: +4px descent for CJK characters
+  const int startY = y - height + 4;
+  const bool pixelState = (color != Color::White);
+
+  for (int glyphY = 0; glyphY < height; glyphY++) {
+    const int screenY = startY + glyphY;
+    for (int glyphX = minX; glyphX < width; glyphX++) {
+      const int byteIndex = glyphY * bytesPerRow + (glyphX / 8);
+      const int bitIndex = 7 - (glyphX % 8);  // MSB first
+
+      if ((bitmap[byteIndex] >> bitIndex) & 1) {
+        drawPixel(*x + (glyphX - minX), screenY, pixelState);
+      }
+    }
+  }
+
+  *x += std::max(1, advance);
+}
+
+void GfxRenderer::renderChar(const int fontId, const EpdFontFamily& fontFamily, uint32_t cp, int* x, int* y,
+                             Color color, EpdFontFamily::Style style) const {
+  FontManager& fm = FontManager::getInstance();
+  const bool isCjk = isCjkCodepoint(cp);
+
+  if (isReaderFont(fontId)) {
+    // Reader font: use external font only for CJK characters
+    if (isCjk && fm.isExternalFontEnabled()) {
+      ExternalFont* extFont = fm.getActiveFont();
+      if (extFont) {
+        const uint8_t* bitmap = extFont->getGlyph(cp);
+        if (bitmap) {
+          uint8_t minX = 0, advanceX = extFont->getCharWidth();
+          extFont->getGlyphMetrics(cp, &minX, &advanceX);
+          renderExternalGlyph(bitmap, extFont, x, *y, color, advanceX, minX);
+          return;
+        }
+        // Fall through to built-in reader font for missing glyphs
+      }
+    }
+  } else {
+    // UI font: for CJK characters, automatically use the reader font if loaded
+    if (isCjk && fm.isExternalFontEnabled()) {
+      ExternalFont* extFont = fm.getActiveFont();
+      if (extFont) {
+        const uint8_t* bitmap = extFont->getGlyph(cp);
+        if (bitmap) {
+          uint8_t minX = 0, advanceX = 0;
+          extFont->getGlyphMetrics(cp, &minX, &advanceX);
+          renderExternalGlyph(bitmap, extFont, x, *y, color, advanceX, minX);
+          return;
+        }
+      }
+    }
+  }
+
   renderCharImpl<TextRotation::None>(*this, renderMode, fontFamily, cp, x, y, (TextColor)color, style);
 }
 

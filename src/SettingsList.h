@@ -37,6 +37,7 @@ inline std::vector<SettingInfo> getSettingsList() {
                           StrId::STR_CAT_DISPLAY),
 
       // --- Reader ---
+      SettingInfo::Action(StrId::STR_EXT_READER_FONT, SettingAction::FontSelectReader, StrId::STR_CAT_READER),
       SettingInfo::Enum(StrId::STR_FONT_FAMILY, &CrossPointSettings::fontFamily,
                         {StrId::STR_BOOKERLY, StrId::STR_NOTO_SANS},
                         "fontFamily", StrId::STR_CAT_READER),

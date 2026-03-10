@@ -13,6 +13,8 @@
 
 #include <cstring>
 
+#include <FontManager.h>
+
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
@@ -258,6 +260,7 @@ void setup() {
     return;
   }
   SETTINGS.loadFromFile(); I18N.loadSettings(); UITheme::getInstance().reload();
+  FontMgr.scanFonts(); FontMgr.loadSettings();
   renderer.setFadingFix(SETTINGS.fadingFix);
   ButtonNavigator::setMappedInputManager(mappedInputManager);
   if (gpio.getWakeupReason() == HalGPIO::WakeupReason::PowerButton) verifyPowerButtonDuration();

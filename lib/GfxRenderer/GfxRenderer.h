@@ -8,6 +8,8 @@
 
 #include "Bitmap.h"
 
+class ExternalFont;
+
 // Color representation: uint8_t mapped to 4x4 Bayer matrix dithering levels
 // 0 = transparent, 1-16 = gray levels (white to black)
 enum Color : uint8_t { Clear = 0x00, White = 0x01, LightGray = 0x05, DarkGray = 0x0A, Black = 0x10 };
@@ -47,8 +49,11 @@ class GfxRenderer {
   std::map<int, EpdFontFamily> fontMap;
   int fallbackFontId = -1;
   FontDecompressor* fontDecompressor = nullptr;
-  void renderChar(const EpdFontFamily& fontFamily, uint32_t cp, int* x, int* y, Color color,
+  void renderChar(int fontId, const EpdFontFamily& fontFamily, uint32_t cp, int* x, int* y, Color color,
                   EpdFontFamily::Style style) const;
+  static bool isReaderFont(int fontId);
+  void renderExternalGlyph(const uint8_t* bitmap, ExternalFont* font, int* x, int y, Color color, int advance,
+                           int minX) const;
   void freeBwBufferChunks();
   template <Color color>
   void drawPixelDither(int x, int y) const;

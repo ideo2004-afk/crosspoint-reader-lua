@@ -11,6 +11,7 @@
 #include "MappedInputManager.h"
 #include "NetworkModeSelectionActivity.h"
 #include "WifiSelectionActivity.h"
+#include "components/UITheme.h"
 #include "fontIds.h"
 
 namespace {
@@ -426,5 +427,5 @@ void CrossPointWebServerActivity::renderServerRunning() const {
   }
 
   const auto labels = mappedInput.mapLabels("« Exit", "", "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 }
