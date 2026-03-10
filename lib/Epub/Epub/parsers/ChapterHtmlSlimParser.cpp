@@ -662,6 +662,33 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       }
     }
 
+    // CJK characters: treat each character as its own word so the line-break
+    // algorithm can wrap freely without needing hyphenation.
+    // Covers (3-byte UTF-8 sequences):
+    //   U+3000-U+9FFF  (CJK punctuation, unified ideographs): first byte 0xE3-0xE9
+    //   U+F900-U+FAFF  (CJK compatibility ideographs):        0xEF 0xA4-0xAB
+    //   U+FF00-U+FFEF  (fullwidth forms):                     0xEF 0xBC-0xBF
+    {
+      const auto b0 = static_cast<uint8_t>(s[i]);
+      const auto b1 = (i + 1 < len) ? static_cast<uint8_t>(s[i + 1]) : 0;
+      const bool isCjk3 = (i + 2 < len) &&
+                          ((b0 >= 0xE3 && b0 <= 0xE9) ||
+                           (b0 == 0xEF && b1 >= 0xA4 && b1 <= 0xAB) ||
+                           (b0 == 0xEF && b1 >= 0xBC));
+      if (isCjk3) {
+        if (self->partWordBufferIndex > 0) {
+          self->flushPartWordBuffer();
+        }
+        self->partWordBuffer[0] = s[i];
+        self->partWordBuffer[1] = s[i + 1];
+        self->partWordBuffer[2] = s[i + 2];
+        self->partWordBufferIndex = 3;
+        self->flushPartWordBuffer();
+        i += 2;  // skip remaining 2 bytes of this 3-byte sequence
+        continue;
+      }
+    }
+
     // If we're about to run out of space, then cut the word off and start a new one
     if (self->partWordBufferIndex >= MAX_WORD_SIZE) {
       self->flushPartWordBuffer();
