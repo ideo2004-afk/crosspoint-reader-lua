@@ -1,16 +1,16 @@
 #include "FileSelectionActivity.h"
 
 #include <GfxRenderer.h>
-#include <SDCardManager.h>
+#include <HalStorage.h>
 
 #include "MappedInputManager.h"
+#include "components/UITheme.h"
 #include "fontIds.h"
 
 namespace {
 constexpr int PAGE_ITEMS = 23;
 constexpr int SKIP_PAGE_MS = 700;
 constexpr unsigned long GO_HOME_MS = 1000;
-}  // namespace
 
 void sortFileList(std::vector<std::string>& strs) {
   std::sort(begin(strs), end(strs), [](const std::string& str1, const std::string& str2) {
@@ -21,6 +21,7 @@ void sortFileList(std::vector<std::string>& strs) {
         [](const char& char1, const char& char2) { return tolower(char1) < tolower(char2); });
   });
 }
+}  // namespace
 
 void FileSelectionActivity::taskTrampoline(void* param) {
   auto* self = static_cast<FileSelectionActivity*>(param);
@@ -31,7 +32,7 @@ void FileSelectionActivity::loadFiles() {
   files.clear();
   selectorIndex = 0;
 
-  auto root = SdMan.open(basepath.c_str());
+  auto root = Storage.open(basepath.c_str());
   if (!root || !root.isDirectory()) {
     if (root) root.close();
     return;
@@ -177,7 +178,7 @@ void FileSelectionActivity::render() const {
 
   // Help text
   const auto labels = mappedInput.mapLabels("« Home", "Open", "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   if (files.empty()) {
     renderer.drawText(UI_10_FONT_ID, 20, 60, "No books found");

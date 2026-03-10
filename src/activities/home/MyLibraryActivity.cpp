@@ -13,7 +13,6 @@
 
 namespace {
 constexpr unsigned long GO_HOME_MS = 1000;
-}  // namespace
 
 void sortFileList(std::vector<std::string>& strs) {
   std::sort(begin(strs), end(strs), [](const std::string& str1, const std::string& str2) {
@@ -66,6 +65,7 @@ void sortFileList(std::vector<std::string>& strs) {
     return *s1 == '\0' && *s2 != '\0';
   });
 }
+}  // namespace
 
 void MyLibraryActivity::loadFiles() {
   files.clear();
