@@ -1,6 +1,6 @@
-# XTEINK X4 Reader (Enhanced CrossPoint)
+# Crosspoint Reader - Flow
 
-**XTEINK X4 Reader** is a high-performance, plugin-driven firmware for the **Xteink X4** e-paper display reader. This project is a heavily modified fork of [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader), specifically optimized for the X4 hardware with expanded capabilities in reading, gaming, and extensibility.
+**Crosspoint Reader - Flow** is a high-performance, plugin-driven firmware for the **Xteink X4** e-paper display reader. This project is a heavily modified fork of [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader), specifically optimized for the X4 hardware with expanded capabilities in reading, gaming, and extensibility.
 
 Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
 
