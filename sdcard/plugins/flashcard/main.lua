@@ -1,273 +1,291 @@
--- Flashcard Plugin
--- DESCRIPTION: E-Ink optimized study tool.
--- Progress:       /plugins/flashcard/<DeckName>/progress.txt (one learned sideA path per line)
+-- Flashcard TXT Edition
+-- DESCRIPTION: Study vocabulary from plain-text decks. [v4.2]
+-- File format  : one card per line  →  word|pos|meaning|example_en|example_zh
+--                optional first line →  #title:Deck Name
+-- Controls:
+--   Deck select : Up/Down = scroll, Confirm = open, Back = exit
+--   Card view   : Confirm = flip A↔B, Up/Down = sequential,
+--                 Left/Right = random, Back = menu
 
-local PLUGIN_PATH = "/plugins/flashcard"
+local PLUGIN_PATH = "/plugins/Flashcard"
 
 local STATE_DECK = 1
 local STATE_CARD = 2
 
-local state      = STATE_DECK
-local decks      = {}
-local deckIdx    = 1
+local state     = STATE_DECK
+local decks     = {}
+local titles    = {}
+local deckIdx   = 1
 
-local cards      = {}   -- {sideA, sideB, learned}
-local cardIdx    = 1
-local showBack   = false
-local deckName   = ""
-local needsDraw  = true
-local learnedMsg = false
+local cards     = {}   -- {word, pos, meaning, ex_en, ex_zh}
+local cardIdx   = 1
+local showBack  = false
+local deckTitle = ""
+local errorMsg  = nil
+local needsDraw = true
 
--- ── helpers ───────────────────────────────────────────────────────────────────
+-- ── Helpers ───────────────────────────────────────────────────────────────────
 
-local function endsWith(s, ext)
-    return s:sub(-#ext):lower() == ext
-end
-
-local function progressFile()
-    return PLUGIN_PATH .. "/" .. deckName .. "/progress.txt"
-end
-
-local function saveProgress()
+local function wrapText(font, text, maxW)
     local lines = {}
-    for _, c in ipairs(cards) do
-        if c.learned then lines[#lines + 1] = c.sideA end
-    end
-    fs.writeFile(progressFile(), table.concat(lines, "\n"))
-end
-
-local function loadProgress()
-    local content = fs.readFile(progressFile())
-    if not content then return end
-    local learned = {}
-    for line in (content .. "\n"):gmatch("([^\n]*)\n") do
-        if line ~= "" then learned[line] = true end
-    end
-    for _, c in ipairs(cards) do
-        if learned[c.sideA] then c.learned = true end
-    end
-end
-
--- ── deck / card loading ───────────────────────────────────────────────────────
-
-local function loadDecks()
-    decks = fs.listDirs(PLUGIN_PATH)
-    table.sort(decks)
-end
-
-local function loadCards(name)
-    deckName  = name
-    cards     = {}
-    showBack  = false
-    local dir = PLUGIN_PATH .. "/" .. name
-
-    local files = fs.listFiles(dir)
-    table.sort(files)
-
-    -- collect sideA files
-    local sideAs = {}
-    local fileSet = {}
-    for _, f in ipairs(files) do
-        fileSet[f] = true
-        if (endsWith(f, ".bmp")) and (f:find("_a%.") or f:find("_A%.")) then
-            sideAs[#sideAs + 1] = f
+    local cur   = ""
+    -- Use UTF-8 pattern to iterate through each character (including multi-byte Chinese)
+    for char in text:gmatch("[\1-\127\194-\244][\128-\191]*") do
+        local test = cur .. char
+        if gui.getTextWidth(font, test) <= maxW then
+            cur = test
+        else
+            if cur ~= "" then table.insert(lines, cur) end
+            cur = (char == " ") and "" or char
         end
     end
+    if cur ~= "" then table.insert(lines, cur) end
+    return lines
+end
 
-    for _, fa in ipairs(sideAs) do
-        local fb = fa:gsub("(_[aA])(%.[Bb][Mm][Pp])$", function(mid, ext)
-            return mid:lower():gsub("_a", "_b") .. ext
-        end)
-        cards[#cards + 1] = {
-            sideA   = dir .. "/" .. fa,
-            sideB   = fileSet[fb] and (dir .. "/" .. fb) or nil,
-            learned = false,
-        }
+-- ── TXT parse ─────────────────────────────────────────────────────────────────
+
+local function parseLine(line)
+    -- strip CR
+    if line:sub(-1) == "\r" then line = line:sub(1, -2) end
+    if line == "" then return end
+    if line:sub(1, 1) == "#" then
+        local t = line:match("^#title:(.+)$")
+        if t then deckTitle = t end
+        return
+    end
+    local f1, f2, f3, f4, f5 = line:match("^([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
+    if f1 and f1 ~= "" then
+        table.insert(cards, {
+            word    = f1,
+            pos     = f2 or "",
+            meaning = f3 or "",
+            ex_en   = f4 or "",
+            ex_zh   = f5 or "",
+        })
+    end
+end
+
+local function loadDeck(filename)
+    errorMsg  = nil
+    cards     = {}
+    collectgarbage("collect")
+    deckTitle = filename:sub(1, -5)
+    local path    = PLUGIN_PATH .. "/" .. filename
+    local content = fs.readFile(path)
+
+    if not content or content == "" then
+        errorMsg = "Cannot read:\n" .. filename
+        return
     end
 
-    loadProgress()
-    log("Loaded " .. #cards .. " cards from " .. name)
-end
-
--- ── random pick (unlearned) ───────────────────────────────────────────────────
-
-local function pickRandom()
-    local pool = {}
-    for i, c in ipairs(cards) do
-        if not c.learned then pool[#pool + 1] = i end
+    -- Iterate lines using find() to avoid duplicating the content string
+    local pos = 1
+    local len = #content
+    while pos <= len do
+        local nl = content:find("\n", pos, true)
+        local line
+        if nl then
+            line = content:sub(pos, nl - 1)
+            pos  = nl + 1
+        else
+            line = content:sub(pos)
+            pos  = len + 1
+        end
+        parseLine(line)
     end
-    if #pool == 0 then return nil end
-    return pool[math.random(#pool)]
+
+    if #cards == 0 then
+        errorMsg = "No cards found in:\n" .. filename
+    end
 end
 
-local function countLearned()
-    local n = 0
-    for _, c in ipairs(cards) do if c.learned then n = n + 1 end end
-    return n
+local function loadDeckList()
+    local files = fs.listFiles(PLUGIN_PATH)
+    local raw = {}
+    for _, f in ipairs(files) do
+        -- Use sub() to avoid :lower() on non-ASCII filenames (undefined on ESP32)
+        if f:sub(-4) == ".txt" then
+            table.insert(raw, f)
+        end
+    end
+    table.sort(raw)
+    decks  = {}
+    titles = {}
+    for _, f in ipairs(raw) do
+        table.insert(decks,  f)
+        table.insert(titles, f:sub(1, -5))  -- strip ".txt"
+    end
 end
 
--- ── rendering ─────────────────────────────────────────────────────────────────
+-- ── Rendering ─────────────────────────────────────────────────────────────────
 
 local function drawDeckSelect()
+    local sw = gui.width()
     gui.clear()
-    gui.drawCenteredText(FONT_UI_12, 50, "Flashcards - Select Deck")
-    gui.drawLine(20, 82, gui.width() - 20, 82, 2)
+    gui.drawCenteredText(FONT_BOOKERLY_14, 36, "Flashcard", COLOR_BLACK, STYLE_BOLD)
+    gui.drawLine(24, 66, sw - 24, 66, 1, COLOR_BLACK)
 
-    local y = 110
-    for i, name in ipairs(decks) do
-        if i == deckIdx then
-            gui.fillRoundedRect(30, y - 6, gui.width() - 60, 44, 8)
-            gui.drawText(FONT_UI_10, 50, y + 10, name, false)
-        else
-            gui.drawText(FONT_UI_10, 50, y + 10, name, true)
+    if #decks == 0 then
+        gui.drawCenteredText(FONT_UI_10, 260, "No .txt files found in", COLOR_BLACK, STYLE_REGULAR)
+        gui.drawCenteredText(FONT_SMALL,  290, PLUGIN_PATH,             COLOR_BLACK, STYLE_REGULAR)
+    else
+        local y = 90
+        for i = 1, #decks do
+            local title = titles[i]
+            if i == deckIdx then
+                gui.fillRoundedRect(24, y - 4, sw - 48, 44, 8, COLOR_BLACK)
+                gui.drawCenteredText(FONT_BOOKERLY_12, y + 14, title, COLOR_WHITE, STYLE_BOLD)
+            else
+                gui.drawRoundedRect(24, y - 4, sw - 48, 44, 1, 8, COLOR_BLACK)
+                gui.drawCenteredText(FONT_BOOKERLY_12, y + 14, title, COLOR_BLACK, STYLE_REGULAR)
+            end
+            y = y + 58
         end
-        y = y + 55
     end
 
-    gui.drawButtonHints("«", "o", "<", ">")
+    gui.drawButtonHints("Exit", "Open", "Up", "Down")
     gui.refresh(REFRESH_FAST)
 end
 
 local function drawCard()
-    local card = cards[cardIdx]
-    local path = showBack and card.sideB or card.sideA
-    if not path then return end
-
-    gui.setOrientation("landscape_ccw")
+    local c   = cards[cardIdx]
+    local sw  = gui.width()
+    local pad = 24
+    local maxW = sw - pad * 2
     gui.clear()
-    gui.drawBmp(path)
 
-    -- overlay: deck name top-left, status bottom-left
-    local h = gui.height()
-    gui.drawText(FONT_UI_10, 10, 8, deckName, true)
-    local status = cardIdx .. "/" .. #cards .. "  Learned: " .. countLearned()
-    gui.drawText(FONT_SMALL, 10, h - 32, status, true)
+    -- Header (shifted down 20px)
+    gui.drawText(FONT_UI_10, pad, 36, deckTitle, COLOR_BLACK, STYLE_BOLD)
+    local idx_str = tostring(cardIdx) .. " / " .. tostring(#cards)
+    local iw = gui.getTextWidth(FONT_UI_10, idx_str)
+    gui.drawText(FONT_UI_10, sw - pad - iw, 36, idx_str, COLOR_BLACK, STYLE_REGULAR)
+    gui.drawLine(pad, 62, sw - pad, 62, 1, COLOR_BLACK)
 
-    gui.setOrientation("portrait")
-    gui.drawButtonHints("«", "o", "<", ">")
+    -- Word + pos (same position on both A and B sides)
+    local ww = gui.getTextWidth(FONT_BOOKERLY_14, c.word)
+    gui.drawText(FONT_BOOKERLY_14, (sw - ww) / 2, 210, c.word, COLOR_BLACK, STYLE_BOLD)
+    if c.pos ~= "" then
+        gui.drawCenteredText(FONT_BOOKERLY_12, 252, "(" .. c.pos .. ")", COLOR_BLACK, STYLE_REGULAR)
+    end
+
+    if showBack then
+        -- B-side: meaning + examples below word/pos
+        local y = 300
+        gui.drawLine(pad, y, sw - pad, y, 1, COLOR_BLACK)
+        y = y + 24
+
+        for _, ln in ipairs(wrapText(FONT_BOOKERLY_12, c.meaning, maxW)) do
+            gui.drawText(FONT_BOOKERLY_12, pad, y, ln, COLOR_BLACK, STYLE_BOLD)
+            y = y + 32
+        end
+        y = y + 24
+
+        if c.ex_en ~= "" then
+            for _, ln in ipairs(wrapText(FONT_BOOKERLY_12, c.ex_en, maxW)) do
+                gui.drawText(FONT_BOOKERLY_12, pad, y, ln, COLOR_BLACK, STYLE_REGULAR)
+                y = y + 32
+            end
+        end
+        if c.ex_zh ~= "" then
+            y = y + 24
+            for _, ln in ipairs(wrapText(FONT_BOOKERLY_12, c.ex_zh, maxW)) do
+                gui.drawText(FONT_BOOKERLY_12, pad, y, ln, COLOR_BLACK, STYLE_REGULAR)
+                y = y + 32
+            end
+        end
+    end
+
+    gui.drawButtonHints("<<", "o", "<", ">")
     gui.refresh(REFRESH_FAST)
 end
 
-local function drawLearnedMsg()
-    local card = cards[cardIdx]
-    local path = showBack and card.sideB or card.sideA
-    if not path then path = card.sideA end
-
-    gui.setOrientation("landscape_ccw")
+local function drawError()
+    local sw = gui.width()
     gui.clear()
-    gui.drawBmp(path)
-
-    local w = gui.width()
-    local h = gui.height()
-
-    -- floating popup centered on landscape screen
-    local pw = math.floor(w * 0.62)
-    local ph = 130
-    local px = math.floor((w - pw) / 2)
-    local py = math.floor((h - ph) / 2)
-
-    gui.fillRoundedRect(px, py, pw, ph, 14, false)
-    gui.drawRoundedRect(px, py, pw, ph, 3, 14)
-    gui.drawCenteredText(FONT_UI_12, py + 42, "You have learned this card.")
-    gui.drawCenteredText(FONT_SMALL,  py + 88, "Learned: " .. countLearned() .. " / " .. #cards)
-
-    gui.setOrientation("portrait")
-    gui.drawButtonHints("«", "o", "", "")
+    gui.drawCenteredText(FONT_BOOKERLY_14, 180, "Error", COLOR_BLACK, STYLE_BOLD)
+    local y = 230
+    for _, ln in ipairs(wrapText(FONT_UI_10, errorMsg, sw - 48)) do
+        gui.drawCenteredText(FONT_UI_10, y, ln, COLOR_BLACK, STYLE_REGULAR)
+        y = y + 28
+    end
+    gui.drawButtonHints("Back", "", "", "")
     gui.refresh(REFRESH_FAST)
 end
 
-local function drawAllLearned()
-    gui.clear()
-    gui.drawCenteredText(FONT_UI_12, 340, "Deck Complete!")
-    gui.drawCenteredText(FONT_UI_10, 400, "All " .. #cards .. " cards learned.")
-    gui.drawButtonHints("«", "", "", "")
-    gui.refresh(REFRESH_FAST)
-end
-
-local function drawNoCards()
-    gui.clear()
-    gui.drawCenteredText(FONT_UI_12, 360, "No cards found")
-    gui.drawCenteredText(FONT_SMALL, 420, "Add NNN_a.bmp / NNN_b.bmp files")
-    gui.drawButtonHints("«", "", "", "")
-    gui.refresh(REFRESH_FAST)
-end
-
--- ── main ──────────────────────────────────────────────────────────────────────
+-- ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 function init()
-    loadDecks()
-    if #decks == 0 then
-        log("No decks found in " .. PLUGIN_PATH)
-    end
+    math.randomseed(sys.millis())
+    loadDeckList()
     needsDraw = true
-    log("Flashcard init: " .. #decks .. " decks")
 end
 
 function draw()
-    -- ── input (always checked every loop) ────────────────────────────────────
-    if state == STATE_DECK then
+    -- ── Input handling ────────────────────────────────────────────────────────
+    if errorMsg then
         if input.wasReleased("back") then
-            sys.exit(); return
-        elseif input.wasReleased("up") or input.wasReleased("page_back") then
-            deckIdx = math.max(1, deckIdx - 1); needsDraw = true
-        elseif input.wasReleased("down") or input.wasReleased("page_forward") then
-            deckIdx = math.min(#decks, deckIdx + 1); needsDraw = true
-        elseif input.wasReleased("confirm") and #decks > 0 then
-            loadCards(decks[deckIdx])
-            cardIdx  = pickRandom() or 1
-            state    = STATE_CARD
+            errorMsg  = nil
+            state     = STATE_DECK
             needsDraw = true
         end
-
-    else -- STATE_CARD
-        if learnedMsg then
-            -- any key dismisses the message and advances to next card
-            if input.wasReleased("back") or input.wasReleased("confirm") or
-               input.wasReleased("left") or input.wasReleased("right") or
-               input.wasReleased("up") or input.wasReleased("page_back") or
-               input.wasReleased("down") or input.wasReleased("page_forward") then
-                learnedMsg = false
-                local next = pickRandom()
-                if next then cardIdx = next end
-                showBack = false; needsDraw = true
+    elseif state == STATE_DECK then
+        if input.wasReleased("back") then sys.exit(); return end
+        if input.wasReleased("up") or input.wasReleased("page_back") then
+            if #decks > 0 then deckIdx = deckIdx > 1 and deckIdx - 1 or #decks end
+            needsDraw = true
+        end
+        if input.wasReleased("down") or input.wasReleased("page_forward") then
+            if #decks > 0 then deckIdx = deckIdx % #decks + 1 end
+            needsDraw = true
+        end
+        if input.wasReleased("confirm") and #decks > 0 then
+            loadDeck(decks[deckIdx])
+            if not errorMsg and #cards > 0 then
+                cardIdx  = math.random(#cards)
+                showBack = false
+                state    = STATE_CARD
             end
-        else
-            if input.wasReleased("back") then
-                state = STATE_DECK; needsDraw = true
-            elseif input.wasReleased("confirm") then
-                -- mark current card as learned, show message
-                cards[cardIdx].learned = true
-                saveProgress()
-                learnedMsg = true; needsDraw = true
-            elseif input.wasReleased("left") then
-                -- flip card
-                if cards[cardIdx].sideB then
-                    showBack = not showBack; needsDraw = true
-                end
-            elseif input.wasReleased("right") then
-                -- random unlearned card
-                local next = pickRandom()
-                if next then cardIdx = next; showBack = false; needsDraw = true end
-            elseif input.wasReleased("up") or input.wasReleased("page_back") then
-                cardIdx = math.min(#cards, cardIdx + 1); showBack = false; needsDraw = true
-            elseif input.wasReleased("down") or input.wasReleased("page_forward") then
-                cardIdx = math.max(1, cardIdx - 1); showBack = false; needsDraw = true
-            end
+            needsDraw = true
+        end
+    else
+        if input.wasReleased("back") then
+            -- Free cards while idle at deck select; GC is safe here
+            cards     = {}
+            collectgarbage("collect")
+            state     = STATE_DECK
+            showBack  = false
+            needsDraw = true
+        end
+        if input.wasReleased("confirm") then
+            showBack  = not showBack
+            needsDraw = true
+        end
+        if input.wasReleased("up") then
+            cardIdx  = cardIdx > 1 and cardIdx - 1 or #cards
+            showBack = false
+            needsDraw = true
+        end
+        if input.wasReleased("down") then
+            cardIdx  = cardIdx % #cards + 1
+            showBack = false
+            needsDraw = true
+        end
+        if input.wasReleased("left") or input.wasReleased("right") then
+            cardIdx  = math.random(#cards)
+            showBack = false
+            needsDraw = true
         end
     end
 
-    -- ── render (only when needed) ─────────────────────────────────────────────
+    -- ── Rendering ─────────────────────────────────────────────────────────────
     if not needsDraw then return end
     needsDraw = false
 
-    if state == STATE_DECK then
+    if errorMsg then
+        drawError()
+    elseif state == STATE_DECK then
         drawDeckSelect()
-    elseif #cards == 0 then
-        drawNoCards()
-    elseif learnedMsg then
-        drawLearnedMsg()
-    elseif countLearned() == #cards then
-        drawAllLearned()
     else
         drawCard()
     end
