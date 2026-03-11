@@ -124,12 +124,60 @@ void MyLibraryActivity::loop() {
     return;
   }
 
+  // --- Delete menu state ---
+  if (menuState == MenuState::Delete || menuState == MenuState::Confirm) {
+    const int optCount = 2;
+    if (mappedInput.wasPressed(MappedInputManager::Button::Right) ||
+        mappedInput.wasPressed(MappedInputManager::Button::Down)) {
+      menuSelectedIndex = (menuSelectedIndex + 1) % optCount;
+      requestUpdate();
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Left) ||
+        mappedInput.wasPressed(MappedInputManager::Button::Up)) {
+      menuSelectedIndex = (menuSelectedIndex + optCount - 1) % optCount;
+      requestUpdate();
+    }
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      if (menuState == MenuState::Delete) {
+        if (menuSelectedIndex == 0) {  // Delete
+          menuState = MenuState::Confirm;
+          menuSelectedIndex = 1;  // Default to No (safer)
+          requestUpdate();
+        } else {  // Cancel
+          menuState = MenuState::None;
+          requestUpdate();
+        }
+      } else {  // Confirm
+        if (menuSelectedIndex == 0) {  // Yes
+          deleteSelectedFile();
+        } else {  // No
+          menuState = MenuState::None;
+          requestUpdate();
+        }
+      }
+    }
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+      menuState = MenuState::None;
+      requestUpdate();
+    }
+    return;
+  }
+
   // Long press BACK (1s+) goes to root folder
   if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= GO_HOME_MS &&
       basepath != "/") {
     basepath = "/";
     loadFiles();
     selectorIndex = 0;
+    return;
+  }
+
+  // Long press Confirm (600ms) opens delete menu (files only, not directories)
+  if (!files.empty() && files[selectorIndex].back() != '/' &&
+      mappedInput.wasLongPressed(MappedInputManager::Button::Confirm, 600)) {
+    menuState = MenuState::Delete;
+    menuSelectedIndex = 1;  // Default to Cancel (safer)
+    requestUpdate();
     return;
   }
 
@@ -195,6 +243,62 @@ void MyLibraryActivity::loop() {
   });
 }
 
+void MyLibraryActivity::deleteSelectedFile() {
+  if (files.empty() || selectorIndex >= files.size()) return;
+  std::string prefix = basepath;
+  if (prefix.back() != '/') prefix += "/";
+  std::string fullPath = prefix + files[selectorIndex];
+
+  Storage.remove(fullPath.c_str());
+  RECENT_BOOKS.cleanupMissingBooks();
+
+  loadFiles();
+  if (!files.empty() && selectorIndex >= files.size()) {
+    selectorIndex = files.size() - 1;
+  }
+  menuState = MenuState::None;
+  requestUpdate();
+}
+
+void MyLibraryActivity::renderDeleteMenu() const {
+  const int sw = renderer.getScreenWidth();
+  const int sh = renderer.getScreenHeight();
+  const int mw = 280, mh = 130;
+  const int mx = (sw - mw) / 2, my = (sh - mh) / 2;
+
+  renderer.fillRoundedRect(mx, my, mw, mh, 10, Color::White);
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, true);
+
+  const char* opts[] = {"Delete File", "Cancel"};
+  for (int i = 0; i < 2; i++) {
+    const int ry = my + 20 + i * 50;
+    if (menuSelectedIndex == i) {
+      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 38, 6, Color::Black);
+    }
+    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, opts[i], menuSelectedIndex != i);
+  }
+}
+
+void MyLibraryActivity::renderConfirmDialog() const {
+  const int sw = renderer.getScreenWidth();
+  const int sh = renderer.getScreenHeight();
+  const int mw = 280, mh = 160;
+  const int mx = (sw - mw) / 2, my = (sh - mh) / 2;
+
+  renderer.fillRoundedRect(mx, my, mw, mh, 10, Color::White);
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, true);
+  renderer.drawText(UI_12_FONT_ID, mx + 20, my + 18, "Delete this file?");
+
+  const char* opts[] = {"Yes", "No"};
+  for (int i = 0; i < 2; i++) {
+    const int ry = my + 60 + i * 50;
+    if (menuSelectedIndex == i) {
+      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 38, 6, Color::Black);
+    }
+    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, opts[i], menuSelectedIndex != i);
+  }
+}
+
 std::string getFileName(std::string filename) {
   if (filename.back() == '/') {
     return filename.substr(0, filename.length() - 1);
@@ -238,7 +342,10 @@ void MyLibraryActivity::render(Activity::RenderLock&&) {
 
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-  
+
+  if (menuState == MenuState::Delete)  renderDeleteMenu();
+  if (menuState == MenuState::Confirm) renderConfirmDialog();
+
   renderer.displayBuffer();
 }
 

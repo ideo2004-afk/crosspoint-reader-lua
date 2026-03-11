@@ -104,11 +104,113 @@ void RecentBooksActivity::onExit() {
   recentBooks.clear();
 }
 
+void RecentBooksActivity::deleteSelectedBook() {
+  if (recentBooks.empty() || selectorIndex >= static_cast<int>(recentBooks.size())) return;
+
+  Storage.remove(recentBooks[selectorIndex].path.c_str());
+  RECENT_BOOKS.cleanupMissingBooks();
+
+  loadRecentBooks();
+  if (!recentBooks.empty() && selectorIndex >= static_cast<int>(recentBooks.size())) {
+    selectorIndex = static_cast<int>(recentBooks.size()) - 1;
+  }
+  menuState = MenuState::None;
+  recentsLoaded = false;
+  requestUpdate();
+}
+
+void RecentBooksActivity::renderDeleteMenu() const {
+  const int sw = renderer.getScreenWidth();
+  const int sh = renderer.getScreenHeight();
+  const int mw = 280, mh = 130;
+  const int mx = (sw - mw) / 2, my = (sh - mh) / 2;
+
+  renderer.fillRoundedRect(mx, my, mw, mh, 10, Color::White);
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, true);
+
+  const char* opts[] = {"Delete File", "Cancel"};
+  for (int i = 0; i < 2; i++) {
+    const int ry = my + 20 + i * 50;
+    if (menuSelectedIndex == i) {
+      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 38, 6, Color::Black);
+    }
+    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, opts[i], menuSelectedIndex != i);
+  }
+}
+
+void RecentBooksActivity::renderConfirmDialog() const {
+  const int sw = renderer.getScreenWidth();
+  const int sh = renderer.getScreenHeight();
+  const int mw = 280, mh = 160;
+  const int mx = (sw - mw) / 2, my = (sh - mh) / 2;
+
+  renderer.fillRoundedRect(mx, my, mw, mh, 10, Color::White);
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, true);
+  renderer.drawText(UI_12_FONT_ID, mx + 20, my + 18, "Delete this file?");
+
+  const char* opts[] = {"Yes", "No"};
+  for (int i = 0; i < 2; i++) {
+    const int ry = my + 60 + i * 50;
+    if (menuSelectedIndex == i) {
+      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 38, 6, Color::Black);
+    }
+    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, opts[i], menuSelectedIndex != i);
+  }
+}
+
 void RecentBooksActivity::loop() {
   if (skipNextButtonCheck) {
     if (!mappedInput.isAnyPressed() && !mappedInput.wasAnyReleased()) {
       skipNextButtonCheck = false;
     }
+    return;
+  }
+
+  // --- Delete menu state ---
+  if (menuState == MenuState::Delete || menuState == MenuState::Confirm) {
+    const int optCount = 2;
+    if (mappedInput.wasPressed(MappedInputManager::Button::Right) ||
+        mappedInput.wasPressed(MappedInputManager::Button::Down)) {
+      menuSelectedIndex = (menuSelectedIndex + 1) % optCount;
+      requestUpdate();
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Left) ||
+        mappedInput.wasPressed(MappedInputManager::Button::Up)) {
+      menuSelectedIndex = (menuSelectedIndex + optCount - 1) % optCount;
+      requestUpdate();
+    }
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      if (menuState == MenuState::Delete) {
+        if (menuSelectedIndex == 0) {  // Delete
+          menuState = MenuState::Confirm;
+          menuSelectedIndex = 1;  // Default to No (safer)
+          requestUpdate();
+        } else {  // Cancel
+          menuState = MenuState::None;
+          requestUpdate();
+        }
+      } else {  // Confirm
+        if (menuSelectedIndex == 0) {  // Yes
+          deleteSelectedBook();
+        } else {  // No
+          menuState = MenuState::None;
+          requestUpdate();
+        }
+      }
+    }
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+      menuState = MenuState::None;
+      requestUpdate();
+    }
+    return;
+  }
+
+  // Long press Confirm (600ms) opens delete menu
+  if (!recentBooks.empty() &&
+      mappedInput.wasLongPressed(MappedInputManager::Button::Confirm, 600)) {
+    menuState = MenuState::Delete;
+    menuSelectedIndex = 1;  // Default to Cancel (safer)
+    requestUpdate();
     return;
   }
 
@@ -228,7 +330,10 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
 
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-  
+
+  if (menuState == MenuState::Delete)  renderDeleteMenu();
+  if (menuState == MenuState::Confirm) renderConfirmDialog();
+
   renderer.displayBuffer();
 
   if (!firstRenderDone) {

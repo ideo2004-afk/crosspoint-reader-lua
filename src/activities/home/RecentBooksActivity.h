@@ -13,6 +13,8 @@ class RecentBooksActivity final : public Activity {
  private:
   static constexpr int BOOKS_PER_PAGE = 9;
 
+  enum class MenuState { None, Delete, Confirm };
+
   ButtonNavigator buttonNavigator;
   int selectorIndex = 0;
   std::vector<RecentBook> recentBooks;
@@ -25,9 +27,16 @@ class RecentBooksActivity final : public Activity {
   bool recentsLoaded = false;
   bool firstRenderDone = false;
 
+  MenuState menuState = MenuState::None;
+  int menuSelectedIndex = 0;  // 0=Delete, 1=Cancel / 0=Yes, 1=No
+
   // Data loading
   void loadRecentBooks();
   void loadRecentCovers(int coverHeight);
+
+  void deleteSelectedBook();
+  void renderDeleteMenu() const;
+  void renderConfirmDialog() const;
 
  public:
   explicit RecentBooksActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
