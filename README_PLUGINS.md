@@ -43,6 +43,23 @@ end
   - `REFRESH_FULL` (0): Full screen refresh (slower).
   - `REFRESH_HALF` (1): Half screen refresh.
   - `REFRESH_FAST` (2): Partial fast refresh (default).
+- `gui.setOrientation(mode)`: Set orientation (`landscape_cw`, `landscape_ccw`, `portrait`, `portrait_inv`).
+- `gui.drawBmp(path, x, y, maxW, maxH)`: Draw a BMP image from the SD card.
+- `gui.drawButtonHints(back, confirm, prev, next)`: Draw UI button hints at the bottom.
+
+### 3.4 Network (net)
+- `net.wifiConnect()`: Starts async connection using saved credentials.
+- `net.wifiStatus()`: Returns current status (`idle`, `connecting`, `connected`, `failed`).
+- `net.wifiDisconnect()`: Disconnects from WiFi.
+- `net.get(url [, headers_table])`: Performs an HTTP GET request.
+- `net.urlencode(string)`: URL encodes a string.
+
+### 3.5 System & Filesystem
+- `sys.millis()`: Returns uptime in milliseconds.
+- `sys.delay(ms)`: Pause execution.
+- `sys.exit()`: Safely exit the plugin.
+- `fs.listDirs(path)` / `fs.listFiles(path)`: List directory contents.
+- `fs.readFile(path)` / `fs.writeFile(path, content)`: File I/O.
 
 ## 4. Development Best Practices
 1. **Memory Management**: ESP32-C3 has limited RAM (approx. 140KB available). Avoid creating massive tables or loading oversized resources in Lua.
