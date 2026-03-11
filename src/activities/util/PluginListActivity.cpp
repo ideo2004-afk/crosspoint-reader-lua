@@ -21,6 +21,8 @@ void PluginListActivity::onEnter() {
     if (!root || !root.isDirectory()) {
         if (root) root.close();
         LOG_ERR("PLUGINS", "/plugins directory not found!");
+        selectedIndex = 0;
+        requestUpdate();
         return;
     }
 

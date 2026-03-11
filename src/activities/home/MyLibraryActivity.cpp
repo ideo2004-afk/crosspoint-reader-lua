@@ -222,8 +222,20 @@ void MyLibraryActivity::render(Activity::RenderLock&&) {
         renderer, Rect{0, contentTop, pageWidth, contentHeight}, files.size(), selectorIndex,
         [this](int index) { return getFileName(files[index]); }, nullptr,
         [this](int index) { return UITheme::getFileIcon(files[index]); });
+
+    const int pageItems   = UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, false);
+    const int totalFiles  = static_cast<int>(files.size());
+    const int totalPages  = (pageItems > 0) ? (totalFiles + pageItems - 1) / pageItems : 1;
+    const int currentPage = (pageItems > 0) ? selectorIndex / pageItems : 0;
+    if (totalPages > 1) {
+      char pageStr[12];
+      snprintf(pageStr, sizeof(pageStr), "%d / %d", currentPage + 1, totalPages);
+      const int tw = renderer.getTextWidth(SMALL_FONT_ID, pageStr);
+      const int ty = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 16;
+      renderer.drawText(SMALL_FONT_ID, (pageWidth - tw) / 2, ty, pageStr);
+    }
   }
-  
+
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   
