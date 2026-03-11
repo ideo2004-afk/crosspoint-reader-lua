@@ -294,7 +294,7 @@ local function handleDiffMenuInput()
         showDiffMenu = false
         generatePuzzle()
         needsDraw = true
-    elseif input.wasPressed("back") then sys.sleep(150); sys.exit() end
+    elseif input.wasPressed("back") then sys.delay(150); sys.exit() end
 end
 
 local function handleGameInput()
@@ -342,7 +342,7 @@ local function handleBackMenuInput()
         elseif backMenuIdx == 3 then
             for i = 1, 81 do grid[i] = initialGrid[i] end history = {} showBackMenu = false updatePicker()
         elseif backMenuIdx == 4 then showDiffMenu = true; showBackMenu = false
-        elseif backMenuIdx == 5 then sys.sleep(150); sys.exit() end
+        elseif backMenuIdx == 5 then sys.delay(150); sys.exit() end
         needsDraw = true
     elseif input.wasPressed("back") then showBackMenu = false; needsDraw = true end
 end
@@ -359,7 +359,7 @@ function draw()
     elseif isGameOver then 
         if input.wasPressed("page_back") or input.wasPressed("page_forward") then gameOverMenuIdx = 1 - gameOverMenuIdx; needsDraw = true
         elseif input.wasPressed("confirm") then
-            if gameOverMenuIdx == 0 then showDiffMenu = true else sys.sleep(150); sys.exit() end
+            if gameOverMenuIdx == 0 then showDiffMenu = true else sys.delay(150); sys.exit() end
             needsDraw = true
         end
     elseif showBackMenu then handleBackMenuInput()
