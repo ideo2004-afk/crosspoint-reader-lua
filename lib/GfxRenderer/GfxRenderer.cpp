@@ -390,8 +390,19 @@ void GfxRenderer::drawLine(int x1, int y1, int x2, int y2, const bool state) con
 }
 
 void GfxRenderer::drawLine(int x1, int y1, int x2, int y2, const int lineWidth, const bool state) const {
+  if (lineWidth <= 1) {
+    drawLine(x1, y1, x2, y2, state);
+    return;
+  }
+  // If the line is mostly vertical, we should offset X to achieve thickness.
+  // Otherwise offset Y.
+  bool isMostlyVertical = std::abs(y2 - y1) > std::abs(x2 - x1);
   for (int i = 0; i < lineWidth; i++) {
-    drawLine(x1, y1 + i, x2, y2 + i, state);
+    if (isMostlyVertical) {
+      drawLine(x1 + i, y1, x2 + i, y2, state);
+    } else {
+      drawLine(x1, y1 + i, x2, y2 + i, state);
+    }
   }
 }
 

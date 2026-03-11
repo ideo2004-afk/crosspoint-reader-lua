@@ -90,13 +90,19 @@ static int l_gui_fill_rect(lua_State* L) {
     return 0;
 }
 
+static Color get_lua_color(lua_State* L, int argIdx, Color defaultColor = Color::Black) {
+    if (lua_isnoneornil(L, argIdx)) return defaultColor;
+    if (lua_isboolean(L, argIdx)) return lua_toboolean(L, argIdx) ? Color::Black : Color::White;
+    return (Color)lua_tointeger(L, argIdx);
+}
+
 static int l_gui_draw_line(lua_State* L) {
     auto r = get_renderer(L);
     if (!r) return 0;
     int lw = luaL_optinteger(L, 5, 1);
-    bool black = lua_isnoneornil(L, 6) ? true : lua_toboolean(L, 6);
+    Color color = get_lua_color(L, 6);
     r->drawLine(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
-                luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), lw, black);
+                luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), lw, color != Color::White);
     return 0;
 }
 
@@ -105,9 +111,9 @@ static int l_gui_draw_rounded_rect(lua_State* L) {
     if (!r) return 0;
     int lw     = luaL_optinteger(L, 5, 2);
     int radius = luaL_optinteger(L, 6, 10);
-    bool black = lua_isnoneornil(L, 7) ? true : lua_toboolean(L, 7);
+    Color color = get_lua_color(L, 7);
     r->drawRoundedRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
-                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), lw, radius, black);
+                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), lw, radius, color != Color::White);
     return 0;
 }
 
@@ -115,34 +121,39 @@ static int l_gui_fill_rounded_rect(lua_State* L) {
     auto r = get_renderer(L);
     if (!r) return 0;
     int radius = luaL_optinteger(L, 5, 10);
-    bool black = lua_isnoneornil(L, 6) ? true : lua_toboolean(L, 6);
+    Color color = get_lua_color(L, 6);
     r->fillRoundedRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
                        luaL_checkinteger(L, 3), luaL_checkinteger(L, 4),
-                       radius, black ? Color::Black : Color::White);
+                       radius, color);
     return 0;
 }
 
 static int l_gui_draw_text(lua_State* L) {
     auto r = get_renderer(L);
     if (!r) return 0;
-    bool black = lua_isnoneornil(L, 5) ? true : lua_toboolean(L, 5);
+    Color color = get_lua_color(L, 5);
+    int style  = luaL_optinteger(L, 6, (int)EpdFontFamily::REGULAR);
     r->drawText(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2), luaL_checkinteger(L, 3),
-                luaL_checkstring(L, 4), black);
+                luaL_checkstring(L, 4), color, (EpdFontFamily::Style)style);
     return 0;
 }
 
 static int l_gui_draw_centered_text(lua_State* L) {
     auto r = get_renderer(L);
     if (!r) return 0;
-    bool black = lua_isnoneornil(L, 4) ? true : lua_toboolean(L, 4);
+    Color color = get_lua_color(L, 4);
+    int style  = luaL_optinteger(L, 5, (int)EpdFontFamily::REGULAR);
     r->drawCenteredText(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
-                        luaL_checkstring(L, 3), black);
+                        luaL_checkstring(L, 3), color, (EpdFontFamily::Style)style);
     return 0;
 }
 
 static int l_gui_get_text_width(lua_State* L) {
     auto r = get_renderer(L);
-    lua_pushinteger(L, r ? r->getTextWidth(luaL_checkinteger(L, 1), luaL_checkstring(L, 2)) : 0);
+    int fontId = luaL_checkinteger(L, 1);
+    const char* text = luaL_checkstring(L, 2);
+    int style = luaL_optinteger(L, 3, (int)EpdFontFamily::REGULAR);
+    lua_pushinteger(L, r ? r->getTextWidth(fontId, text, (EpdFontFamily::Style)style) : 0);
     return 1;
 }
 
@@ -593,11 +604,22 @@ void LuaManager::registerBindings() {
     lua_pushinteger(L, HalDisplay::HALF_REFRESH); lua_setglobal(L, "REFRESH_HALF");
     lua_pushinteger(L, HalDisplay::FAST_REFRESH); lua_setglobal(L, "REFRESH_FAST");
 
+    // Color constants
+    lua_pushinteger(L, (int)Color::Clear);     lua_setglobal(L, "COLOR_CLEAR");
+    lua_pushinteger(L, (int)Color::White);     lua_setglobal(L, "COLOR_WHITE");
+    lua_pushinteger(L, (int)Color::LightGray); lua_setglobal(L, "COLOR_LIGHT_GRAY");
+    lua_pushinteger(L, (int)Color::DarkGray);  lua_setglobal(L, "COLOR_DARK_GRAY");
+    lua_pushinteger(L, (int)Color::Black);     lua_setglobal(L, "COLOR_BLACK");
+
     // Font ID constants
     lua_pushinteger(L, BOOKERLY_14_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_14");
     lua_pushinteger(L, BOOKERLY_12_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_12");
     lua_pushinteger(L, BOOKERLY_16_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_16");
     lua_pushinteger(L, BOOKERLY_18_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_18");
+
+    // Font style constants
+    lua_pushinteger(L, (int)EpdFontFamily::REGULAR); lua_setglobal(L, "STYLE_REGULAR");
+    lua_pushinteger(L, (int)EpdFontFamily::BOLD);    lua_setglobal(L, "STYLE_BOLD");
     lua_pushinteger(L, NOTOSANS_12_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_12");
     lua_pushinteger(L, NOTOSANS_14_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_14");
     lua_pushinteger(L, NOTOSANS_16_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_16");
