@@ -21,9 +21,9 @@ local needsDraw = true
 local currentHoles = 45 -- Default
 
 local diffLevels = {
-    { name = "Knight", desc = "Easy", holes = 35 },
-    { name = "Queen", desc = "Medium", holes = 42 },
-    { name = "King", desc = "Hard", holes = 48 }
+    { name = "Knight", desc = "Easy", holes = 38 },
+    { name = "Queen", desc = "Medium", holes = 44 },
+    { name = "King", desc = "Hard", holes = 50 }
 }
 
 -- Trash Talk State
