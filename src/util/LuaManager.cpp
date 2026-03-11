@@ -128,6 +128,72 @@ static int l_gui_fill_rounded_rect(lua_State* L) {
     return 0;
 }
 
+static int l_gui_draw_pixel(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    Color color = get_lua_color(L, 3);
+    r->drawPixel(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2), color != Color::White);
+    return 0;
+}
+
+static int l_gui_draw_circle(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    int rad = luaL_checkinteger(L, 3);
+    int lw = luaL_optinteger(L, 4, 1);
+    Color color = get_lua_color(L, 5);
+    r->drawCircle(x, y, rad, lw, color != Color::White);
+    return 0;
+}
+
+static int l_gui_fill_circle(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    int x = luaL_checkinteger(L, 1);
+    int y = luaL_checkinteger(L, 2);
+    int rad = luaL_checkinteger(L, 3);
+    Color color = get_lua_color(L, 4);
+    r->fillCircle(x, y, rad, color);
+    return 0;
+}
+
+static int l_gui_fill_polygon(lua_State* L) {
+    auto r = get_renderer(L);
+    if (!r) return 0;
+    if (!lua_istable(L, 1) || !lua_istable(L, 2)) {
+        return luaL_error(L, "fillPolygon expects two tables (xPoints, yPoints)");
+    }
+
+    int n1 = lua_rawlen(L, 1);
+    int n2 = lua_rawlen(L, 2);
+    int numPoints = (n1 < n2) ? n1 : n2;
+    if (numPoints < 3) return 0;
+
+    auto* xPoints = static_cast<int*>(malloc(numPoints * sizeof(int)));
+    auto* yPoints = static_cast<int*>(malloc(numPoints * sizeof(int)));
+    if (!xPoints || !yPoints) {
+        free(xPoints); free(yPoints);
+        return 0;
+    }
+
+    for (int i = 0; i < numPoints; i++) {
+        lua_rawgeti(L, 1, i + 1);
+        xPoints[i] = lua_tointeger(L, -1);
+        lua_rawgeti(L, 2, i + 1);
+        yPoints[i] = lua_tointeger(L, -1);
+        lua_pop(L, 2);
+    }
+
+    Color color = get_lua_color(L, 3);
+    r->fillPolygon(xPoints, yPoints, numPoints, color != Color::White);
+
+    free(xPoints);
+    free(yPoints);
+    return 0;
+}
+
 static int l_gui_draw_text(lua_State* L) {
     auto r = get_renderer(L);
     if (!r) return 0;
@@ -564,6 +630,10 @@ void LuaManager::registerBindings() {
     lua_pushcfunction(L, l_gui_set_orientation);    lua_setfield(L, -2, "setOrientation");
     lua_pushcfunction(L, l_gui_draw_bmp);           lua_setfield(L, -2, "drawBmp");
     lua_pushcfunction(L, l_gui_draw_button_hints);  lua_setfield(L, -2, "drawButtonHints");
+    lua_pushcfunction(L, l_gui_draw_pixel);         lua_setfield(L, -2, "drawPixel");
+    lua_pushcfunction(L, l_gui_draw_circle);        lua_setfield(L, -2, "drawCircle");
+    lua_pushcfunction(L, l_gui_fill_circle);        lua_setfield(L, -2, "fillCircle");
+    lua_pushcfunction(L, l_gui_fill_polygon);       lua_setfield(L, -2, "fillPolygon");
     lua_setglobal(L, "gui");
 
     // input.*

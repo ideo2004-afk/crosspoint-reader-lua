@@ -665,7 +665,7 @@ local function renderBoard()
     -- Star points
     local function star(stx, sty)
         local px = sx + stx*cs; local py = sy + sty*cs
-        gui.fillRoundedRect(px-5, py-5, 10, 10, 5)
+        gui.fillCircle(px, py, 5)
     end
     if boardSize == 7 then star(3,3)
     elseif boardSize == 9 then star(2,2);star(6,2);star(4,4);star(2,6);star(6,6) end
@@ -678,13 +678,13 @@ local function renderBoard()
                 local px = sx + x*cs; local py = sy + y*cs
                 local r = math.floor(cs/2) - 2
                 if c == BLACK then
-                    gui.fillRoundedRect(px-r, py-r, r*2, r*2, r)
+                    gui.fillCircle(px, py, r)
                 else
-                    gui.fillRoundedRect(px-r, py-r, r*2, r*2, r, false)
-                    gui.drawRoundedRect(px-r, py-r, r*2, r*2, 2, r)
+                    gui.fillCircle(px, py, r, false)
+                    gui.drawCircle(px, py, r, 2)
                 end
                 if not lastMovePass and lastMoveX == x and lastMoveY == y then
-                    gui.drawRoundedRect(px-4, py-4, 8, 8, 2, 4, (c == WHITE))
+                    gui.drawCircle(px, py, 4, 2, (c == WHITE))
                 end
             end
         end
@@ -699,9 +699,9 @@ local function renderBoard()
         local stoneColor = board[cursorY * boardSize + cursorX + 1]
         if stoneColor == BLACK then
             local rSmall = math.floor(r * 0.8)
-            gui.fillRoundedRect(cx-rSmall, cy2-rSmall, rSmall*2, rSmall*2, rSmall, false) -- Draw white
+            gui.fillCircle(cx, cy2, rSmall, false) -- Draw white
         else
-            gui.drawRoundedRect(cx-r, cy2-r, r*2, r*2, 2, r)
+            gui.drawCircle(cx, cy2, r, 2)
         end
         
         local inf = calcInfluence(board)

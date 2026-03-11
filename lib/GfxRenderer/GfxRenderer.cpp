@@ -501,6 +501,48 @@ void GfxRenderer::drawRoundedRect(const int x, const int y, const int width, con
   }
 }
 
+void GfxRenderer::drawCircle(int x, int y, int radius, int lineWidth, bool state) const {
+  if (radius <= 0) return;
+  drawArc(radius, x, y, -1, -1, lineWidth, state); // TL
+  drawArc(radius, x, y, 1, -1, lineWidth, state);  // TR
+  drawArc(radius, x, y, 1, 1, lineWidth, state);   // BR
+  drawArc(radius, x, y, -1, 1, lineWidth, state);  // BL
+}
+
+void GfxRenderer::fillCircle(int x, int y, int radius, Color color) const {
+  if (radius <= 0) return;
+  auto fillArcTemplated = [this, x, y, radius](Color c) {
+    switch (c) {
+      case Color::Clear: break;
+      case Color::Black:
+        fillArc<Color::Black>(radius, x, y, -1, -1);
+        fillArc<Color::Black>(radius, x, y, 1, -1);
+        fillArc<Color::Black>(radius, x, y, 1, 1);
+        fillArc<Color::Black>(radius, x, y, -1, 1);
+        break;
+      case Color::White:
+        fillArc<Color::White>(radius, x, y, -1, -1);
+        fillArc<Color::White>(radius, x, y, 1, -1);
+        fillArc<Color::White>(radius, x, y, 1, 1);
+        fillArc<Color::White>(radius, x, y, -1, 1);
+        break;
+      case Color::LightGray:
+        fillArc<Color::LightGray>(radius, x, y, -1, -1);
+        fillArc<Color::LightGray>(radius, x, y, 1, -1);
+        fillArc<Color::LightGray>(radius, x, y, 1, 1);
+        fillArc<Color::LightGray>(radius, x, y, -1, 1);
+        break;
+      case Color::DarkGray:
+        fillArc<Color::DarkGray>(radius, x, y, -1, -1);
+        fillArc<Color::DarkGray>(radius, x, y, 1, -1);
+        fillArc<Color::DarkGray>(radius, x, y, 1, 1);
+        fillArc<Color::DarkGray>(radius, x, y, -1, 1);
+        break;
+    }
+  };
+  fillArcTemplated(color);
+}
+
 void GfxRenderer::fillRect(const int x, const int y, const int width, const int height, const bool state) const {
   for (int fillY = y; fillY < y + height; fillY++) {
     drawLine(x, fillY, x + width - 1, fillY, state);

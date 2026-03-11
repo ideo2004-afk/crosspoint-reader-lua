@@ -34,10 +34,19 @@ end
 - `gui.clear()`: Clears the current FrameBuffer.
 - `gui.drawRect(x, y, w, h)`: Draws an empty rectangle.
 - `gui.fillRect(x, y, w, h)`: Draws a solid rectangle.
+- `gui.drawPixel(x, y, [color])`: Draws a single pixel.
+- `gui.drawCircle(x, y, r, [lineWidth], [color])`: Draws an empty circle.
+- `gui.fillCircle(x, y, r, [color])`: Draws a solid circle.
+- `gui.fillPolygon(xTable, yTable, [color])`: Fills a polygon defined by X and Y coordinate tables.
 - `gui.drawText(fontId, x, y, text)`: Draws text.
   - **Common fontIds**: `12` (Standard UI font), `10` (Small font).
+- `gui.drawLine(x1, y1, x2, y2, [lineWidth], [color])`: Draws a line with optional thickness.
 
-### 3.3 Refresh Modes
+### 3.3 Color Constants
+- `COLOR_BLACK`, `COLOR_WHITE`, `COLOR_DARK_GRAY`, `COLOR_LIGHT_GRAY`, `COLOR_CLEAR`.
+- *Note: In 1-bit mode, Grays are rendered using dithering.*
+
+### 3.4 Refresh Modes
 *Note: It is currently recommended to let the system handle `displayBuffer()` automatically. If manual control is needed:*
 - `gui.refresh(mode)`: 
   - `REFRESH_FULL` (0): Full screen refresh (slower).

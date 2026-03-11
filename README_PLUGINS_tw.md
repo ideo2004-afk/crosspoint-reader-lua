@@ -34,10 +34,19 @@ end
 - `gui.clear()`: 清除目前的 FrameBuffer。
 - `gui.drawRect(x, y, w, h)`: 繪製空心矩形。
 - `gui.fillRect(x, y, w, h)`: 繪製實心矩形。
+- `gui.drawPixel(x, y, [color])`: 繪製單個像素點。
+- `gui.drawCircle(x, y, r, [lineWidth], [color])`: 繪製空心圓形。
+- `gui.fillCircle(x, y, r, [color])`: 繪製實心圓形。
+- `gui.fillPolygon(xTable, yTable, [color])`: 根據進入的 X, Y 座標表填滿多邊形（適合畫複雜圖標，如西洋棋）。
 - `gui.drawText(fontId, x, y, text)`: 繪製文字。
   - **常用 fontId**: `12` (標準 UI 字體), `10` (小字體)。
+- `gui.drawLine(x1, y1, x2, y2, [lineWidth], [color])`: 繪製線條，可指定粗細。
 
-### 3.3 重新整理模式 (Refresh)
+### 3.3 顏色常量 (Colors)
+- `COLOR_BLACK`, `COLOR_WHITE`, `COLOR_DARK_GRAY`, `COLOR_LIGHT_GRAY`, `COLOR_CLEAR`
+- *註：在 1-bit 模式下，灰色會以抖動 (Dithering) 方式呈現。*
+
+### 3.4 重新整理模式 (Refresh)
 *注意：目前建議由系統自動處理 `displayBuffer()`，若需手動控制可使用：*
 - `gui.refresh(mode)`: 
   - `REFRESH_FULL` (0): 全場清理 (較慢)。
