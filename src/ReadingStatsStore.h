@@ -10,6 +10,12 @@ struct BookStats {
   std::string title;
   uint32_t readingSeconds = 0;
   uint32_t openCount = 0;
+  uint32_t lastReadDate = 0; // YYYYMMDD
+};
+
+struct DailyStat {
+  uint32_t date; // YYYYMMDD
+  uint32_t seconds;
 };
 
 class ReadingStatsStore;
@@ -34,6 +40,16 @@ class ReadingStatsStore {
 
   bool saveToFile() const;
   bool loadFromFile();
+
+ private:
+  void pruneBooks();
+
+ public:
+
+  uint32_t getTodaySeconds() const;
+  std::vector<DailyStat> getRecentDays(int limit) const;
+  uint16_t getCurrentStreakDays() const;
+  uint16_t getLifetimeActiveDays() const;
 };
 
 #define READING_STATS ReadingStatsStore::getInstance()

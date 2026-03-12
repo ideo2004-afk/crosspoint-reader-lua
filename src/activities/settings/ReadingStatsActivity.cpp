@@ -52,6 +52,26 @@ void ReadingStatsActivity::loop() {
   });
 }
 
+namespace {
+void drawPanel(GfxRenderer& renderer, const Rect& rect) {
+  renderer.drawRoundedRect(rect.x, rect.y, rect.width, rect.height, 1, 6, true);
+}
+
+void drawSectionTitle(GfxRenderer& renderer, const Rect& rect, const char* title) {
+  renderer.drawText(SMALL_FONT_ID, rect.x, rect.y, title, true, EpdFontFamily::BOLD);
+  int titleWidth = renderer.getTextWidth(SMALL_FONT_ID, title, EpdFontFamily::BOLD);
+  int lineY = rect.y + renderer.getLineHeight(SMALL_FONT_ID) / 2;
+  renderer.drawLine(rect.x + titleWidth + 10, lineY, rect.x + rect.width, lineY, true);
+}
+
+std::string formatMinutes(uint32_t seconds) {
+  uint32_t mins = seconds / 60;
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%u min", mins);
+  return std::string(buf);
+}
+}
+
 void ReadingStatsActivity::render(Activity::RenderLock&&) {
   renderer.clearScreen();
 
@@ -62,57 +82,78 @@ void ReadingStatsActivity::render(Activity::RenderLock&&) {
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, 
                  tr(STR_READING_STATS), CROSSPOINT_VERSION);
 
-  // Calculate and display today's and total reading time
-  uint32_t todayVal = TIME_SERVICE.getTodayValue();
-  uint32_t todaySecs = READING_STATS.dailyReadingSeconds[todayVal];
-  uint32_t todayHours = todaySecs / 3600;
-  uint32_t todayMins = (todaySecs % 3600) / 60;
+  int contentTop = metrics.topPadding + metrics.headerHeight + 10;
+  int sidePadding = 15;
+  int contentWidth = pageWidth - sidePadding * 2;
 
-  uint32_t totalSecs = READING_STATS.totalReadingSeconds;
-  uint32_t totalHours = totalSecs / 3600;
-  uint32_t totalMins = (totalSecs % 3600) / 60;
+  // 1. Today Panel
+  Rect todayRect(sidePadding, contentTop, contentWidth, 80);
+  drawPanel(renderer, todayRect);
+  renderer.drawText(SMALL_FONT_ID, todayRect.x + 10, todayRect.y + 10, tr(STR_TODAY_READING_TIME), true, EpdFontFamily::BOLD);
+  
+  uint32_t todaySecs = READING_STATS.getTodaySeconds();
+  std::string todayStr = formatMinutes(todaySecs);
+  renderer.drawText(BOOKERLY_18_FONT_ID, todayRect.x + 15, todayRect.y + 35, todayStr.c_str(), true, EpdFontFamily::BOLD);
 
-  char todayTimeStr[64];
-  snprintf(todayTimeStr, sizeof(todayTimeStr), "%s: %luh %lum", tr(STR_TODAY_READING_TIME), 
-           static_cast<unsigned long>(todayHours), static_cast<unsigned long>(todayMins));
+  // 2. Streak & Active Days (Small Panels)
+  int summaryY = todayRect.y + todayRect.height + 10;
+  int summaryWidth = (contentWidth - 10) / 2;
+  Rect streakRect(sidePadding, summaryY, summaryWidth, 50);
+  Rect activeRect(sidePadding + summaryWidth + 10, summaryY, summaryWidth, 50);
 
-  char totalTimeStr[64];
-  snprintf(totalTimeStr, sizeof(totalTimeStr), "%s: %luh %lum", tr(STR_TOTAL_READING_TIME), 
-           static_cast<unsigned long>(totalHours), static_cast<unsigned long>(totalMins));
+  drawPanel(renderer, streakRect);
+  renderer.drawText(SMALL_FONT_ID, streakRect.x + 8, streakRect.y + 8, tr(STR_STATS_STREAK), true, EpdFontFamily::BOLD);
+  char streakText[16];
+  snprintf(streakText, sizeof(streakText), "%u days", READING_STATS.getCurrentStreakDays());
+  renderer.drawText(UI_10_FONT_ID, streakRect.x + 10, streakRect.y + 30, streakText);
 
-  int headerBottom = metrics.topPadding + metrics.headerHeight + 10;
-  renderer.drawText(UI_12_FONT_ID, 10, headerBottom, todayTimeStr, true, EpdFontFamily::BOLD);
-  headerBottom += renderer.getLineHeight(UI_12_FONT_ID) + 2;
-  renderer.drawText(UI_12_FONT_ID, 10, headerBottom, totalTimeStr, true, EpdFontFamily::BOLD);
-  headerBottom += renderer.getLineHeight(UI_12_FONT_ID) + 5;
+  drawPanel(renderer, activeRect);
+  renderer.drawText(SMALL_FONT_ID, activeRect.x + 8, activeRect.y + 8, tr(STR_STATS_ACTIVE_DAYS), true, EpdFontFamily::BOLD);
+  char activeText[16];
+  snprintf(activeText, sizeof(activeText), "%u days", READING_STATS.getLifetimeActiveDays());
+  renderer.drawText(UI_10_FONT_ID, activeRect.x + 10, activeRect.y + 30, activeText);
 
-  // Display last 7 days daily stats
-  std::vector<uint32_t> last7Days;
-  uint32_t today = TIME_SERVICE.getTodayValue();
-  if (today > 0) {
-    // Generate last 7 days keys (roughly, for YYYYMMDD it's a bit tricky with month boundaries, 
-    // but we can iterate backwards and use ctime if needed, or just iterate the map)
-    int count = 0;
-    for (auto it = READING_STATS.dailyReadingSeconds.rbegin(); 
-         it != READING_STATS.dailyReadingSeconds.rend() && count < 7; ++it, ++count) {
-      uint32_t day = it->first;
-      uint32_t secs = it->second;
-      
-      char dayStr[32];
-      uint32_t y = day / 10000;
-      uint32_t m = (day / 100) % 100;
-      uint32_t d = day % 100;
-      
-      uint32_t h = secs / 3600;
-      uint32_t min = (secs % 3600) / 60;
-      
-      snprintf(dayStr, sizeof(dayStr), "%02u/%02u: %luh %lum", m, d, (unsigned long)h, (unsigned long)min);
-      renderer.drawText(SMALL_FONT_ID, 20, headerBottom, dayStr);
-      headerBottom += renderer.getLineHeight(SMALL_FONT_ID) + 2;
+  // 3. Last 7 Days Chart
+  int chartSectionY = summaryY + 50 + 15;
+  drawSectionTitle(renderer, Rect(sidePadding, chartSectionY, contentWidth, 20), tr(STR_STATS_THIS_WEEK));
+  
+  int chartY = chartSectionY + 25;
+  int chartHeight = 60;
+  auto weeklyStats = READING_STATS.getRecentDays(7);
+  uint32_t maxSecs = 1;
+  for (const auto& day : weeklyStats) if (day.seconds > maxSecs) maxSecs = day.seconds;
+
+  int barWidth = (contentWidth - 60) / 7;
+  int startX = sidePadding + 30;
+  
+  for (int i = 0; i < 7; ++i) {
+    int x = startX + i * (barWidth + 5);
+    float ratio = (float)weeklyStats[i].seconds / maxSecs;
+    int h = (int)(ratio * chartHeight);
+    if (h < 2 && weeklyStats[i].seconds > 0) h = 2;
+    
+    // Draw bar
+    if (h > 0) {
+      renderer.fillRect(x, chartY + chartHeight - h, barWidth, h, true);
+    } else {
+      renderer.drawRect(x, chartY + chartHeight - 1, barWidth, 1, true);
     }
+
+    // Days (MTWTFSS) - simplified
+    const char* days[] = {"S", "M", "T", "W", "T", "F", "S"};
+    struct tm t = {};
+    t.tm_year = (weeklyStats[i].date / 10000) - 1900;
+    t.tm_mon = ((weeklyStats[i].date / 100) % 100) - 1;
+    t.tm_mday = (weeklyStats[i].date % 100);
+    mktime(&t);
+    renderer.drawText(SMALL_FONT_ID, x + barWidth/2 - 3, chartY + chartHeight + 5, days[t.tm_wday]);
   }
 
-  int listStartY = headerBottom + 10;
+  // 4. Recent Books List
+  int listSectionY = chartY + chartHeight + 25;
+  drawSectionTitle(renderer, Rect(sidePadding, listSectionY, contentWidth, 20), tr(STR_STATS_RECENT_BOOKS));
+  
+  int listStartY = listSectionY + 25;
   int listHeight = pageHeight - listStartY - metrics.verticalSpacing;
 
   GUI.drawList(
@@ -138,6 +179,14 @@ void ReadingStatsActivity::render(Activity::RenderLock&&) {
           snprintf(timeStr, sizeof(timeStr), "%luh %lum", static_cast<unsigned long>(h), static_cast<unsigned long>(m));
         } else {
           snprintf(timeStr, sizeof(timeStr), "%lum", static_cast<unsigned long>(m));
+        }
+        uint32_t lastDate = topBooks[index].lastReadDate;
+        if (lastDate > 0) {
+          uint32_t lm = (lastDate / 100) % 100;
+          uint32_t ld = lastDate % 100;
+          char lastBuf[32];
+          snprintf(lastBuf, sizeof(lastBuf), " (L: %02u/%02u)", lm, ld);
+          strcat(timeStr, lastBuf);
         }
         return std::string(timeStr);
       },

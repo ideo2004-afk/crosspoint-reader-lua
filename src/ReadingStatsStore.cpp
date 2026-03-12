@@ -23,8 +23,10 @@ void ReadingStatsStore::addReadingTime(const std::string& path, const std::strin
   stat.readingSeconds += seconds;
   totalReadingSeconds += seconds;
 
-  // Record daily stats
   uint32_t today = TIME_SERVICE.getTodayValue(); // YYYYMMDD
+  stat.lastReadDate = today;
+
+  // Record daily stats
   if (today > 0) {
     dailyReadingSeconds[today] += seconds;
     
@@ -33,6 +35,8 @@ void ReadingStatsStore::addReadingTime(const std::string& path, const std::strin
       dailyReadingSeconds.erase(dailyReadingSeconds.begin());
     }
   }
+
+  pruneBooks();
 }
 
 void ReadingStatsStore::recordOpen(const std::string& path, const std::string& title) {
@@ -48,6 +52,9 @@ void ReadingStatsStore::recordOpen(const std::string& path, const std::string& t
     stat.title = title;
   }
   stat.openCount++;
+  stat.lastReadDate = TIME_SERVICE.getTodayValue();
+
+  pruneBooks();
 }
 
 std::vector<BookStats> ReadingStatsStore::getTopBooks(size_t limit) const {
@@ -79,4 +86,104 @@ bool ReadingStatsStore::loadFromFile() {
     return false;
   }
   return JsonSettingsIO::loadReadingStats(*this, json.c_str());
+}
+namespace {
+uint32_t offsetDay(uint32_t date, int days) {
+  struct tm t = {};
+  t.tm_year = (date / 10000) - 1900;
+  t.tm_mon = ((date / 100) % 100) - 1;
+  t.tm_mday = (date % 100);
+  t.tm_hour = 12;
+  t.tm_isdst = -1;
+  time_t epoch = mktime(&t);
+  if (epoch == (time_t)-1) return 0;
+  epoch += (time_t)days * 24 * 3600;
+  struct tm t2;
+  localtime_r(&epoch, &t2);
+  return (t2.tm_year + 1900) * 10000 + (t2.tm_mon + 1) * 100 + t2.tm_mday;
+}
+}
+
+uint32_t ReadingStatsStore::getTodaySeconds() const {
+  uint32_t today = TIME_SERVICE.getTodayValue();
+  auto it = dailyReadingSeconds.find(today);
+  return (it != dailyReadingSeconds.end()) ? it->second : 0;
+}
+
+std::vector<DailyStat> ReadingStatsStore::getRecentDays(int limit) const {
+  std::vector<DailyStat> result;
+  uint32_t today = TIME_SERVICE.getTodayValue();
+  if (today == 0) return result;
+
+  for (int i = 0; i < limit; ++i) {
+    uint32_t date = offsetDay(today, - (limit - 1 - i));
+    uint32_t seconds = 0;
+    auto it = dailyReadingSeconds.find(date);
+    if (it != dailyReadingSeconds.end()) {
+      seconds = it->second;
+    }
+    result.push_back({date, seconds});
+  }
+  return result;
+}
+
+uint16_t ReadingStatsStore::getCurrentStreakDays() const {
+  uint32_t today = TIME_SERVICE.getTodayValue();
+  if (today == 0) return 0;
+
+  uint16_t streak = 0;
+  uint32_t current = today;
+  
+  // If no reading today, check starting from yesterday
+  if (dailyReadingSeconds.count(today) == 0 || dailyReadingSeconds.at(today) == 0) {
+    current = offsetDay(today, -1);
+  }
+
+  while (dailyReadingSeconds.count(current) > 0 && dailyReadingSeconds.at(current) > 0) {
+    streak++;
+    current = offsetDay(current, -1);
+  }
+
+  return streak;
+}
+
+uint16_t ReadingStatsStore::getLifetimeActiveDays() const {
+  uint16_t activeDays = 0;
+  for (const auto& pair : dailyReadingSeconds) {
+    if (pair.second > 0) {
+      activeDays++;
+    }
+  }
+  return activeDays;
+}
+
+void ReadingStatsStore::pruneBooks() {
+  if (books.size() <= 36) return;
+
+  // 1. Get all books
+  std::vector<std::string> filenames;
+  for (const auto& pair : books) {
+    filenames.push_back(pair.first);
+  }
+
+  // 2. Sort by reading time descending to identify top 10
+  std::sort(filenames.begin(), filenames.end(), [this](const std::string& a, const std::string& b) {
+    return books.at(a).readingSeconds > books.at(b).readingSeconds;
+  });
+
+  // 3. Candidates for deletion are those NOT in top 10
+  std::vector<std::string> candidates;
+  for (size_t i = 10; i < filenames.size(); ++i) {
+    candidates.push_back(filenames[i]);
+  }
+
+  if (candidates.empty()) return;
+
+  // 4. Sort candidates by lastReadDate ascending (oldest first)
+  std::sort(candidates.begin(), candidates.end(), [this](const std::string& a, const std::string& b) {
+    return books.at(a).lastReadDate < books.at(b).lastReadDate;
+  });
+
+  // 5. Delete the oldest one
+  books.erase(candidates.front());
 }

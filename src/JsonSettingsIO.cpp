@@ -240,6 +240,7 @@ bool JsonSettingsIO::saveReadingStats(const ReadingStatsStore& store, const char
     obj["title"] = stat.title;
     obj["reading_seconds"] = stat.readingSeconds;
     obj["open_count"] = stat.openCount;
+    obj["last_read_date"] = stat.lastReadDate;
   }
 
   JsonObject dailyObj = doc["daily_stats"].to<JsonObject>();
@@ -282,6 +283,7 @@ bool JsonSettingsIO::loadReadingStats(ReadingStatsStore& store, const char* json
     }
     stat.readingSeconds += obj["reading_seconds"] | (uint32_t)0;
     stat.openCount += obj["open_count"] | (uint32_t)0;
+    stat.lastReadDate = std::max(stat.lastReadDate, obj["last_read_date"] | (uint32_t)0);
   }
 
   JsonObject dailyObj = doc["daily_stats"].as<JsonObject>();
