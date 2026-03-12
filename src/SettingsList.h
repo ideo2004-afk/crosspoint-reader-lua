@@ -22,6 +22,7 @@ inline std::vector<SettingInfo> getSettingsList() {
                         {StrId::STR_NONE_OPT, StrId::STR_FILTER_CONTRAST, StrId::STR_INVERTED},
                         "sleepScreenCoverFilter", StrId::STR_CAT_DISPLAY),
       SettingInfo::Toggle(StrId::STR_STATUS_BAR, &CrossPointSettings::statusBar, "statusBar", StrId::STR_CAT_DISPLAY),
+      SettingInfo::Toggle(StrId::STR_STATUS_BAR_CLOCK, &CrossPointSettings::statusBarClock, "statusBarClock", StrId::STR_CAT_DISPLAY),
       SettingInfo::Enum(StrId::STR_HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage,
                         {StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS}, "hideBatteryPercentage",
                         StrId::STR_CAT_DISPLAY),

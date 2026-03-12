@@ -24,6 +24,7 @@ class ReadingStatsStore {
  public:
   uint32_t totalReadingSeconds = 0;
   std::map<std::string, BookStats> books;
+  std::map<uint32_t, uint32_t> dailyReadingSeconds;
 
   static ReadingStatsStore& getInstance() { return instance; }
 

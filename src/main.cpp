@@ -36,6 +36,8 @@
 #include "util/ScreenshotUtil.h"
 #include "util/LuaManager.h"
 
+#include "util/TimeService.h"
+
 HalDisplay display;
 HalGPIO gpio;
 MappedInputManager mappedInputManager(gpio);
@@ -260,6 +262,7 @@ void setup() {
     return;
   }
   SETTINGS.loadFromFile(); I18N.loadSettings(); UITheme::getInstance().reload();
+  TIME_SERVICE.begin();
   FontMgr.scanFonts(); FontMgr.loadSettings();
   renderer.setFadingFix(SETTINGS.fadingFix);
   renderer.setDarkMode(SETTINGS.darkMode);
@@ -282,6 +285,7 @@ void setup() {
 void loop() {
   if (nextActivity) { Activity* a = nextActivity; nextActivity = nullptr; exitActivity(); currentActivity = a; currentActivity->onEnter(); }
   mappedInputManager.update();
+  TIME_SERVICE.syncIfDue();
   renderer.setFadingFix(SETTINGS.fadingFix);
   if (currentActivity && currentActivity->preventAutoSleep()) powerManager.setPowerSaving(false);
   if (millis() > 3000 && gpio.isPressed(HalGPIO::BTN_POWER) && gpio.getHeldTime() > SETTINGS.getPowerButtonDuration()) enterDeepSleep();

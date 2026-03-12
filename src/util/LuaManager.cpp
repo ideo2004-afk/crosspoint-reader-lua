@@ -401,11 +401,33 @@ static int l_fs_exists(lua_State* L) {
 }
 
 // fs.readFile(path) → string or nil
+// Reads into malloc'd buffer, closes file BEFORE any Lua allocation,
+// preventing handle leaks if Lua GC or allocation throws.
 static int l_fs_read_file(lua_State* L) {
     const char* path = luaL_checkstring(L, 1);
-    if (!Storage.exists(path)) { lua_pushnil(L); return 1; }
-    String content = Storage.readFile(path);
-    lua_pushstring(L, content.c_str());
+    FsFile f = Storage.open(path);
+    if (!f || f.isDirectory()) {
+        if (f) f.close();
+        lua_pushnil(L);
+        return 1;
+    }
+    constexpr size_t maxSize = 50000;
+    size_t fileSize  = static_cast<size_t>(f.size());
+    size_t readSize  = (fileSize < maxSize) ? fileSize : maxSize;
+    if (readSize == 0) { f.close(); lua_pushstring(L, ""); return 1; }
+
+    char* buf = static_cast<char*>(malloc(readSize));
+    if (!buf) { f.close(); lua_pushnil(L); return 1; }
+
+    size_t total = 0;
+    while (total < readSize) {
+        int r = f.read(reinterpret_cast<uint8_t*>(buf) + total, readSize - total);
+        if (r <= 0) break;
+        total += static_cast<size_t>(r);
+    }
+    f.close();                           // close BEFORE touching Lua stack
+    lua_pushlstring(L, buf, total);      // safe: file already closed
+    free(buf);
     return 1;
 }
 

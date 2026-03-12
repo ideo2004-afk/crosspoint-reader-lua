@@ -4,21 +4,45 @@
 #include <HalStorage.h>
 
 #include "JsonSettingsIO.h"
+#include "util/TimeService.h"
 
 void ReadingStatsStore::addReadingTime(const std::string& path, const std::string& title, uint32_t seconds) {
   if (seconds == 0) return;
   
-  auto& stat = books[path];
+  std::string filename = path;
+  size_t lastSlash = filename.find_last_of('/');
+  if (lastSlash != std::string::npos) {
+    filename = filename.substr(lastSlash + 1);
+  }
+
+  auto& stat = books[filename];
   stat.path = path;
   if (!title.empty()) {
     stat.title = title;
   }
   stat.readingSeconds += seconds;
   totalReadingSeconds += seconds;
+
+  // Record daily stats
+  uint32_t today = TIME_SERVICE.getTodayValue(); // YYYYMMDD
+  if (today > 0) {
+    dailyReadingSeconds[today] += seconds;
+    
+    // Cleanup: Keep only last 30 days (though we only display 7)
+    if (dailyReadingSeconds.size() > 30) {
+      dailyReadingSeconds.erase(dailyReadingSeconds.begin());
+    }
+  }
 }
 
 void ReadingStatsStore::recordOpen(const std::string& path, const std::string& title) {
-  auto& stat = books[path];
+  std::string filename = path;
+  size_t lastSlash = filename.find_last_of('/');
+  if (lastSlash != std::string::npos) {
+    filename = filename.substr(lastSlash + 1);
+  }
+
+  auto& stat = books[filename];
   stat.path = path;
   if (!title.empty()) {
     stat.title = title;

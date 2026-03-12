@@ -69,6 +69,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["screenMargin"] = s.screenMargin;
   doc["hideBatteryPercentage"] = s.hideBatteryPercentage;
   doc["longPressChapterSkip"] = s.longPressChapterSkip;
+  doc["statusBarClock"] = s.statusBarClock;
   doc["hyphenationEnabled"] = s.hyphenationEnabled;
   doc["uiTheme"] = s.uiTheme;
   doc["fadingFix"] = s.fadingFix;
@@ -125,6 +126,7 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.hideBatteryPercentage =
       clamp(doc["hideBatteryPercentage"] | (uint8_t)S::HIDE_NEVER, S::HIDE_BATTERY_PERCENTAGE_COUNT, S::HIDE_NEVER);
   s.longPressChapterSkip = doc["longPressChapterSkip"] | (uint8_t)1;
+  s.statusBarClock = doc["statusBarClock"] | (uint8_t)0;
   s.hyphenationEnabled = doc["hyphenationEnabled"] | (uint8_t)0;
   s.uiTheme = doc["uiTheme"] | (uint8_t)S::LYRA;
   s.fadingFix = doc["fadingFix"] | (uint8_t)0;
@@ -240,6 +242,11 @@ bool JsonSettingsIO::saveReadingStats(const ReadingStatsStore& store, const char
     obj["open_count"] = stat.openCount;
   }
 
+  JsonObject dailyObj = doc["daily_stats"].to<JsonObject>();
+  for (const auto& pair : store.dailyReadingSeconds) {
+    dailyObj[std::to_string(pair.first)] = pair.second;
+  }
+
   String json;
   serializeJson(doc, json);
   return Storage.writeFile(path, json);
@@ -258,16 +265,30 @@ bool JsonSettingsIO::loadReadingStats(ReadingStatsStore& store, const char* json
 
   JsonObject booksObj = doc["books"].as<JsonObject>();
   for (JsonPair kv : booksObj) {
-    std::string path = kv.key().c_str();
+    std::string fullPath = kv.key().c_str();
     JsonObject obj = kv.value().as<JsonObject>();
     
-    BookStats stat;
-    stat.path = path;
-    stat.title = obj["title"] | std::string("");
-    stat.readingSeconds = obj["reading_seconds"] | (uint32_t)0;
-    stat.openCount = obj["open_count"] | (uint32_t)0;
-    
-    store.books[path] = stat;
+    // Consolidate by filename
+    std::string filename = fullPath;
+    size_t lastSlash = filename.find_last_of('/');
+    if (lastSlash != std::string::npos) {
+      filename = filename.substr(lastSlash + 1);
+    }
+
+    auto& stat = store.books[filename];
+    stat.path = fullPath; // Keep the last seen path for reference
+    if (stat.title.empty()) {
+      stat.title = obj["title"] | std::string("");
+    }
+    stat.readingSeconds += obj["reading_seconds"] | (uint32_t)0;
+    stat.openCount += obj["open_count"] | (uint32_t)0;
+  }
+
+  JsonObject dailyObj = doc["daily_stats"].as<JsonObject>();
+  store.dailyReadingSeconds.clear();
+  for (JsonPair kv : dailyObj) {
+    uint32_t day = std::stoul(kv.key().c_str());
+    store.dailyReadingSeconds[day] = kv.value().as<uint32_t>();
   }
 
   LOG_DBG("RSS", "Reading stats loaded from file (%zu entries)", store.books.size());
