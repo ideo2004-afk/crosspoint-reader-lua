@@ -229,10 +229,14 @@ void HomeActivity::loop() {
     }
   }
 
+  // Power button short press = Confirm (when configured as PAGE_TURN)
+  const bool powerConfirm = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
+                             mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
+
   // Front buttons (Logical 1-to-1 mapping)
-  
+
   // Button 2 (Confirm) - Selection
-  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) || powerConfirm) {
     int idx = 0;
     const int myLibraryIdx = idx++;
     const int recentsIdx = idx++;

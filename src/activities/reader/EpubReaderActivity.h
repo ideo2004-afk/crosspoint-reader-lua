@@ -28,6 +28,8 @@ class EpubReaderActivity final : public ActivityWithSubactivity {
   const std::function<void()> onGoHome;
   bool inMenu = false;
   int menuSelectedIndex = 0;
+  bool inScrubber = false;
+  int scrubberPercent = 0;
 
   struct Bookmark {
     uint16_t spineIndex;

@@ -191,7 +191,29 @@ void EpubReaderActivity::loop() {
 
   // === Menu Input Handling ===
   if (inMenu) {
-    const int optionCount = 8; // Resume, TOC, Next 10%, Back 10%, Dark Mode, Orientation, Screenshot, Exit
+    // --- Inline scrubber ---
+    if (inScrubber) {
+      if (mappedInput.wasPressed(MappedInputManager::Button::Left))  { scrubberPercent = (scrubberPercent > 0)   ? scrubberPercent - 1  : 0;   requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Right)) { scrubberPercent = (scrubberPercent < 100) ? scrubberPercent + 1  : 100; requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Up))    { scrubberPercent = (scrubberPercent + 10 <= 100) ? scrubberPercent + 10 : 100; requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Down))  { scrubberPercent = (scrubberPercent - 10 >= 0)   ? scrubberPercent - 10 : 0;   requestUpdate(); return; }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+        jumpToPercent(scrubberPercent);
+        inScrubber = false;
+        inMenu = false;
+        skipNextButtonCheck = true;
+        requestUpdate();
+        return;
+      }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+        inScrubber = false; // back to menu
+        requestUpdate();
+        return;
+      }
+      return;
+    }
+
+    const int optionCount = 7; // Resume, TOC, Go to, Dark Mode, Orientation, Screenshot, Exit
     if (mappedInput.wasReleasedRaw(HalGPIO::BTN_UP)) {
       menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : optionCount - 1;
       requestUpdate();
@@ -200,22 +222,33 @@ void EpubReaderActivity::loop() {
       requestUpdate();
     } else if (mappedInput.wasShortPressed(MappedInputManager::Button::Confirm)) {
       // Execute Menu Action (Right Cluster)
+      if (menuSelectedIndex == 2) { // Go to — inline scrubber
+        float bookProgress = 0.0f;
+        if (epub && epub->getBookSize() > 0 && section && section->pageCount > 0) {
+          const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
+          bookProgress = epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
+        }
+        scrubberPercent = static_cast<int>(bookProgress + 0.5f);
+        if (scrubberPercent < 0) scrubberPercent = 0;
+        if (scrubberPercent > 100) scrubberPercent = 100;
+        inScrubber = true;
+        requestUpdate();
+        return;
+      }
       inMenu = false;
       skipNextButtonCheck = true;
       switch (menuSelectedIndex) {
         case 0: break; // Resume
         case 1: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SELECT_CHAPTER); return;
-        case 2: jumpPercent(10); break;
-        case 3: jumpPercent(-10); break;
-        case 4: 
+        case 3:
           SETTINGS.darkMode = !SETTINGS.darkMode;
           SETTINGS.saveToFile();
           break;
-        case 5: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::ROTATE_SCREEN); break;
-        case 6: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT); break;
-        case 7: 
+        case 4: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::ROTATE_SCREEN); break;
+        case 5: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT); break;
+        case 6:
           mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
-          onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::GO_HOME); 
+          onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::GO_HOME);
           return;
       }
       requestUpdate();
@@ -225,7 +258,7 @@ void EpubReaderActivity::loop() {
       inMenu = false;
       requestUpdate();
       return;
-    } else if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_BACK, longPressMs) || 
+    } else if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_BACK, longPressMs) ||
                mappedInput.wasLongPressedRaw(HalGPIO::BTN_CONFIRM, longPressMs) ||
                mappedInput.wasLongPressedRaw(HalGPIO::BTN_LEFT, longPressMs) ||
                mappedInput.wasLongPressedRaw(HalGPIO::BTN_RIGHT, longPressMs)) {
@@ -740,36 +773,60 @@ void EpubReaderActivity::render(Activity::RenderLock&& lock) {
 }
 void EpubReaderActivity::renderMenu() const {
   if (!renderer.storeBwBuffer()) {
-    // If we can't store, at least clear the screen to avoid mess
     renderer.clearScreen();
   }
   renderer.restoreBwBuffer();
   // We MUST store it again immediately because restoreBwBuffer() frees the chunks!
-  // This allows the next frame's renderMenu() (e.g. on selection move) to still have a background.
   renderer.storeBwBuffer();
 
   const int sw = renderer.getScreenWidth();
   const int sh = renderer.getScreenHeight();
+  const bool darkMode = SETTINGS.darkMode;
+  const bool textColor = !darkMode;
+
+  if (inScrubber) {
+    const int pw = 360;
+    const int ph = 220;
+    const int px = (sw - pw) / 2;
+    const int py = (sh - ph) / 2;
+    renderer.fillRoundedRect(px, py, pw, ph, 10, darkMode ? Color::Black : Color::White);
+    renderer.drawRoundedRect(px, py, pw, ph, 2, 10, textColor);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 35, "Go to", textColor, EpdFontFamily::BOLD);
+    char pctBuf[8];
+    snprintf(pctBuf, sizeof(pctBuf), "%d%%", scrubberPercent);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 78, pctBuf, textColor, EpdFontFamily::BOLD);
+    const int barW = pw - 60;
+    const int barH = 14;
+    const int barX = px + 30;
+    const int barY = py + 118;
+    renderer.drawRoundedRect(barX, barY, barW, barH, 1, 3, textColor);
+    const int fillW = (barW - 4) * scrubberPercent / 100;
+    if (fillW > 0) renderer.fillRect(barX + 2, barY + 2, fillW, barH - 4, textColor);
+    renderer.fillRect(barX + 2 + fillW - 2, barY - 4, 4, barH + 8, textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 165, "< > +-1%   UP/DN +-10%", textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 192, "Confirm: jump   Back: cancel", textColor);
+    renderer.displayBuffer();
+    return;
+  }
+
   const int mw = 320;
-  const int mh = 430; // Taller for more options
+  const int mh = 380;
   const int mx = (sw - mw) / 2;
   const int my = (sh - mh) / 2;
 
   // Border and Background
-  renderer.fillRoundedRect(mx, my, mw, mh, 10, Color::White);
-  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, true); // Use bool for border state
+  renderer.fillRoundedRect(mx, my, mw, mh, 10, darkMode ? Color::Black : Color::White);
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, textColor);
 
-  const bool darkMode = SETTINGS.darkMode;
-  const char* options[] = {"Resume", "Table of Contents", "Next 10%", "Back 10%",
+  const char* options[] = {"Resume", "Table of Contents", "Go to",
                            darkMode ? "Day Mode" : "Dark Mode", "Orientation", "Screenshot", "Exit"};
-  
-  for (int i = 0; i < 8; i++) {
+
+  for (int i = 0; i < 7; i++) {
     int ry = my + 15 + (i * 50);
     if (menuSelectedIndex == i) {
-      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 40, 8, Color::Black);
+      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 40, 8, textColor ? Color::Black : Color::White);
     }
-    
-    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, options[i], (menuSelectedIndex != i));
+    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, options[i], (menuSelectedIndex != i) ? textColor : darkMode);
   }
 
   renderer.displayBuffer();

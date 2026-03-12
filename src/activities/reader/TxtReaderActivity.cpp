@@ -13,6 +13,7 @@
 #include "ReadingStatsStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/ScreenshotUtil.h"
 
 namespace {
 constexpr unsigned long goHomeMs = 1000;
@@ -95,12 +96,104 @@ void TxtReaderActivity::loop() {
     return;
   }
 
+  if (skipNextButtonCheck) {
+    if (!mappedInput.isAnyPressed() && !mappedInput.wasAnyReleased()) {
+      skipNextButtonCheck = false;
+    }
+    return;
+  }
+
   // === Custom Fixed Button Layout ===
   // Front LEFT cluster (BACK+CONFIRM): short=prev, long=home
-  // Front RIGHT cluster (LEFT+RIGHT): short=next, long=(reserved)
+  // Front RIGHT cluster (LEFT+RIGHT): short=next, long=menu
   // Side UP: short=next page, long=+10 pages
   // Side DOWN: short=prev page, long=-10 pages
   const unsigned long longPressMs = 350;
+
+  // === Menu Input Handling ===
+  if (inMenu) {
+    // --- Inline scrubber ---
+    if (inScrubber) {
+      if (mappedInput.wasPressed(MappedInputManager::Button::Left))  { scrubberPercent = (scrubberPercent > 0)   ? scrubberPercent - 1  : 0;   requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Right)) { scrubberPercent = (scrubberPercent < 100) ? scrubberPercent + 1  : 100; requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Up))    { scrubberPercent = (scrubberPercent + 10 <= 100) ? scrubberPercent + 10 : 100; requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Down))  { scrubberPercent = (scrubberPercent - 10 >= 0)   ? scrubberPercent - 10 : 0;   requestUpdate(); return; }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+        jumpToPercent(scrubberPercent);
+        inScrubber = false;
+        inMenu = false;
+        skipNextButtonCheck = true;
+        requestUpdate();
+        return;
+      }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+        inScrubber = false; // back to menu
+        requestUpdate();
+        return;
+      }
+      return;
+    }
+
+    const int optionCount = 6; // Resume, Go to, Dark Mode, Orientation, Screenshot, Exit
+    if (mappedInput.wasReleasedRaw(HalGPIO::BTN_UP)) {
+      menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : optionCount - 1;
+      requestUpdate();
+    } else if (mappedInput.wasReleasedRaw(HalGPIO::BTN_DOWN)) {
+      menuSelectedIndex = (menuSelectedIndex < optionCount - 1) ? menuSelectedIndex + 1 : 0;
+      requestUpdate();
+    } else if (mappedInput.wasReleasedAnyOf(HalGPIO::BTN_BACK, HalGPIO::BTN_CONFIRM)) {
+      // Cancel menu
+      inMenu = false;
+      requestUpdate();
+    } else if (mappedInput.wasReleasedAnyOf(HalGPIO::BTN_LEFT, HalGPIO::BTN_RIGHT)) {
+      // Confirm selection
+      switch (menuSelectedIndex) {
+        case 0: // Resume
+          inMenu = false;
+          break;
+        case 1: { // Go to — inline scrubber
+          scrubberPercent = (totalPages > 1) ? (currentPage * 100 / (totalPages - 1)) : 0;
+          inScrubber = true;
+          requestUpdate();
+          return;
+        }
+        case 2: // Dark Mode
+          inMenu = false;
+          SETTINGS.darkMode = !SETTINGS.darkMode;
+          SETTINGS.saveToFile();
+          break;
+        case 3: { // Orientation
+          inMenu = false;
+          uint8_t nextOrientation = (SETTINGS.orientation + 1) % 4;
+          SETTINGS.orientation = nextOrientation;
+          SETTINGS.saveToFile();
+          switch (nextOrientation) {
+            case CrossPointSettings::ORIENTATION::PORTRAIT:
+              renderer.setOrientation(GfxRenderer::Orientation::Portrait); break;
+            case CrossPointSettings::ORIENTATION::LANDSCAPE_CW:
+              renderer.setOrientation(GfxRenderer::Orientation::LandscapeClockwise); break;
+            case CrossPointSettings::ORIENTATION::INVERTED:
+              renderer.setOrientation(GfxRenderer::Orientation::PortraitInverted); break;
+            case CrossPointSettings::ORIENTATION::LANDSCAPE_CCW:
+              renderer.setOrientation(GfxRenderer::Orientation::LandscapeCounterClockwise); break;
+            default: break;
+          }
+          initialized = false;
+          break;
+        }
+        case 4: // Screenshot
+          inMenu = false;
+          ScreenshotUtil::takeScreenshot(renderer);
+          break;
+        case 5: // Exit
+          inMenu = false;
+          onGoHome();
+          return;
+      }
+      requestUpdate();
+    }
+    return;
+  }
 
   // Front LEFT long press -> home
   if (mappedInput.isPressedAnyOf(HalGPIO::BTN_BACK, HalGPIO::BTN_CONFIRM) &&
@@ -108,6 +201,17 @@ void TxtReaderActivity::loop() {
     onGoHome();
     return;
   }
+
+  // Front RIGHT long press -> menu
+  if (mappedInput.wasReleasedAnyOf(HalGPIO::BTN_LEFT, HalGPIO::BTN_RIGHT) &&
+      mappedInput.getHeldTime() >= longPressMs) {
+    renderer.storeBwBuffer();
+    inMenu = true;
+    menuSelectedIndex = 0;
+    requestUpdate();
+    return;
+  }
+
   const bool frontLeftShort = mappedInput.wasReleasedAnyOf(HalGPIO::BTN_BACK, HalGPIO::BTN_CONFIRM) &&
                               mappedInput.getHeldTime() < 800;
   const bool frontRightShort = mappedInput.wasReleasedAnyOf(HalGPIO::BTN_LEFT, HalGPIO::BTN_RIGHT) &&
@@ -376,6 +480,11 @@ bool TxtReaderActivity::loadPageAtOffset(size_t offset, std::vector<std::string>
 }
 
 void TxtReaderActivity::render(Activity::RenderLock&&) {
+  if (inMenu) {
+    renderMenu();
+    return;
+  }
+
   if (!txt) {
     return;
   }
@@ -643,6 +752,76 @@ bool TxtReaderActivity::loadPageIndexCache() {
   totalPages = pageOffsets.size();
   LOG_DBG("TRS", "Loaded page index cache: %d pages", totalPages);
   return true;
+}
+
+void TxtReaderActivity::jumpToPercent(int percent) {
+  if (totalPages <= 0) return;
+  if (percent < 0) percent = 0;
+  if (percent > 100) percent = 100;
+  int targetPage = (percent * (totalPages - 1)) / 100;
+  if (targetPage < 0) targetPage = 0;
+  if (targetPage >= totalPages) targetPage = totalPages - 1;
+  currentPage = static_cast<uint32_t>(targetPage);
+}
+
+void TxtReaderActivity::renderMenu() const {
+  if (!renderer.storeBwBuffer()) {
+    renderer.clearScreen();
+  }
+  renderer.restoreBwBuffer();
+  renderer.storeBwBuffer();
+
+  const int sw = renderer.getScreenWidth();
+  const int sh = renderer.getScreenHeight();
+  const bool darkMode = SETTINGS.darkMode;
+  const bool textColor = !darkMode;
+
+  if (inScrubber) {
+    const int pw = 360;
+    const int ph = 220;
+    const int px = (sw - pw) / 2;
+    const int py = (sh - ph) / 2;
+    renderer.fillRoundedRect(px, py, pw, ph, 10, darkMode ? Color::Black : Color::White);
+    renderer.drawRoundedRect(px, py, pw, ph, 2, 10, textColor);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 35, "Go to", textColor, EpdFontFamily::BOLD);
+    char pctBuf[8];
+    snprintf(pctBuf, sizeof(pctBuf), "%d%%", scrubberPercent);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 78, pctBuf, textColor, EpdFontFamily::BOLD);
+    const int barW = pw - 60;
+    const int barH = 14;
+    const int barX = px + 30;
+    const int barY = py + 118;
+    renderer.drawRoundedRect(barX, barY, barW, barH, 1, 3, textColor);
+    const int fillW = (barW - 4) * scrubberPercent / 100;
+    if (fillW > 0) renderer.fillRect(barX + 2, barY + 2, fillW, barH - 4, textColor);
+    renderer.fillRect(barX + 2 + fillW - 2, barY - 4, 4, barH + 8, textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 165, "< > +-1%   UP/DN +-10%", textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 192, "Confirm: jump   Back: cancel", textColor);
+    renderer.displayBuffer();
+    return;
+  }
+
+  const int mw = 320;
+  const int mh = 330;
+  const int mx = (sw - mw) / 2;
+  const int my = (sh - mh) / 2;
+
+  renderer.fillRoundedRect(mx, my, mw, mh, 10, darkMode ? Color::Black : Color::White);
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, textColor);
+
+  const char* options[] = {"Resume", "Go to",
+                           darkMode ? "Day Mode" : "Dark Mode",
+                           "Orientation", "Screenshot", "Exit"};
+
+  for (int i = 0; i < 6; i++) {
+    int ry = my + 15 + (i * 50);
+    if (menuSelectedIndex == i) {
+      renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 40, 8, textColor ? Color::Black : Color::White);
+    }
+    renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, options[i], (menuSelectedIndex != i) ? textColor : darkMode);
+  }
+
+  renderer.displayBuffer();
 }
 
 void TxtReaderActivity::savePageIndexCache() const {

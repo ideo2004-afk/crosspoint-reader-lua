@@ -102,29 +102,57 @@ void XtcReaderActivity::loop() {
 
   // === Menu Input Handling ===
   if (inMenu) {
+    // --- Inline scrubber ---
+    if (inScrubber) {
+      if (mappedInput.wasPressed(MappedInputManager::Button::Left))  { scrubberPercent = (scrubberPercent > 0)   ? scrubberPercent - 1  : 0;   requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Right)) { scrubberPercent = (scrubberPercent < 100) ? scrubberPercent + 1  : 100; requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Up))    { scrubberPercent = (scrubberPercent + 10 <= 100) ? scrubberPercent + 10 : 100; requestUpdate(); return; }
+      if (mappedInput.wasPressed(MappedInputManager::Button::Down))  { scrubberPercent = (scrubberPercent - 10 >= 0)   ? scrubberPercent - 10 : 0;   requestUpdate(); return; }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+        jumpToPercent(scrubberPercent);
+        inScrubber = false;
+        inMenu = false;
+        skipNextButtonCheck = true;
+        requestUpdate();
+        return;
+      }
+      if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+        inScrubber = false; // back to menu
+        requestUpdate();
+        return;
+      }
+      return;
+    }
+
     if (mappedInput.wasReleasedRaw(HalGPIO::BTN_UP)) {
-      menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : 5;
+      menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : 4;
       requestUpdate();
     } else if (mappedInput.wasReleasedRaw(HalGPIO::BTN_DOWN)) {
-      menuSelectedIndex = (menuSelectedIndex < 5) ? menuSelectedIndex + 1 : 0;
+      menuSelectedIndex = (menuSelectedIndex < 4) ? menuSelectedIndex + 1 : 0;
       requestUpdate();
     } else if (mappedInput.wasShortPressed(MappedInputManager::Button::Confirm)) {
       // Execute Menu Action (Right Cluster)
-      inMenu = false;
       if (menuSelectedIndex == 0) { // Resume
+        inMenu = false;
         requestUpdate();
-      } else if (menuSelectedIndex == 1) { // Next 10%
-        jumpPercent(10);
-      } else if (menuSelectedIndex == 2) { // Back 10%
-        jumpPercent(-10);
-      } else if (menuSelectedIndex == 3) { // Dark Mode Toggle
+      } else if (menuSelectedIndex == 1) { // Go to — inline scrubber
+        if (xtc) {
+          const size_t total = xtc->getPageCount();
+          scrubberPercent = total > 0 ? (int)(currentPage * 100 / total) : 0;
+          inScrubber = true;
+          requestUpdate();
+        }
+      } else if (menuSelectedIndex == 2) { // Dark Mode Toggle
+        inMenu = false;
         SETTINGS.darkMode = !SETTINGS.darkMode;
         SETTINGS.saveToFile();
         requestUpdate();
-      } else if (menuSelectedIndex == 4) { // Screenshot
+      } else if (menuSelectedIndex == 3) { // Screenshot
+        inMenu = false;
         pendingScreenshot = true;
         requestUpdate();
-      } else if (menuSelectedIndex == 5) { // Exit
+      } else if (menuSelectedIndex == 4) { // Exit
+        inMenu = false;
         mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
         onGoHome();
       }
@@ -134,7 +162,7 @@ void XtcReaderActivity::loop() {
       inMenu = false;
       requestUpdate();
       return;
-    } else if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_BACK, longPressMs) || 
+    } else if (mappedInput.wasLongPressedRaw(HalGPIO::BTN_BACK, longPressMs) ||
                mappedInput.wasLongPressedRaw(HalGPIO::BTN_CONFIRM, longPressMs) ||
                mappedInput.wasLongPressedRaw(HalGPIO::BTN_LEFT, longPressMs) ||
                mappedInput.wasLongPressedRaw(HalGPIO::BTN_RIGHT, longPressMs)) {
@@ -279,32 +307,55 @@ void XtcReaderActivity::render(Activity::RenderLock&&) {
 
 void XtcReaderActivity::renderMenu() const {
   // Composite page background WITHOUT triggering display or grayscale passes
-  // This ensures the background is clean and correctly thresholded, and eliminates ghosting.
   const_cast<XtcReaderActivity*>(this)->renderPage(false);
 
   const int sw = renderer.getScreenWidth();
   const int sh = renderer.getScreenHeight();
-  const int mw = 320;
-  const int mh = 385; // Taller for Screenshot option
-  const int mx = (sw - mw) / 2;
-  const int my = (sh - mh) / 2;
-
   const bool darkMode = SETTINGS.darkMode;
   const bool textColor = !darkMode;
 
+  if (inScrubber) {
+    const int pw = 360;
+    const int ph = 220;
+    const int px = (sw - pw) / 2;
+    const int py = (sh - ph) / 2;
+    renderer.fillRoundedRect(px, py, pw, ph, 10, darkMode ? Color::Black : Color::White);
+    renderer.drawRoundedRect(px, py, pw, ph, 2, 10, textColor);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 35, "Go to", textColor, EpdFontFamily::BOLD);
+    char pctBuf[8];
+    snprintf(pctBuf, sizeof(pctBuf), "%d%%", scrubberPercent);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 78, pctBuf, textColor, EpdFontFamily::BOLD);
+    const int barW = pw - 60;
+    const int barH = 14;
+    const int barX = px + 30;
+    const int barY = py + 118;
+    renderer.drawRoundedRect(barX, barY, barW, barH, 1, 3, textColor);
+    const int fillW = (barW - 4) * scrubberPercent / 100;
+    if (fillW > 0) renderer.fillRect(barX + 2, barY + 2, fillW, barH - 4, textColor);
+    renderer.fillRect(barX + 2 + fillW - 2, barY - 4, 4, barH + 8, textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 165, "< > +-1%   UP/DN +-10%", textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 192, "Confirm: jump   Back: cancel", textColor);
+    renderer.displayBuffer();
+    return;
+  }
+
+  const int mw = 320;
+  const int mh = 330;
+  const int mx = (sw - mw) / 2;
+  const int my = (sh - mh) / 2;
+
   // Border and Background
   renderer.fillRoundedRect(mx, my, mw, mh, 10, darkMode ? Color::Black : Color::White);
-  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, textColor); // Use bool for border state
+  renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, textColor);
 
-  const char* options[] = {"Resume", "Next 10%", "Back 10%", 
+  const char* options[] = {"Resume", "Go to",
                            darkMode ? "Day Mode" : "Dark Mode", "Screenshot", "Exit"};
-  
-  for (int i = 0; i < 6; i++) {
-    int ry = my + 45 + (i * 55); // Adjusted spacing without title
+
+  for (int i = 0; i < 5; i++) {
+    int ry = my + 45 + (i * 55);
     if (menuSelectedIndex == i) {
       renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 40, 8, textColor ? Color::Black : Color::White);
     }
-    
     renderer.drawText(UI_12_FONT_ID, mx + 20, ry + 2, options[i], (menuSelectedIndex != i) ? textColor : darkMode);
   }
 
@@ -607,6 +658,17 @@ void XtcReaderActivity::loadProgress() {
     }
     f.close();
   }
+}
+
+void XtcReaderActivity::jumpToPercent(int percent) {
+  if (!xtc) return;
+  const size_t total = xtc->getPageCount();
+  if (total == 0) return;
+  int target = (static_cast<int>(total) * percent) / 100;
+  if (target < 0) target = 0;
+  if (target >= (int)total) target = (int)total - 1;
+  currentPage = static_cast<uint32_t>(target);
+  requestUpdate();
 }
 
 void XtcReaderActivity::jumpPercent(int deltaPercent) {

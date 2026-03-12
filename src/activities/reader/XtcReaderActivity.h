@@ -23,6 +23,8 @@ class XtcReaderActivity final : public ActivityWithSubactivity {
 
   bool inMenu = false;
   int menuSelectedIndex = 0;
+  bool inScrubber = false;
+  int scrubberPercent = 0;
   bool pendingScreenshot = false;
   bool skipNextButtonCheck = false;
   uint8_t* pageBuffer = nullptr;
@@ -41,6 +43,7 @@ class XtcReaderActivity final : public ActivityWithSubactivity {
   void nextBookmark();
   bool isPageBookmarked(uint32_t page) const;
   void jumpPercent(int deltaPercent);
+  void jumpToPercent(int percent);
 
  public:
   explicit XtcReaderActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::unique_ptr<Xtc> xtc,

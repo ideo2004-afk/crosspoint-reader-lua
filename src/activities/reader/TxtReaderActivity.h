@@ -30,8 +30,17 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   int cachedScreenMargin = 0;
   uint8_t cachedParagraphAlignment = CrossPointSettings::LEFT_ALIGN;
 
+  bool inMenu = false;
+  int menuSelectedIndex = 0;
+  bool inScrubber = false;
+  int scrubberPercent = 0;
+  bool skipNextButtonCheck = false;
+
   void renderPage();
   void renderStatusBar(int orientedMarginRight, int orientedMarginBottom, int orientedMarginLeft) const;
+  void renderMenu() const;
+
+  void jumpToPercent(int percent);
 
   void initializeReader();
   bool loadPageAtOffset(size_t offset, std::vector<std::string>& outLines, size_t& nextOffset);
