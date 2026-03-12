@@ -256,11 +256,8 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
 
   if (SETTINGS.statusBarClock) {
     char dateStr[12] = {};
-    char clockStr[6] = {};
     const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "-- --- ----";
-    const char* timeText = TIME_SERVICE.formatClock(clockStr, sizeof(clockStr)) ? clockStr : "--:--";
     renderer.drawText(SMALL_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding, rect.y + 5, dateText);
-    renderer.drawCenteredText(SMALL_FONT_ID, rect.y + 5, timeText);
   }
 
   if (title) {

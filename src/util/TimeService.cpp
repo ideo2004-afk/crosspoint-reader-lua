@@ -463,8 +463,8 @@ bool TimeService::formatDate(char* buffer, size_t bufferSize) const {
     return false;
   }
 
-  snprintf(buffer, bufferSize, "%02d-%s-%04d", localTime.tm_mday, MONTH_ABBREVIATIONS[localTime.tm_mon],
-           localTime.tm_year + 1900);
+  snprintf(buffer, bufferSize, "%04d.%02d.%02d", localTime.tm_year + 1900, localTime.tm_mon + 1,
+           localTime.tm_mday);
   return true;
 }
 
@@ -499,14 +499,9 @@ void TimeService::drawTopInfoBar(const GfxRenderer& renderer, const int topY, co
   }
 
   char dateStr[12] = {};
-  char clockStr[6] = {};
   const char* dateText = dateStr;
-  const char* timeText = clockStr;
   if (!formatDate(dateStr, sizeof(dateStr))) {
     dateText = DATE_PLACEHOLDER;
-  }
-  if (!formatClock(clockStr, sizeof(clockStr))) {
-    timeText = CLOCK_PLACEHOLDER;
   }
 
   const int textY = topY + TOP_CLOCK_VERTICAL_PADDING;
@@ -515,7 +510,6 @@ void TimeService::drawTopInfoBar(const GfxRenderer& renderer, const int topY, co
   renderer.drawText(SMALL_FONT_ID, dateX, textY, dateText);
 
   if (showBattery) {
-    renderer.drawCenteredText(SMALL_FONT_ID, textY, timeText);
     const auto& metrics = UITheme::getInstance().getMetrics();
     const bool showBatteryPercentage =
         SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
@@ -524,14 +518,9 @@ void TimeService::drawTopInfoBar(const GfxRenderer& renderer, const int topY, co
     UITheme::getInstance().getTheme().drawBatteryRight(
         renderer, Rect{batteryX, textY, metrics.batteryWidth, metrics.batteryHeight}, showBatteryPercentage);
   } else if (rightTextOverride && rightTextOverride[0] != '\0') {
-    renderer.drawCenteredText(SMALL_FONT_ID, textY, timeText);
     const int rightTextWidth = renderer.getTextWidth(SMALL_FONT_ID, rightTextOverride);
     const int rightTextX = renderer.getScreenWidth() - horizontalPadding - rightTextWidth;
     renderer.drawText(SMALL_FONT_ID, rightTextX, textY, rightTextOverride);
-  } else {
-    const int timeWidth = renderer.getTextWidth(SMALL_FONT_ID, timeText);
-    const int timeX = renderer.getScreenWidth() - horizontalPadding - timeWidth;
-    renderer.drawText(SMALL_FONT_ID, timeX, textY, timeText);
   }
 }
 uint32_t TimeService::getTodayValue() const {
