@@ -285,7 +285,7 @@ void SleepActivity::renderCoverSleepScreen() const {
 
 void SleepActivity::renderPageSleepScreen() const {
   // Keep the current framebuffer content (freeze current page/UI).
-  // Draw a small sleep indicator at the fixed position (left side).
-  renderer.drawText(SMALL_FONT_ID, 27, 11, "Zzz");
+  // Draw a small sleep indicator at the top center to avoid overlapping with date.
+  renderer.drawCenteredText(SMALL_FONT_ID, 11, "Zzz");
   renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 }
