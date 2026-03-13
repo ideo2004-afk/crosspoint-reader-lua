@@ -12,40 +12,44 @@ Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
 
 Experience a premium, classic interface inspired by the iPod. The **Flow Theme** features smooth animations and a refined layout designed for the X4's e-ink screen.
 
-### 2. Advanced Recent Page
+### 2. Full CJK Support & Proper Rendering
+
+Unlock high-quality reading for Traditional Chinese and other CJK languages. The system correctly displays **Chinese filenames** and ensures perfect **Chinese EPUB rendering** when external fonts are provided.
+
+### 3. Advanced Recent Page
 
 Stay organized with a beautiful "Recent" view. Browse up to **18 of your most recently read books** (optimized for memory) with full cover art support for quick access.
 
-### 3. Heavyweight XTC Support
+### 4. Heavyweight XTC Support
 
 Read massive volumes without compromise. Our optimized **XTC binary format** supports files over **200MB** and **2000+ pages**, ensuring stability on constrained hardware.
 
-### 4. Contextual Menu & Dark Mode
+### 5. Contextual Menu & Dark Mode
 
 Access tools without leaving the page. Both XTC and EPUB formats support a **floating inner-page menu** and a dedicated **Dark Mode** for comfortable night reading.
 
-### 5. Dynamic Lua Plugin System
+### 6. Dynamic Lua Plugin System
 
 XTEINK X4 is a platform, not just a reader. The integrated **Lua scripting engine** allows for dynamic plugins that can extend core logic and create entirely new interfaces.
 
-### 6. MiniGo (Lua Plugin)
+### 7. MiniGo (Lua Plugin)
 
 A full-featured **9x9 Go game** powered by a professional **MCTS (Monte Carlo Tree Search)** engine. Challenge the AI directly on your reader.
 
-### 7. Qubic (Lua Plugin)
+### 8. Qubic (Lua Plugin)
 
 Enjoy the classic **3D Tic-Tac-Toe** logic game, reimagined for the e-ink experience.
 
-### 8. Flashcard (Lua Plugin)
+### 9. Flashcard (Lua Plugin)
 
 Turn your reading materials into learning opportunities with an integrated **SRS (Spaced Repetition System)** Flashcard application.
 
-### 9. System Intelligence
+### 10. System Intelligence
 
 - **Reading Time Tracking**: The system automatically logs and calculates your reading duration for every book.
 - **Smart Maintenance**: Automatic handling of reading records, metadata, and cache files to keep the system lean and responsive.
 
-### 10. Core Performance
+### 11. Core Performance
 
 - **Memory Breakthrough**: 50% reduction in page table memory usage.
 - **Instant Start**: Optimized refresh logic for near-instant book opening.
