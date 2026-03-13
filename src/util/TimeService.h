@@ -12,6 +12,7 @@ class TimeService {
   time_t lastSuccessfulSyncEpoch = 0;
   time_t anchorEpoch = 0;
   uint64_t rtcUsAtAnchor = 0;
+  bool syncedThisBoot = false;
 
   static constexpr time_t VALID_TIME_THRESHOLD = 1735689600;      // 2025-01-01 00:00:00 UTC
   static constexpr time_t SYNC_INTERVAL_SECONDS = 12 * 60 * 60;   // 12 hours

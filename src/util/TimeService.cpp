@@ -21,7 +21,7 @@
 namespace {
 constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 4000;
 constexpr unsigned long WIFI_SYNC_CONNECT_BUDGET_MS = 8000;
-constexpr uint8_t NTP_SYNC_RETRIES = 50;
+constexpr uint8_t NTP_SYNC_RETRIES = 150;
 constexpr unsigned long NTP_SYNC_DELAY_MS = 100;
 constexpr int TOP_CLOCK_VERTICAL_PADDING = 6;
 constexpr unsigned long INVALID_TIME_RETRY_MS = 5000;
@@ -148,6 +148,8 @@ void TimeService::adoptTimeSnapshot(const time_t newAnchorEpoch, const uint64_t 
 }
 
 void TimeService::begin() {
+  // Use CST-8 for UTC+8 (China Standard Time / Taiwan Time)
+  // POSIX TZ: CST-8 means local time is 8 hours ahead of UTC.
   setenv("TZ", "CST-8", 1);
   tzset();
   loadPersistedSnapshot();
@@ -156,26 +158,29 @@ void TimeService::begin() {
 }
 
 bool TimeService::shouldAttemptSync() const {
-  if (lastSyncAttemptMs == 0) {
-    return true;
-  }
-
-  const time_t now = getBestCurrentEpoch();
-  const bool validTime = isTimeValid(now);
-  const unsigned long retryBackoff = validTime ? RETRY_BACKOFF_MS : INVALID_TIME_RETRY_MS;
-  if (millis() - lastSyncAttemptMs < retryBackoff) {
+  // 核心邏輯：只要連上 WiFi，就應該嘗試對時
+  if (WiFi.status() != WL_CONNECTED) {
     return false;
   }
 
-  if (!validTime) {
+  // 如果這輪開機還沒成功對時過，無視間隔強制執行
+  if (!syncedThisBoot) {
     return true;
   }
 
-  if (!isTimeValid(lastSuccessfulSyncEpoch)) {
-    return true;
+  // 避免在連線期間過於頻繁同步 (冷卻時間 1 小時)
+  if (isTimeValid(lastSuccessfulSyncEpoch)) {
+    if ((getCurrentEpoch() - lastSuccessfulSyncEpoch) < 3600) {
+      return false;
+    }
   }
 
-  return (now - lastSuccessfulSyncEpoch) >= SYNC_INTERVAL_SECONDS;
+  // 如果上次嘗試失敗，至少等 1 分鐘再重試
+  if (millis() - lastSyncAttemptMs < 60000) {
+    return false;
+  }
+
+  return true;
 }
 
 bool TimeService::connectWithSavedCredentials() const {
@@ -261,6 +266,7 @@ bool TimeService::syncTimeOverNtp() {
     esp_sntp_stop();
   }
 
+  LOG_DBG("TIME", "Starting NTP sync...");
   esp_sntp_setoperatingmode(ESP_SNTP_OPMODE_POLL);
   esp_sntp_setservername(0, "pool.ntp.org");
   esp_sntp_setservername(1, "time.google.com");
@@ -268,12 +274,20 @@ bool TimeService::syncTimeOverNtp() {
   esp_sntp_init();
 
   for (uint8_t retry = 0; retry < NTP_SYNC_RETRIES; retry++) {
-    if (sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED && isTimeValid(time(nullptr))) {
+    const sntp_sync_status_t status = sntp_get_sync_status();
+    const time_t now = time(nullptr);
+    
+    if (status == SNTP_SYNC_STATUS_COMPLETED && isTimeValid(now)) {
       esp_sync_timekeeping_timers();
-      adoptTimeSnapshot(time(nullptr), getTimebaseUs(), time(nullptr));
+      adoptTimeSnapshot(now, getTimebaseUs(), now);
       persistRtcBackedTime();
-      LOG_DBG("TIME", "NTP time synced successfully");
+      syncedThisBoot = true;
+      LOG_DBG("TIME", "NTP time synced successfully: %ld", (long)now);
       return true;
+    }
+    
+    if (retry % 10 == 0) {
+      LOG_DBG("TIME", "Waiting for NTP sync... (retry %d, status %d, time %ld)", retry, (int)status, (long)now);
     }
     delay(NTP_SYNC_DELAY_MS);
   }
@@ -413,9 +427,7 @@ void TimeService::persistIfValid() {
 }
 
 bool TimeService::syncIfDue() {
-  if (!SETTINGS.statusBarClock) {
-    return false;
-  }
+  // Decouple sync from UI setting so time is always correct for logs/stats
 
   if (!shouldAttemptSync()) {
     return false;
@@ -441,6 +453,10 @@ bool TimeService::syncIfDue() {
   } else if (esp_sntp_enabled()) {
     esp_sntp_stop();
     WiFi.setSleep(true);
+  }
+
+  if (synced) {
+    persistIfValid();
   }
 
   if (!synced) {

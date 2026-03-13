@@ -285,7 +285,9 @@ void setup() {
 void loop() {
   if (nextActivity) { Activity* a = nextActivity; nextActivity = nullptr; exitActivity(); currentActivity = a; currentActivity->onEnter(); }
   mappedInputManager.update();
-  TIME_SERVICE.syncIfDue();
+  if (TIME_SERVICE.syncIfDue() && currentActivity) {
+    currentActivity->requestUpdate();
+  }
   renderer.setFadingFix(SETTINGS.fadingFix);
   if (currentActivity && currentActivity->preventAutoSleep()) powerManager.setPowerSaving(false);
   if (millis() > 3000 && gpio.isPressed(HalGPIO::BTN_POWER) && gpio.getHeldTime() > SETTINGS.getPowerButtonDuration()) enterDeepSleep();
