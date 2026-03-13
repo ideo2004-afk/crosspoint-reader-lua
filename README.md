@@ -77,16 +77,22 @@ Turn your reading materials into learning opportunities with an integrated **SRS
 
 ## 📂 SD Card Setup
 
-To use the full features of the XTEINK X4 Flow, you must manually set up certain files on your SD card:
+To use the full features of the XTEINK X4 Flow, you must manually set up specific directories and files on your SD card. These files are not included in the firmware due to size constraints.
 
 ### 1. CJK Font Support
-To support Chinese, Japanese, and Korean characters in the reader:
-- Locate the **Taipei Sans TC (台北黑體)** `.bin` files in the `sdcard/fonts/` directory of this repository.
-- Copy your preferred size (e.g., `TaipeiSansTC_30_30x31.bin`) to the `fonts/` subdirectory on your SD card.
+The system supports external font files for high-quality CJK (Chinese, Japanese, Korean) rendering:
+- **Requirement**: You must download the font `.bin` files (e.g., **Taipei Sans TC / 台北黑體**) and place them into the `/fonts/` directory on your SD card.
+- **Reference**: Samples can be found in the `sdcard/fonts/` directory of this repository. Copy your preferred size (e.g., `TaipeiSansTC_30_30x31.bin`) to the SD card.
 
 ### 2. Lua Plugins
-The dynamic plugins are not bundled in the firmware and must be installed manually:
-- Copy the folders from the `sdcard/plugins/` directory of this repository to the `plugins/` directory on your SD card.
+The integrated gaming and learning tools are powered by external scripts:
+- **Requirement**: Download the plugin folders from this repository and manually place them into the `/plugins/` directory on your SD card.
+- **Path**: Copy all subfolders from `sdcard/plugins/` to your SD card's root `/plugins/` folder.
+
+### 3. Book Organization
+For best compatibility and performance:
+- **Recommended Path**: Place your eBook files (EPUB, XTC, TXT, MD) in a `/books/` subdirectory on the SD card.
+- **Categorization**: You are encouraged to create subdirectories within `/books/` to organize your library (e.g., `/books/Fiction/`, `/books/Non-Fiction/`). The system will navigate these folders automatically.
 
 ---
 
