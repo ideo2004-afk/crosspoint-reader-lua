@@ -14,7 +14,7 @@ Experience a premium, classic interface inspired by the iPod. The **Flow Theme**
 
 ### 2. Advanced Recent Page
 
-Stay organized with a beautiful "Recent" view. Browse up to **36 of your most recently read books** with full cover art support for quick access.
+Stay organized with a beautiful "Recent" view. Browse up to **18 of your most recently read books** (optimized for memory) with full cover art support for quick access.
 
 ### 3. Heavyweight XTC Support
 
@@ -57,7 +57,7 @@ Turn your reading materials into learning opportunities with an integrated **SRS
 
 ### System Interface
 
-|                  Flow Theme                   |          Recent Browser (36 Books)           |
+|                  Flow Theme (7 Books)         |          Recent Browser (18 Books)           |
 | :-------------------------------------------: | :------------------------------------------: |
 | ![Flow Theme](./screenshots/01-flowtheme.png) | ![Recent Books](./screenshots/02-recent.png) |
 
@@ -120,6 +120,29 @@ Huge thanks to:
 
 - The original **CrossPoint Reader** team.
 - **atomic14** for the [diy-esp32-epub-reader](https://github.com/atomic14/diy-esp32-epub-reader).
+
+---
+
+## 🕒 Update History
+
+- **2026-03-13**:
+  - `Recents` page optimization: Reduced maximum books from 36 to 18 to save memory.
+  - `Flow Theme` optimization: Reduced carousel book count from 10 to 7 to improve stability.
+- **2026-03-12**:
+  - Added Flashcard (SRS) data support.
+  - Implemented `HomeActivity` loading cancellation for smoother navigation.
+  - Enhanced resource cleanup on activity transition to prevent memory errors.
+- **2026-03-11**:
+  - Reduced power button wake duration from 600ms to 300ms for faster responsiveness.
+  - Fixed `XTC` reading time display in `Flow Theme`.
+  - Resolved `XTH` memory allocation issues causing auto-restarts.
+- **2026-03-10**:
+  - Fixed `XTC` memory error after WiFi sync by implementing 1-bit page streaming.
+  - Optimized NTP time synchronization (force sync on connect, immediate refresh).
+  - Implemented automatic book path repair using filename and file size.
+- **2026-03-09**:
+  - Added inline "Go-to" page scrubber for XTC, EPUB, and TXT readers.
+  - Moved "Zzz" sleep indicator to top center to prevent overlap with the date.
 
 ---
 
