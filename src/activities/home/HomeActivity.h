@@ -19,7 +19,8 @@ class HomeActivity final : public Activity {
   bool recentsLoaded = false;
   bool firstRenderDone = false;
   bool coverRendered = false;      // Track if cover has been rendered once
-  bool coverBufferStored = false;  // Track if cover buffer is stored
+  bool abortLoading = false;
+  bool coverBufferStored = false;
   bool skipNextButtonCheck = false; 
   uint8_t* coverBuffer = nullptr;  // HomeActivity's own buffer for cover image
   uint32_t lastInputMs = 0;        // Cooldown for bounce

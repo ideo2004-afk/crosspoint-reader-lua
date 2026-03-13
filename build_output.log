@@ -17,14 +17,14 @@ Running i18n generation script from PlatformIO...
 Reading translations from: lib/I18n/translations
 Output directory: lib/I18n/
 
-Loaded 1 languages, 334 string keys
+Loaded 1 languages, 345 string keys
 Generated: lib/I18n/I18nKeys.h
 Generated: lib/I18n/I18nStrings.h
 Generated: lib/I18n/I18nStrings.cpp
 
 ✓ Code generation complete!
   Languages: 1
-  String keys: 334
+  String keys: 345
 CONFIGURATION: https://docs.platformio.org/page/boards/espressif32/esp32-c3-devkitm-1.html
 PLATFORM: Espressif 32 (55.3.37) > Espressif ESP32-C3-DevKitM-1
 HARDWARE: ESP32C3 160MHz, 320KB RAM, 16MB Flash
@@ -38,7 +38,7 @@ PACKAGES:
  - toolchain-riscv32-esp @ 14.2.0+20251107
 LDF: Library Dependency Finder -> https://bit.ly/configure-pio-ldf
 LDF Modes: Finder ~ chain, Compatibility ~ soft
-Found 70 compatible libraries
+Found 73 compatible libraries
 Scanning dependencies...
 Dependency Graph
 |-- BatteryMonitor @ 1.0.0
@@ -62,246 +62,41 @@ Dependency Graph
 |-- WiFi @ 3.3.7
 |-- DNSServer @ 3.3.7
 |-- FsHelpers
+|-- ExternalFont
 |-- EpdFont @ 1.0.0
 |-- SPI @ 3.3.7
 |-- HTTPClient @ 3.3.7
 |-- Networking @ 3.3.7
 |-- NetworkClientSecure @ 3.3.7
+|-- Update @ 3.3.7
+|-- Lua
 |-- WebServer @ 3.3.7
 Building in release mode
-Compiling .pio/build/default/src/activities/settings/SettingsActivity.cpp.o
-Compiling .pio/build/default/src/network/CrossPointWebServer.cpp.o
-In file included from src/activities/settings/SettingsActivity.cpp:9:
-src/SettingsList.h: In function 'std::vector<SettingInfo> getSettingsList()':
-src/SettingsList.h:67:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   67 |       SettingInfo::Action(StrId::STR_CTRL_H_TITLE, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from src/activities/settings/SettingsActivity.cpp:1:
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:68:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   68 |       SettingInfo::Action(StrId::STR_CTRL_H_LEFT, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:69:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   69 |       SettingInfo::Action(StrId::STR_CTRL_H_RIGHT, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:70:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   70 |       SettingInfo::Action(StrId::STR_CTRL_H_UP_DN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:73:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   73 |       SettingInfo::Action(StrId::STR_CTRL_R_TITLE, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:74:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   74 |       SettingInfo::Action(StrId::STR_CTRL_R_L_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:75:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   75 |       SettingInfo::Action(StrId::STR_CTRL_R_R_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:76:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   76 |       SettingInfo::Action(StrId::STR_CTRL_R_UP_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:77:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   77 |       SettingInfo::Action(StrId::STR_CTRL_R_DN_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:78:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   78 |       SettingInfo::Action(StrId::STR_CTRL_R_R_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:79:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   79 |       SettingInfo::Action(StrId::STR_CTRL_R_L_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:80:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   80 |       SettingInfo::Action(StrId::STR_CTRL_R_UP_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:81:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   81 |       SettingInfo::Action(StrId::STR_CTRL_R_DN_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:82:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   82 |       SettingInfo::Action(StrId::STR_CTRL_R_L_UP_DN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:83:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   83 |       SettingInfo::Action(StrId::STR_CTRL_R_R_UP_DN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:89:3: error: could not convert '{SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepScreen, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [6]{StrId::STR_DARK, StrId::STR_LIGHT, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_NONE_OPT, StrId::STR_COVER_CUSTOM})), 6}, std::allocator<StrId>()), ((const char*)"sleepScreen"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepScreenCoverMode, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [2]{StrId::STR_FIT, StrId::STR_CROP})), 2}, std::allocator<StrId>()), ((const char*)"sleepScreenCoverMode"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepScreenCoverFilter, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [3]{StrId::STR_NONE_OPT, StrId::STR_FILTER_CONTRAST, StrId::STR_INVERTED})), 3}, std::allocator<StrId>()), ((const char*)"sleepScreenCoverFilter"), StrId::STR_CAT_DISPLAY), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::statusBar, ((const char*)"statusBar"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::hideBatteryPercentage, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [3]{StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS})), 3}, std::allocator<StrId>()), ((const char*)"hideBatteryPercentage"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::refreshFrequency, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [5]{StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30})), 5}, std::allocator<StrId>()), ((const char*)"refreshFrequency"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::uiTheme, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [4]{StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED, StrId::STR_THEME_FLOW})), 4}, std::allocator<StrId>()), ((const char*)"uiTheme"), StrId::STR_CAT_DISPLAY), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::fadingFix, ((const char*)"fadingFix"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::fontFamily, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [2]{StrId::STR_BOOKERLY, StrId::STR_NOTO_SANS})), 2}, std::allocator<StrId>()), ((const char*)"fontFamily"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::fontSize, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [4]{StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE, StrId::STR_X_LARGE})), 4}, std::allocator<StrId>()), ((const char*)"fontSize"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::lineSpacing, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [3]{StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE})), 3}, std::allocator<StrId>()), ((const char*)"lineSpacing"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::paragraphAlignment, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [5]{StrId::STR_JUSTIFY, StrId::STR_ALIGN_LEFT, StrId::STR_CENTER, StrId::STR_ALIGN_RIGHT, StrId::STR_BOOK_S_STYLE})), 5}, std::allocator<StrId>()), ((const char*)"paragraphAlignment"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::embeddedStyle, ((const char*)"embeddedStyle"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::hyphenationEnabled, ((const char*)"hyphenationEnabled"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::orientation, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [4]{StrId::STR_PORTRAIT, StrId::STR_LANDSCAPE_CW, StrId::STR_INVERTED, StrId::STR_LANDSCAPE_CCW})), 4}, std::allocator<StrId>()), ((const char*)"orientation"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::extraParagraphSpacing, ((const char*)"extraParagraphSpacing"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::textAntiAliasing, ((const char*)"textAntiAliasing"), StrId::STR_CAT_READER), <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepTimeout, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [5]{StrId::STR_MIN_1, StrId::STR_MIN_5, StrId::STR_MIN_10, StrId::STR_MIN_15, StrId::STR_MIN_30})), 5}, std::allocator<StrId>()), ((const char*)"sleepTimeout"), StrId::STR_CAT_SYSTEM)}' from '<brace-enclosed initializer list>' to 'std::vector<SettingInfo>'
-   89 |   };
-      |   ^
-      |   |
-      |   <brace-enclosed initializer list>
-*** [.pio/build/default/src/activities/settings/SettingsActivity.cpp.o] Error 1
-In file included from src/network/CrossPointWebServer.cpp:14:
-src/SettingsList.h: In function 'std::vector<SettingInfo> getSettingsList()':
-src/SettingsList.h:67:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   67 |       SettingInfo::Action(StrId::STR_CTRL_H_TITLE, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-In file included from src/SettingsList.h:8:
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:68:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   68 |       SettingInfo::Action(StrId::STR_CTRL_H_LEFT, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:69:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   69 |       SettingInfo::Action(StrId::STR_CTRL_H_RIGHT, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:70:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   70 |       SettingInfo::Action(StrId::STR_CTRL_H_UP_DN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:73:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   73 |       SettingInfo::Action(StrId::STR_CTRL_R_TITLE, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:74:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   74 |       SettingInfo::Action(StrId::STR_CTRL_R_L_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:75:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   75 |       SettingInfo::Action(StrId::STR_CTRL_R_R_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:76:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   76 |       SettingInfo::Action(StrId::STR_CTRL_R_UP_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:77:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   77 |       SettingInfo::Action(StrId::STR_CTRL_R_DN_BTN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:78:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   78 |       SettingInfo::Action(StrId::STR_CTRL_R_R_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:79:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   79 |       SettingInfo::Action(StrId::STR_CTRL_R_L_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:80:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   80 |       SettingInfo::Action(StrId::STR_CTRL_R_UP_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:81:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   81 |       SettingInfo::Action(StrId::STR_CTRL_R_DN_LONG, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:82:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   82 |       SettingInfo::Action(StrId::STR_CTRL_R_L_UP_DN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:83:26: error: no matching function for call to 'SettingInfo::Action(StrId, SettingAction, StrId)'
-   83 |       SettingInfo::Action(StrId::STR_CTRL_R_R_UP_DN, SettingAction::None, StrId::STR_CAT_CONTROLS),
-      |       ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note: candidate: 'static SettingInfo SettingInfo::Action(StrId, SettingAction)'
-   72 |   static SettingInfo Action(StrId nameId, SettingAction action) {
-      |                      ^~~~~~
-src/activities/settings/SettingsActivity.h:72:22: note:   candidate expects 2 arguments, 3 provided
-src/SettingsList.h:89:3: error: could not convert '{SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepScreen, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [6]{StrId::STR_DARK, StrId::STR_LIGHT, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_NONE_OPT, StrId::STR_COVER_CUSTOM})), 6}, std::allocator<StrId>()), ((const char*)"sleepScreen"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepScreenCoverMode, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [2]{StrId::STR_FIT, StrId::STR_CROP})), 2}, std::allocator<StrId>()), ((const char*)"sleepScreenCoverMode"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepScreenCoverFilter, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [3]{StrId::STR_NONE_OPT, StrId::STR_FILTER_CONTRAST, StrId::STR_INVERTED})), 3}, std::allocator<StrId>()), ((const char*)"sleepScreenCoverFilter"), StrId::STR_CAT_DISPLAY), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::statusBar, ((const char*)"statusBar"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::hideBatteryPercentage, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [3]{StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS})), 3}, std::allocator<StrId>()), ((const char*)"hideBatteryPercentage"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::refreshFrequency, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [5]{StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30})), 5}, std::allocator<StrId>()), ((const char*)"refreshFrequency"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::uiTheme, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [4]{StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED, StrId::STR_THEME_FLOW})), 4}, std::allocator<StrId>()), ((const char*)"uiTheme"), StrId::STR_CAT_DISPLAY), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::fadingFix, ((const char*)"fadingFix"), StrId::STR_CAT_DISPLAY), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::fontFamily, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [2]{StrId::STR_BOOKERLY, StrId::STR_NOTO_SANS})), 2}, std::allocator<StrId>()), ((const char*)"fontFamily"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::fontSize, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [4]{StrId::STR_SMALL, StrId::STR_MEDIUM, StrId::STR_LARGE, StrId::STR_X_LARGE})), 4}, std::allocator<StrId>()), ((const char*)"fontSize"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::lineSpacing, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [3]{StrId::STR_TIGHT, StrId::STR_NORMAL, StrId::STR_WIDE})), 3}, std::allocator<StrId>()), ((const char*)"lineSpacing"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::paragraphAlignment, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [5]{StrId::STR_JUSTIFY, StrId::STR_ALIGN_LEFT, StrId::STR_CENTER, StrId::STR_ALIGN_RIGHT, StrId::STR_BOOK_S_STYLE})), 5}, std::allocator<StrId>()), ((const char*)"paragraphAlignment"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::embeddedStyle, ((const char*)"embeddedStyle"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::hyphenationEnabled, ((const char*)"hyphenationEnabled"), StrId::STR_CAT_READER), SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::orientation, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [4]{StrId::STR_PORTRAIT, StrId::STR_LANDSCAPE_CW, StrId::STR_INVERTED, StrId::STR_LANDSCAPE_CCW})), 4}, std::allocator<StrId>()), ((const char*)"orientation"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::extraParagraphSpacing, ((const char*)"extraParagraphSpacing"), StrId::STR_CAT_READER), SettingInfo::Toggle(StrId, uint8_t CrossPointSettings::*, const char*, StrId)(&CrossPointSettings::textAntiAliasing, ((const char*)"textAntiAliasing"), StrId::STR_CAT_READER), <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, <expression error>, SettingInfo::Enum(StrId, uint8_t CrossPointSettings::*, std::vector<StrId>, const char*, StrId)(&CrossPointSettings::sleepTimeout, std::vector<StrId>(std::initializer_list<StrId>{((const StrId*)(& const StrId [5]{StrId::STR_MIN_1, StrId::STR_MIN_5, StrId::STR_MIN_10, StrId::STR_MIN_15, StrId::STR_MIN_30})), 5}, std::allocator<StrId>()), ((const char*)"sleepTimeout"), StrId::STR_CAT_SYSTEM)}' from '<brace-enclosed initializer list>' to 'std::vector<SettingInfo>'
-   89 |   };
-      |   ^
-      |   |
-      |   <brace-enclosed initializer list>
-*** [.pio/build/default/src/network/CrossPointWebServer.cpp.o] Error 1
-========================== [FAILED] Took 8.31 seconds ==========================
+Compiling .pio/build/default/src/PathRepairManager.cpp.o
+Compiling .pio/build/default/src/activities/network/FileTransferActivity.cpp.o
+Compiling .pio/build/default/src/activities/network/NetworkModeSelectionActivity.cpp.o
+Compiling .pio/build/default/src/activities/network/WifiSelectionActivity.cpp.o
+Compiling .pio/build/default/src/activities/reader/EpubReaderActivity.cpp.o
+Compiling .pio/build/default/src/activities/reader/EpubReaderChapterSelectionActivity.cpp.o
+Compiling .pio/build/default/src/activities/reader/EpubReaderMenuActivity.cpp.o
+Compiling .pio/build/default/src/activities/reader/EpubReaderPercentSelectionActivity.cpp.o
+src/PathRepairManager.cpp: In static member function 'static std::string PathRepairManager::recursiveSearch(const std::string&, const std::string&, uint32_t)':
+src/PathRepairManager.cpp:24:27: error: no matching function for call to 'FsFile::openNextFile(FsFile*, int)'
+   24 |   while (file.openNextFile(&dir, O_RDONLY)) {
+      |          ~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+In file included from .pio/libdeps/default/SdFat/src/FsLib/FsLib.h:30,
+                 from .pio/libdeps/default/SdFat/src/SdFat.h:32,
+                 from /Users/lee/Documents/XTEINK X4/tools/crosspoint-reader/open-x4-sdk/libs/hardware/SDCardManager/include/SDCardManager.h:6,
+                 from lib/hal/HalStorage.h:4,
+                 from src/PathRepairManager.cpp:2:
+.pio/libdeps/default/SdFat/src/FsLib/FsFile.h:929:10: note: candidate: 'FsFile FsFile::openNextFile(oflag_t)'
+  929 |   FsFile openNextFile(oflag_t oflag = O_RDONLY) {
+      |          ^~~~~~~~~~~~
+.pio/libdeps/default/SdFat/src/FsLib/FsFile.h:929:10: note:   candidate expects 1 argument, 2 provided
+*** [.pio/build/default/src/PathRepairManager.cpp.o] Error 1
+========================= [FAILED] Took 10.00 seconds =========================
 
 Environment    Status    Duration
 -------------  --------  ------------
-default        FAILED    00:00:08.310
-==================== 1 failed, 0 succeeded in 00:00:08.310 ====================
+default        FAILED    00:00:09.995
+==================== 1 failed, 0 succeeded in 00:00:09.995 ====================

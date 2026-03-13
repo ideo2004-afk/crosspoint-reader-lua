@@ -199,9 +199,13 @@ bool JsonSettingsIO::saveRecentBooks(const RecentBooksStore& store, const char* 
     obj["fileSize"] = book.fileSize;
   }
 
-  String json;
-  serializeJson(doc, json);
-  return Storage.writeFile(path, json);
+  FsFile file;
+  if (Storage.openFileForWrite("RBS", path, file)) {
+    serializeJson(doc, file);
+    file.close();
+    return true;
+  }
+  return false;
 }
 
 bool JsonSettingsIO::loadRecentBooks(RecentBooksStore& store, const char* json) {

@@ -100,7 +100,8 @@ void CrossPointWebServerActivity::onExit() {
 
   Serial.printf("[%lu] [WEBACT] Setting WiFi mode OFF...\n", millis());
   WiFi.mode(WIFI_OFF);
-  delay(100);  // Allow WiFi hardware to fully power down
+  delay(500);  // Give more time for driver to release memory
+  yield();
 
   Serial.printf("[%lu] [WEBACT] [MEM] Free heap after WiFi disconnect: %d bytes\n", millis(), ESP.getFreeHeap());
 

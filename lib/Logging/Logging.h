@@ -44,13 +44,16 @@ void logPrintf(const char* level, const char* origin, const char* format, ...);
 
 #if LOG_LEVEL >= 2
 #define LOG_DBG(origin, format, ...) logPrintf("[DBG]", origin, format "\n", ##__VA_ARGS__)
+#define LOG_MEM(origin, msg) logPrintf("[MEM]", origin, "%s - Free heap: %u\n", msg, ESP.getFreeHeap())
 #else
 #define LOG_DBG(origin, format, ...)
+#define LOG_MEM(origin, msg)
 #endif
 #else
 #define LOG_DBG(origin, format, ...)
 #define LOG_ERR(origin, format, ...)
 #define LOG_INF(origin, format, ...)
+#define LOG_MEM(origin, msg)
 #endif
 
 class MySerialImpl : public Print {

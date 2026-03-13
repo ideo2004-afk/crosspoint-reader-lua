@@ -1,0 +1,83 @@
+#title:中級學術字彙 L3-L4
+alternative|noun|可供選擇的事物|We need to find an alternative to fossil fuels.|我們需要找到化石燃料的替代方案。
+alternative|adj.|可替代的、可供選擇的；非傳統的、另類的|She suggested an alternative plan for the trip.|她提出了另一個旅行方案。
+circumstance|noun|條件、狀況、環境|Under no circumstance should you open that door.|在任何情況下你都不應該打開那扇門。
+considerable|adj.|相當大的、相當多的、可觀的|She spent a considerable amount of time on the project.|她在這個專案上花了相當多的時間。
+constant|adj.|連續不斷的、固定的|The constant noise from the traffic is annoying.|交通的持續噪音令人煩躁。
+contribute|verb|貢獻、捐款；投稿、撰稿|She contributed $100 to the charity.|她捐了一百美元給慈善機構。
+correspond|verb|一致、符合；通信|His actions don't correspond with his words.|他的行為與他說的話不一致。
+demonstrate|verb|證明、示範；遊行示威|The teacher demonstrated how to use the microscope.|老師示範了如何使用顯微鏡。
+dominate|verb|支配、統治、佔首要地位|The company dominates the global smartphone market.|這家公司主導著全球智慧型手機市場。
+emphasis|noun|強調、重點|The school places great emphasis on reading.|這所學校非常重視閱讀。
+ensure|verb|保證、確保|Please ensure that all doors are locked before leaving.|離開前請確保所有門都鎖好了。
+fund|noun/verb|資金、基金；資助|The government will fund the research project.|政府將資助這項研究計畫。
+illustrate|verb|說明、加插圖|The diagram illustrates how the system works.|這張圖說明了系統如何運作。
+immigrant|noun|移民|Many immigrants came to this country for a better life.|許多移民來到這個國家追求更好的生活。
+imply|verb|暗指、說明|Are you implying that I made a mistake?|你是在暗示我犯了錯嗎？
+initial|adj.|起初的|My initial reaction was surprise.|我最初的反應是驚訝。
+initial|noun/verb|首字母；簽署姓名首字母|Please initial each page of the contract.|請在合約的每一頁簽上姓名縮寫。
+interact|verb|互動|Children learn by interacting with others.|孩子們透過與他人互動來學習。
+layer|noun|層|The cake has three layers of chocolate cream.|這個蛋糕有三層巧克力奶油。
+locate|verb|位於、確定位置|Can you locate the nearest hospital on the map?|你能在地圖上找到最近的醫院嗎？
+outcome|noun|結果|The outcome of the election surprised everyone.|選舉結果讓所有人都感到驚訝。
+philosopher|noun|哲學家|Confucius was a great philosopher in ancient China.|孔子是古代中國偉大的哲學家。
+philosophy|noun|哲學|She studied philosophy at the university.|她在大學學習哲學。
+physical|adj./noun|身體的、物質的；體檢|Physical exercise helps reduce stress.|體能鍛煉有助於減輕壓力。
+proportion|noun|部分、比例|A large proportion of students use smartphones.|大部分的學生都使用智慧型手機。
+publish|verb|出版、刊載|She published her first novel at the age of 25.|她在二十五歲時出版了她的第一本小說。
+react|verb|反應|How did she react when she heard the news?|她聽到消息時有什麼反應？
+register|verb/noun|註冊；登記(簿)|Please register for the course online.|請在線上報名這門課程。
+rely|verb|仰賴、信賴|You can rely on me to help you.|你可以依賴我來幫助你。
+remove|verb|去除、脫去|Please remove your shoes before entering.|進入之前請脫鞋。
+scheme|noun/verb|體制、陰謀；密謀|The government announced a new housing scheme.|政府宣布了一項新的住宅計畫。
+sex|noun|性別、性|The survey asked participants about their age and sex.|調查詢問了參與者的年齡和性別。
+shift|verb/noun|變換、輪班；轉移、變換|The company shifted its focus to online sales.|公司將重心轉移到線上銷售。
+sufficient|adj.|充足的、足夠的|We have sufficient evidence to prove the case.|我們有充分的證據來證明此案。
+technical|adj.|技術的、專門的|The report contains many technical terms.|這份報告包含許多專業術語。
+technique|noun|技巧、工藝|She learned a new painting technique.|她學到了一種新的繪畫技法。
+technological|adj.|科技的|Technological advances have changed our daily lives.|科技進步改變了我們的日常生活。
+technology|noun|科技|Information technology is a fast-growing field.|資訊科技是快速成長的領域。
+access|noun/verb|通道、進入(的權利)；存取、到達、進入|Students have access to the library 24 hours a day.|學生可以全天候使用圖書館。
+adequate|adj.|足夠的、合格的|We need adequate preparation before the exam.|考試前我們需要充分的準備。
+annual|adj./noun|每年的、一年一次的；年報、年刊|The company holds an annual meeting every December.|公司每年十二月舉行年度會議。
+apparent|adj.|顯然的|It was apparent that he was not telling the truth.|很明顯他沒有說實話。
+attitude|noun|態度|A positive attitude can make a big difference.|積極的態度可以帶來很大的改變。
+civil|adj.|平民的、國家的、民事的|The country experienced a long civil war.|該國經歷了一場漫長的內戰。
+code|noun|密碼、代碼、編碼；法規、行為準則、規範|The building must meet the safety code.|這棟建築必須符合安全法規。
+code|verb|把...譯成密碼、編碼|She learned to code in Python last summer.|她去年夏天學會了用 Python 編寫程式。
+commit|verb|犯(罪、錯)；承諾、致力於、投入(時間或金錢)|He committed himself to finishing the task.|他承諾要完成這項任務。
+commitment|noun|承諾、保證、奉獻|Marriage requires a strong commitment.|婚姻需要堅定的承諾。
+communicate|verb|交流、溝通|It is important to communicate clearly with your team.|與團隊清楚溝通很重要。
+concentrate|verb|專心、專注、集中(注意力)|I can't concentrate with all this noise.|這麼吵我無法專心。
+conference|noun|會議、研討會|She attended an international conference on education.|她出席了一場國際教育研討會。
+contrast|noun/verb|差異、對比；對比、顯出明顯差異|There is a sharp contrast between the two cities.|這兩座城市之間有明顯的對比。
+cycle|noun|循環|The water cycle is essential for life on Earth.|水循環對地球上的生命至關重要。
+cycle|verb|騎自行車|She cycles to work every day.|她每天騎自行車上班。
+despite|prep.|儘管|Despite the rain, they continued the game.|儘管下雨，他們仍繼續比賽。
+domestic|adj.|家庭的；國內的|The domestic market is growing steadily.|國內市場正在穩定成長。
+emerge|verb|浮現、顯露|New evidence emerged during the investigation.|調查過程中出現了新的證據。
+grant|verb|准予、同意|The university granted her a scholarship.|大學授予她一份獎學金。
+grant|noun|補助金|He received a research grant from the government.|他獲得了政府的研究經費。
+hence|adv.|因此|He was the eldest son and hence inherited the property.|他是長子，因此繼承了財產。
+implement|verb|實施|The school plans to implement a new curriculum.|學校計畫實施新的課程。
+impose|verb|強加、徵(稅)|The government imposed a tax on imported goods.|政府對進口商品徵稅。
+internal|adj.|內部的、國內的|The company is conducting an internal investigation.|公司正在進行內部調查。
+label|noun/verb|標籤；貼標籤於、歸為|Read the label before using the product.|使用產品前請閱讀標籤。
+obvious|adj.|明顯的|The answer to the question is obvious.|這個問題的答案是顯而易見的。
+occupy|verb|佔用、忙於、佔領|The army occupied the city for three months.|軍隊佔領了這座城市三個月。
+option|noun|選擇|You have several options to choose from.|你有幾個選項可以選擇。
+output|noun|產量、輸出|The factory increased its output by 30%.|工廠的產量增加了百分之三十。
+overall|adj./adv.|全面的；全部、大致上|The overall performance of the team was excellent.|團隊的整體表現非常優秀。
+overall|noun|工作褲/服|He wore overalls to protect his clothes while painting.|他穿著工作服來保護衣服不被弄髒。
+predict|verb|預言、預測|Scientists predict that the temperature will rise.|科學家預測氣溫將會上升。
+principal|adj.|最重要的、主要的|The principal reason for the change is safety.|這項改變的主要原因是安全問題。
+professional|adj./noun|職業的、專業的；專家|She is a professional photographer.|她是一位專業攝影師。
+promote|verb|促進、推動|The company promoted her to manager.|公司將她升為經理。
+resolution|noun|決心、決議、解決|She made a New Year's resolution to exercise more.|她許下新年新希望要多運動。
+resolve|verb|解決、決心|They resolved the conflict through peaceful negotiation.|他們透過和平協商解決了衝突。
+retain|verb|保留、留住|She managed to retain her title as champion.|她成功保住了冠軍頭銜。
+series|noun|系列、連續|She watched the entire series in one weekend.|她在一個週末看完了整部影集。
+status|noun|地位、狀況|What is the current status of the project?|這個專案目前的狀態是什麼？
+sum|noun/verb|總和；共計、總結|The sum of 5 and 3 is 8.|五加三的總和是八。
+summary|noun|概要、總結|Please write a brief summary of the article.|請撰寫一篇簡短的文章摘要。
+undertake|verb|承擔、從事|She undertook the responsibility of managing the team.|她承擔了管理團隊的責任。

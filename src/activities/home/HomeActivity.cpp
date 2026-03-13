@@ -57,6 +57,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
 
   int progress = 0;
   for (RecentBook& book : recentBooks) {
+    if (abortLoading) break;
     if (!book.coverBmpPath.empty()) {
       std::string coverPath = UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
       if (!Storage.exists(coverPath.c_str())) {
@@ -127,6 +128,7 @@ void HomeActivity::onEnter() {
   firstRenderDone = false;
   recentsLoaded   = false;
   recentsLoading  = false;
+  abortLoading    = false;
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
@@ -138,6 +140,7 @@ void HomeActivity::onEnter() {
 }
 
 void HomeActivity::onExit() {
+  abortLoading = true;
   Activity::onExit();
 
   // Free the stored cover buffer if any
@@ -246,15 +249,20 @@ void HomeActivity::loop() {
     const int settingsIdx = idx++;
 
     if (focusZone == Zone::BOOKS && !recentBooks.empty()) {
+      freeCoverBuffer(); // Proactively free memory before transition
       onSelectBook(recentBooks[bookSelectorIndex].path);
     } else if (focusZone == Zone::MENU) {
       if (menuSelectorIndex == myLibraryIdx) {
+        freeCoverBuffer();
         onMyLibraryOpen();
       } else if (menuSelectorIndex == recentsIdx) {
+        freeCoverBuffer();
         onRecentsOpen();
       } else if (menuSelectorIndex == pluginsIdx) {
+        freeCoverBuffer();
         onPluginsOpen();
       } else if (menuSelectorIndex == settingsIdx) {
+        freeCoverBuffer();
         onSettingsOpen();
       }
     }
