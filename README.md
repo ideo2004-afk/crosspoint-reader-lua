@@ -14,7 +14,7 @@ Experience a premium, classic interface inspired by the iPod. The **Flow Theme**
 
 ### 2. Full CJK Support & Proper Rendering
 
-Unlock high-quality reading for Traditional Chinese and other CJK languages. The system correctly displays **Chinese filenames** and ensures perfect **Chinese EPUB rendering** when external fonts are provided.
+Unlock high-quality reading for Traditional Chinese and other CJK languages. The system correctly displays **Chinese filenames** and ensures **Chinese EPUB rendering** when external fonts are provided.
 
 ### 3. Advanced Recent Page
 
