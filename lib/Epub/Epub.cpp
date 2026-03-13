@@ -817,6 +817,13 @@ size_t Epub::getBookSize() const {
   }
   return getCumulativeSpineItemSize(getSpineItemsCount() - 1);
 }
+size_t Epub::getFileSize() const {
+  FsFile f = Storage.open(filepath.c_str());
+  if (!f) return 0;
+  size_t s = f.size();
+  f.close();
+  return s;
+}
 
 int Epub::getSpineIndexForTextReference() const {
   if (!bookMetadataCache || !bookMetadataCache->isLoaded()) {

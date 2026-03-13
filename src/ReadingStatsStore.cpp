@@ -57,6 +57,16 @@ void ReadingStatsStore::recordOpen(const std::string& path, const std::string& t
   pruneBooks();
 }
 
+void ReadingStatsStore::updatePath(const std::string& oldPath, const std::string& newPath) {
+  auto it = books.find(oldPath);
+  if (it != books.end()) {
+    BookStats stats = it->second;
+    stats.path = newPath;
+    books[newPath] = stats;
+    books.erase(it);
+  }
+}
+
 std::vector<BookStats> ReadingStatsStore::getTopBooks(size_t limit) const {
   std::vector<BookStats> allBooks;
   for (const auto& pair : books) {

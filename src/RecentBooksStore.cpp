@@ -9,6 +9,7 @@
 
 #include <algorithm>
 
+#include "PathRepairManager.h"
 #include "util/StringUtils.h"
 
 namespace {
@@ -22,7 +23,7 @@ constexpr int MAX_RECENT_BOOKS = 36;
 RecentBooksStore RecentBooksStore::instance;
 
 void RecentBooksStore::addBook(const std::string& path, const std::string& title, const std::string& author,
-                               const std::string& coverBmpPath) {
+                               const std::string& coverBmpPath, uint32_t fileSize) {
   // Remove existing entry if present
   auto it =
       std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
@@ -31,7 +32,7 @@ void RecentBooksStore::addBook(const std::string& path, const std::string& title
   }
 
   // Add to front
-  recentBooks.insert(recentBooks.begin(), {path, title, author, coverBmpPath});
+  recentBooks.insert(recentBooks.begin(), {path, title, author, coverBmpPath, fileSize});
 
   // Trim to max size
   if (recentBooks.size() > MAX_RECENT_BOOKS) {
@@ -42,7 +43,7 @@ void RecentBooksStore::addBook(const std::string& path, const std::string& title
 }
 
 void RecentBooksStore::updateBook(const std::string& path, const std::string& title, const std::string& author,
-                                  const std::string& coverBmpPath) {
+                                  const std::string& coverBmpPath, uint32_t fileSize) {
   auto it =
       std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
   if (it != recentBooks.end()) {
@@ -50,6 +51,7 @@ void RecentBooksStore::updateBook(const std::string& path, const std::string& ti
     book.title = title;
     book.author = author;
     book.coverBmpPath = coverBmpPath;
+    book.fileSize = fileSize;
     saveToFile();
   }
 }
@@ -68,34 +70,73 @@ RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
 
   LOG_DBG("RBS", "Loading recent book: %s", path.c_str());
 
+  uint32_t fileSize = 0;
+  FsFile file;
+  if (Storage.openFileForRead("RBS", path, file)) {
+    fileSize = file.fileSize();
+    file.close();
+  }
+
   // If epub, try to load the metadata for title/author and cover.
   // Use buildIfMissing=false to avoid heavy epub loading on boot; getTitle()/getAuthor() may be
   // blank until the book is opened, and entries with missing title are omitted from recent list.
   if (StringUtils::checkFileExtension(lastBookFileName, ".epub")) {
     Epub epub(path, "/.crosspoint");
     epub.load(false, true);
-    return RecentBook{path, epub.getTitle(), epub.getAuthor(), epub.getThumbBmpPath()};
+    return RecentBook{path, epub.getTitle(), epub.getAuthor(), epub.getThumbBmpPath(), fileSize};
   } else if (StringUtils::checkFileExtension(lastBookFileName, ".xtch") ||
              StringUtils::checkFileExtension(lastBookFileName, ".xtc")) {
     // Handle XTC file
     Xtc xtc(path, "/.crosspoint");
     if (xtc.load()) {
-      return RecentBook{path, xtc.getTitle(), xtc.getAuthor(), xtc.getThumbBmpPath()};
+      return RecentBook{path, xtc.getTitle(), xtc.getAuthor(), xtc.getThumbBmpPath(), fileSize};
     }
   } else if (StringUtils::checkFileExtension(lastBookFileName, ".txt") ||
              StringUtils::checkFileExtension(lastBookFileName, ".md")) {
-    return RecentBook{path, lastBookFileName, "", ""};
+    return RecentBook{path, lastBookFileName, "", "", fileSize};
   }
-  return RecentBook{path, "", "", ""};
+  return RecentBook{path, "", "", "", fileSize};
+}
+
+void RecentBooksStore::updatePath(const std::string& oldPath, const std::string& newPath) {
+  for (auto& book : recentBooks) {
+    if (book.path == oldPath) {
+      if (!book.coverBmpPath.empty()) {
+        std::string oldHash = std::to_string(std::hash<std::string>{}(oldPath));
+        std::string newHash = std::to_string(std::hash<std::string>{}(newPath));
+        size_t pos = book.coverBmpPath.find(oldHash);
+        if (pos != std::string::npos) {
+          book.coverBmpPath.replace(pos, oldHash.length(), newHash);
+        }
+      }
+      book.path = newPath;
+      break;
+    }
+  }
 }
 
 int RecentBooksStore::cleanupMissingBooks() {
   int removed = 0;
+  int repaired = 0;
   auto it = recentBooks.begin();
   while (it != recentBooks.end()) {
     if (Storage.exists(it->path.c_str())) {
       ++it;
       continue;
+    }
+
+    // Try to find if the file was moved
+    std::string newPath = PathRepairManager::findMovedFile(it->path, it->fileSize);
+    if (!newPath.empty()) {
+      std::string oldPath = it->path;
+      if (PathRepairManager::repairPath(oldPath, newPath)) {
+        // Path has been updated in internal stores by repairPath, 
+        // update local iterator to continue scan
+        it->path = newPath;
+        repaired++;
+        ++it;
+        continue;
+      }
     }
 
     // Compute cache directory path (same formula as Epub/Xtc/Txt constructors)
@@ -121,8 +162,8 @@ int RecentBooksStore::cleanupMissingBooks() {
     removed++;
   }
 
-  if (removed > 0) {
-    LOG_INF("RBS", "Cleaned up %d missing book(s), saving recent.json", removed);
+  if (removed > 0 || repaired > 0) {
+    LOG_INF("RBS", "Cleaned up %d missing book(s), repaired %d, saving recent.json", removed, repaired);
     saveToFile();
   }
   return removed;
@@ -175,7 +216,7 @@ bool RecentBooksStore::loadFromBinaryFile() {
         std::string title, author;
         serialization::readString(inputFile, title);
         serialization::readString(inputFile, author);
-        recentBooks.push_back({path, title, author, ""});
+        recentBooks.push_back({path, title, author, "", 0});
       } else {
         recentBooks.push_back(book);
       }
@@ -201,7 +242,7 @@ bool RecentBooksStore::loadFromBinaryFile() {
         continue;
       }
 
-      recentBooks.push_back({path, title, author, coverBmpPath});
+      recentBooks.push_back({path, title, author, coverBmpPath, 0});
     }
 
     if (omitted > 0) {

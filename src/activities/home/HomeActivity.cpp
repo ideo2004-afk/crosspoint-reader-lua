@@ -15,6 +15,7 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
+#include "PathRepairManager.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -29,6 +30,7 @@ int HomeActivity::getMenuItemCount() const {
 }
 
 void HomeActivity::loadRecentBooks(int maxBooks) {
+  RECENT_BOOKS.cleanupMissingBooks();
   recentBooks.clear();
   const auto& books = RECENT_BOOKS.getBooks();
   recentBooks.reserve(std::min(static_cast<int>(books.size()), maxBooks));
@@ -76,7 +78,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             // For transient failures (memory, read error) keep the path
             // so generation can succeed on the next fresh launch.
             if (!Storage.exists(book.path.c_str())) {
-              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
               book.coverBmpPath = "";
             }
           }
@@ -99,7 +101,7 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
               // Large XTC files may fail due to heap fragmentation after
               // reading — keep the path so generation retries on next launch.
               if (!Storage.exists(book.path.c_str())) {
-                RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+                RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
                 book.coverBmpPath = "";
               }
             }

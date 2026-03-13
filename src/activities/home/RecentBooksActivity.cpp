@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "MappedInputManager.h"
+#include "PathRepairManager.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -57,7 +58,7 @@ void RecentBooksActivity::loadRecentCovers(int coverHeight) {
           
           bool success = epub.generateThumbBmp(coverHeight);
           if (!success) {
-            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
             book.coverBmpPath = "";
           }
           requestUpdate();
@@ -73,7 +74,7 @@ void RecentBooksActivity::loadRecentCovers(int coverHeight) {
             GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
             bool success = xtc.generateThumbBmp(coverHeight);
             if (!success) {
-              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
               book.coverBmpPath = "";
             }
             requestUpdate();

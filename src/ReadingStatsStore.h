@@ -36,6 +36,7 @@ class ReadingStatsStore {
 
   void addReadingTime(const std::string& path, const std::string& title, uint32_t seconds);
   void recordOpen(const std::string& path, const std::string& title);
+  void updatePath(const std::string& oldPath, const std::string& newPath);
   std::vector<BookStats> getTopBooks(size_t limit) const;
 
   bool saveToFile() const;

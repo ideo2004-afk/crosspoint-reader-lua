@@ -80,6 +80,14 @@ void Xtc::setupCacheDir() const {
   Storage.mkdir(cachePath.c_str());
 }
 
+size_t Xtc::getFileSize() const {
+  FsFile f = Storage.open(filepath.c_str());
+  if (!f) return 0;
+  size_t s = f.size();
+  f.close();
+  return s;
+}
+
 std::string Xtc::getTitle() const {
   if (!loaded || !parser) {
     return "";

@@ -58,6 +58,7 @@ class Xtc {
   const std::string& getPath() const { return filepath; }
 
   // Metadata
+  size_t getFileSize() const;
   std::string getTitle() const;
   std::string getAuthor() const;
   bool hasChapters() const;
