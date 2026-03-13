@@ -7,6 +7,12 @@
 
 #include "XtcReaderActivity.h"
 
+#include <esp_system.h>
+
+// Survives esp_restart() — used to detect if we just restarted due to malloc failure.
+// Prevents infinite restart loops if the allocation truly cannot succeed.
+RTC_DATA_ATTR static uint8_t xtcMallocRestartFlag = 0;
+
 XtcReaderActivity::~XtcReaderActivity() {
   if (pageBuffer) {
     free(pageBuffer);
@@ -380,11 +386,26 @@ void XtcReaderActivity::renderPage(bool triggerDisplay) {
       if (!pageBuffer) {
         LOG_ERR("XTR", "Failed to allocate page buffer (%lu bytes)", pageBufferSize);
         pageBufferCapacity = 0;
-        renderer.clearScreen();
-        renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_MEMORY_ERROR), true, EpdFontFamily::BOLD);
-        renderer.displayBuffer();
+        if (xtcMallocRestartFlag == 0) {
+          // First malloc failure: save progress and restart to defragment heap.
+          // X4 reboots in ~2s, so this is acceptable UX.
+          xtcMallocRestartFlag = 1;
+          saveProgress();
+          renderer.clearScreen();
+          renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory low\nRestarting...", true, EpdFontFamily::BOLD);
+          renderer.displayBuffer();
+          delay(1500);
+          esp_restart();
+        } else {
+          // Already restarted once and still failing — show error, don't loop.
+          xtcMallocRestartFlag = 0;
+          renderer.clearScreen();
+          renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_MEMORY_ERROR), true, EpdFontFamily::BOLD);
+          renderer.displayBuffer();
+        }
         return;
       }
+      xtcMallocRestartFlag = 0;  // Successful alloc — clear restart guard
       pageBufferCapacity = pageBufferSize;
       LOG_DBG("XTR", "Allocated page buffer: %lu bytes", pageBufferCapacity);
     }

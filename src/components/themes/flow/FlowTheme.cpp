@@ -180,8 +180,12 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         renderer.drawText(BOOKERLY_14_FONT_ID, centerX - titleWidth / 2, titleY, truncatedTitle.c_str(), true);
 
         // Draw reading time for THIS book below the title
+        // books map is keyed by filename (basename), not full path
         uint32_t bookSeconds = 0;
-        auto it = READING_STATS.books.find(recentBooks[curIdx].path);
+        const std::string& bookPath = recentBooks[curIdx].path;
+        const size_t bookSlash = bookPath.find_last_of('/');
+        const std::string bookFilename = (bookSlash != std::string::npos) ? bookPath.substr(bookSlash + 1) : bookPath;
+        auto it = READING_STATS.books.find(bookFilename);
         if (it != READING_STATS.books.end()) {
             bookSeconds = it->second.readingSeconds;
         }
