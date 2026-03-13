@@ -26,7 +26,7 @@ void RecentBooksActivity::loadRecentBooks() {
 
   recentBooks.clear();
   const auto& books = RECENT_BOOKS.getBooks();
-  const int maxBooks = BOOKS_PER_PAGE * 4;  // Up to 4 pages
+  const int maxBooks = BOOKS_PER_PAGE * 2;  // Up to 2 pages (18 books)
   recentBooks.reserve(std::min((int)books.size(), maxBooks));
 
   for (const auto& book : books) {
