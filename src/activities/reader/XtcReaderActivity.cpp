@@ -43,6 +43,8 @@ void XtcReaderActivity::onEnter() {
     return;
   }
 
+  LOG_MEM("XTR", "Entering XtcReaderActivity");
+
   xtc->setupCacheDir();
 
   // Load saved progress
@@ -367,64 +369,41 @@ void XtcReaderActivity::renderPage(bool triggerDisplay) {
   const uint16_t pageHeight = xtc->getPageHeight();
   const uint8_t bitDepth = xtc->getBitDepth();
 
-  // Calculate buffer size for one page
-  // XTG (1-bit): Row-major, ((width+7)/8) * height bytes
-  // XTH (2-bit): Two bit planes, column-major, ((width * height + 7) / 8) * 2 bytes
-  size_t pageBufferSize;
   if (bitDepth == 2) {
-    pageBufferSize = ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
-  } else {
-    pageBufferSize = ((pageWidth + 7) / 8) * pageHeight;
-  }
+    // XTH 2-bit: column-major dual-plane format requires full page buffer
+    const size_t pageBufferSize = ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
 
-  // Allocate or resize page buffer if needed
-  if (!pageBuffer || pageBufferSize > pageBufferCapacity) {
-    if (pageBuffer) {
-      free(pageBuffer);
+    if (!pageBuffer || pageBufferSize > pageBufferCapacity) {
+      if (pageBuffer) { free(pageBuffer); }
+      LOG_MEM("XTR", "Allocating page buffer");
+      pageBuffer = static_cast<uint8_t*>(malloc(pageBufferSize));
+      if (!pageBuffer) {
+        LOG_ERR("XTR", "Failed to allocate page buffer (%lu bytes)", pageBufferSize);
+        pageBufferCapacity = 0;
+        renderer.clearScreen();
+        renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_MEMORY_ERROR), true, EpdFontFamily::BOLD);
+        renderer.displayBuffer();
+        return;
+      }
+      pageBufferCapacity = pageBufferSize;
+      LOG_DBG("XTR", "Allocated page buffer: %lu bytes", pageBufferCapacity);
     }
-    pageBuffer = static_cast<uint8_t*>(malloc(pageBufferSize));
-    if (!pageBuffer) {
-      LOG_ERR("XTR", "Failed to allocate page buffer (%lu bytes)", pageBufferSize);
-      pageBufferCapacity = 0;
+
+    size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, pageBufferSize);
+    if (bytesRead == 0) {
+      LOG_ERR("XTR", "Failed to load page %lu", currentPage);
       renderer.clearScreen();
-      renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_MEMORY_ERROR), true, EpdFontFamily::BOLD);
+      renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_PAGE_LOAD_ERROR), true, EpdFontFamily::BOLD);
       renderer.displayBuffer();
       return;
     }
-    pageBufferCapacity = pageBufferSize;
-    LOG_DBG("XTR", "Allocated page buffer: %lu bytes", pageBufferCapacity);
-  }
 
-  // Load page data
-  size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, pageBufferSize);
-  if (bytesRead == 0) {
-    LOG_ERR("XTR", "Failed to load page %lu", currentPage);
-    // Note: we don't free the buffer here, we keep it for potential future successful loads
-    renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_PAGE_LOAD_ERROR), true, EpdFontFamily::BOLD);
-    renderer.displayBuffer();
-    return;
-  }
+    renderer.clearScreen(SETTINGS.darkMode ? 0x00 : 0xFF);
 
-  // Clear screen first - black in dark mode, white otherwise
-  renderer.clearScreen(SETTINGS.darkMode ? 0x00 : 0xFF);
-
-  // Copy page bitmap using GfxRenderer's drawPixel
-  // XTC/XTCH pages are pre-rendered with status bar included, so render full page
-  const uint16_t maxSrcY = pageHeight;
-
-  if (bitDepth == 2) {
-    // XTH 2-bit mode: Two bit planes, column-major order
-    // - Columns scanned right to left (x = width-1 down to 0)
-    // - 8 vertical pixels per byte (MSB = topmost pixel in group)
-    // - First plane: Bit1, Second plane: Bit2
-    // - Pixel value = (bit1 << 1) | bit2
-    // - Grayscale: 0=White, 1=Dark Grey, 2=Light Grey, 3=Black
-
-    const size_t planeSize = (static_cast<size_t>(pageWidth) * pageHeight + 7) / 8;
-    const uint8_t* plane1 = pageBuffer;              // Bit1 plane
-    const uint8_t* plane2 = pageBuffer + planeSize;  // Bit2 plane
-    const size_t colBytes = (pageHeight + 7) / 8;    // Bytes per column (100 for 800 height)
+    const size_t planeSize = pageBufferSize / 2;
+    const uint8_t* plane1 = pageBuffer;
+    const uint8_t* plane2 = pageBuffer + planeSize;
+    const size_t colBytes = (pageHeight + 7) / 8;
 
     auto getPixelValue = [&](uint16_t x, uint16_t y) -> uint8_t {
       const size_t colIndex = pageWidth - 1 - x;
@@ -436,29 +415,12 @@ void XtcReaderActivity::renderPage(bool triggerDisplay) {
       return (bit1 << 1) | bit2;
     };
 
-    // Optimized grayscale rendering without storeBwBuffer (saves 48KB peak memory)
-    // Flow: BW display → LSB/MSB passes → grayscale display → re-render BW for next frame
-
-
-    // Pass 1: BW buffer - draw pixels (inverted in Dark Mode)
-    for (uint16_t y = 0; y < pageHeight; y++) {
+    for (uint16_t y = 0; y < pageHeight; y++)
       for (uint16_t x = 0; x < pageWidth; x++) {
         const uint8_t val = getPixelValue(x, y);
-        if (SETTINGS.darkMode) {
-          // Dark Mode: Background is Black. Draw original darker pixels (val>=1) as White (false).
-          if (val >= 1) {
-            renderer.drawPixel(x, y, false);
-          }
-        } else {
-          // Normal Mode: Background is White. Draw non-White (val>=1) as Black (true).
-          if (val >= 1) {
-            renderer.drawPixel(x, y, true);
-          }
-        }
+        if (val >= 1) renderer.drawPixel(x, y, SETTINGS.darkMode ? false : true);
       }
-    }
 
-    // Display BW with conditional refresh based on pagesUntilFullRefresh
     if (triggerDisplay) {
       if (pagesUntilFullRefresh <= 1) {
         renderer.displayBuffer(HalDisplay::HALF_REFRESH);
@@ -469,97 +431,66 @@ void XtcReaderActivity::renderPage(bool triggerDisplay) {
       }
     }
 
-    // Pass 2 & 3: Skip grayscale overlay in Dark Mode to ensure high contrast
     if (!SETTINGS.darkMode) {
-      // (Keep existing Pass 2 & 3 logic for normal mode)
       renderer.clearScreen(0x00);
-      for (uint16_t y = 0; y < pageHeight; y++) {
-        for (uint16_t x = 0; x < pageWidth; x++) {
-          if (getPixelValue(x, y) == 1) {  // Dark grey only
-            renderer.drawPixel(x, y, false);
-          }
-        }
-      }
+      for (uint16_t y = 0; y < pageHeight; y++)
+        for (uint16_t x = 0; x < pageWidth; x++)
+          if (getPixelValue(x, y) == 1) renderer.drawPixel(x, y, false);
       renderer.copyGrayscaleLsbBuffers();
 
       renderer.clearScreen(0x00);
-      for (uint16_t y = 0; y < pageHeight; y++) {
+      for (uint16_t y = 0; y < pageHeight; y++)
         for (uint16_t x = 0; x < pageWidth; x++) {
           const uint8_t pv = getPixelValue(x, y);
-          if (pv == 1 || pv == 2) {  // Dark grey or Light grey
-            renderer.drawPixel(x, y, false);
-          }
+          if (pv == 1 || pv == 2) renderer.drawPixel(x, y, false);
         }
-      }
       renderer.copyGrayscaleMsbBuffers();
-      if (triggerDisplay) {
-        renderer.displayGrayBuffer();
-      }
+      if (triggerDisplay) renderer.displayGrayBuffer();
 
-      // Pass 4: Re-render BW to framebuffer (RESTORE for next frame)
-      // We ONLY do this in normal mode because in Dark Mode, Pass 1 already left the correct inverted image in the buffer.
       renderer.clearScreen(0xFF);
-      for (uint16_t y = 0; y < pageHeight; y++) {
-        for (uint16_t x = 0; x < pageWidth; x++) {
-          if (getPixelValue(x, y) >= 1) {
-            renderer.drawPixel(x, y, true);
-          }
-        }
-      }
-      if (triggerDisplay) {
-        renderer.cleanupGrayscaleWithFrameBuffer();
-      }
-    } else {
-        // In Dark Mode, we don't need to re-render. Pass 1 already drew the inverted page.
-        // But we MUST re-render the status bar so it appears on the PHYSICAL screen if it wasn't part of the BW pass.
+      for (uint16_t y = 0; y < pageHeight; y++)
+        for (uint16_t x = 0; x < pageWidth; x++)
+          if (getPixelValue(x, y) >= 1) renderer.drawPixel(x, y, true);
+      if (triggerDisplay) renderer.cleanupGrayscaleWithFrameBuffer();
     }
 
-    // Overlay status bar on top of the rendered page bitmap
     renderBookmarkIndicator();
     renderStatusBar();
-    
-    // In Dark Mode, because we didn't call displayGrayBuffer, we might need a final displayBuffer 
-    // to ensure the Status Bar (rendered AFTER Pass 1's displayBuffer) is actually shown.
-    if (triggerDisplay && SETTINGS.darkMode) {
-        renderer.displayBuffer(HalDisplay::FAST_REFRESH);
-    }
+    if (triggerDisplay && SETTINGS.darkMode)
+      renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
-    LOG_DBG("XTR", "Rendered page %lu/%lu (2-bit grayscale)", currentPage + 1, xtc->getPageCount());
+    LOG_DBG("XTR", "Rendered page %lu/%lu (2-bit)", currentPage + 1, xtc->getPageCount());
     return;
-  } else {
-    // 1-bit mode: 8 pixels per byte, MSB first
-    const size_t srcRowBytes = (pageWidth + 7) / 8;  // 60 bytes for 480 width
-
-    for (uint16_t srcY = 0; srcY < maxSrcY; srcY++) {
-      const size_t srcRowStart = srcY * srcRowBytes;
-
-      for (uint16_t srcX = 0; srcX < pageWidth; srcX++) {
-        // Read source pixel (MSB first, bit 7 = leftmost pixel)
-        const size_t srcByte = srcRowStart + srcX / 8;
-        const size_t srcBit = 7 - (srcX % 8);
-        const bool isBlackRaw = !((pageBuffer[srcByte] >> srcBit) & 1);  // XTC: 0 = black, 1 = white
-
-        if (SETTINGS.darkMode) {
-          // Background is Black. Draw original Black (isBlackRaw=true) as White (false).
-          if (isBlackRaw) {
-            renderer.drawPixel(srcX, srcY, false);
-          }
-        } else {
-          // Background is White. Draw original Black (isBlackRaw=true) as Black (true).
-          if (isBlackRaw) {
-            renderer.drawPixel(srcX, srcY, true);
-          }
-        }
-      }
-    }
   }
-  // White pixels are already cleared by clearScreen()
 
-  // Overlay status bar on top of the rendered page bitmap
+  // 1-bit XTC: stream row-by-row directly into the renderer framebuffer.
+  // No intermediate page buffer needed — avoids malloc(48KB) failure after
+  // WiFi stack leaves the heap too fragmented for large contiguous allocations.
+  const size_t rowBytes = (pageWidth + 7) / 8;
+  renderer.clearScreen(SETTINGS.darkMode ? 0x00 : 0xFF);
+
+  const auto loadErr = xtc->loadPageStreaming(currentPage,
+      [&](const uint8_t* data, size_t /*size*/, size_t offset) {
+        const uint16_t row = static_cast<uint16_t>(offset / rowBytes);
+        if (row >= pageHeight) return;
+        for (uint16_t x = 0; x < pageWidth; x++) {
+          const bool rawBlack = !((data[x / 8] >> (7 - (x % 8))) & 1);
+          if (rawBlack) renderer.drawPixel(x, row, !SETTINGS.darkMode);
+        }
+      },
+      rowBytes);
+
+  if (loadErr != xtc::XtcError::OK) {
+    LOG_ERR("XTR", "Failed to stream page %lu", currentPage);
+    renderer.clearScreen();
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_PAGE_LOAD_ERROR), true, EpdFontFamily::BOLD);
+    renderer.displayBuffer();
+    return;
+  }
+
   renderBookmarkIndicator();
   renderStatusBar();
 
-  // Display with appropriate refresh
   if (triggerDisplay) {
     if (pagesUntilFullRefresh <= 1) {
       renderer.displayBuffer(HalDisplay::HALF_REFRESH);
@@ -570,7 +501,7 @@ void XtcReaderActivity::renderPage(bool triggerDisplay) {
     }
   }
 
-  LOG_DBG("XTR", "Rendered page %lu/%lu (%u-bit)", currentPage + 1, xtc->getPageCount(), bitDepth);
+  LOG_DBG("XTR", "Rendered page %lu/%lu (1-bit stream)", currentPage + 1, xtc->getPageCount());
 }
 
 void XtcReaderActivity::renderStatusBar() const {
