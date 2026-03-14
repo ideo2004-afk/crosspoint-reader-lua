@@ -20,10 +20,10 @@ namespace {
 constexpr int cornerRadius = 6;
 constexpr int sideCoverWidth = 66; // 30% of 220
 constexpr int centerCoverWidth = 220;
-constexpr int centerCoverHeight = 314;
-constexpr int sideInnerHeight = 282; // 90% of 314
-constexpr int sideOuterHeight = 250; // 80% of 314
-constexpr int sideFarOuterHeight = 282; 
+constexpr int centerCoverHeight = 320;
+constexpr int sideInnerHeight = 288; // 90% of 320
+constexpr int sideOuterHeight = 256; // 80% of 320
+constexpr int sideFarOuterHeight = 288; 
 constexpr int hPadding = 10;
 constexpr int bookCornerRadius = 6;
 
@@ -118,7 +118,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
                                    const char* btn4) const {
   const bool hasRecentBooks = !recentBooks.empty();
   const int pageWidth = renderer.getScreenWidth();
-  const int centerY = rect.y + 60;
+  const int centerY = rect.y + 40; // Moved up slightly from 45 to 40 to ensure menu clearance
   const int centerX = pageWidth / 2;
   if (hasRecentBooks) {
     int count = recentBooks.size();
@@ -242,8 +242,8 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         
         auto truncatedTitle = renderer.truncatedText(BOOKERLY_14_FONT_ID, filename.c_str(), pageWidth - 40);
         int titleWidth = renderer.getTextWidth(BOOKERLY_14_FONT_ID, truncatedTitle.c_str());
-        // Draw above covers (offset from rect.y)
-        int titleY = rect.y + 15;
+        // Draw above covers (offset from rect.y, moved up to match cover move)
+        int titleY = rect.y - 5; 
         renderer.drawText(BOOKERLY_14_FONT_ID, centerX - titleWidth / 2, titleY, truncatedTitle.c_str(), true);
 
         // Draw reading time for THIS book below the title
@@ -263,8 +263,8 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         snprintf(timeStr, sizeof(timeStr), "%uh %um", hours, minutes);
         
         int timeWidth = renderer.getTextWidth(SMALL_FONT_ID, timeStr);
-        // Draw below the center cover: centerY (rect.y + 60) + centerCoverHeight (314) + 8
-        renderer.drawText(SMALL_FONT_ID, centerX - timeWidth / 2, rect.y + 60 + 314 + 8, timeStr, Color::Black);
+        // Draw below the center cover: centerY + centerCoverHeight + 8
+        renderer.drawText(SMALL_FONT_ID, centerX - timeWidth / 2, centerY + centerCoverHeight + 8, timeStr, Color::Black);
     }
     
     coverRendered = true;

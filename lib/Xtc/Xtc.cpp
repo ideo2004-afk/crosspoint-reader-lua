@@ -390,7 +390,7 @@ bool Xtc::generateThumbBmp(int height) const {
 
   // Calculate target dimensions for thumbnail (fit within 3x3 grid or Home card)
   // 25-kai book ratio (14.8×21cm ≈ 0.7)
-  const int THUMB_TARGET_WIDTH = height * 0.7;
+  const int THUMB_TARGET_WIDTH = height * 220 / 320;
   const int THUMB_TARGET_HEIGHT = height;
 
   // Detect content bounding box to remove white margins
@@ -474,7 +474,7 @@ bool Xtc::generateThumbBmp(int height) const {
   int32_t offsetX = (THUMB_TARGET_WIDTH - scaledWidth) / 2;
   int32_t offsetY = (THUMB_TARGET_HEIGHT - scaledHeight) / 2;
 
-  LOG_DBG("XTC", "Thumb (0.7 ratio): %dx%d -> %dx%d (scaled %dx%d, offset %d,%d)", 
+  LOG_DBG("XTC", "Thumb (Flow 220:320 ratio): %dx%d -> %dx%d (scaled %dx%d, offset %d,%d)", 
           contentWidth, contentHeight, THUMB_TARGET_WIDTH, THUMB_TARGET_HEIGHT, scaledWidth, scaledHeight, offsetX, offsetY);
 
   // Create thumbnail BMP file
@@ -598,7 +598,7 @@ bool Xtc::generateThumbBmpStreaming(int height) const {
     return false;
   }
 
-  const int      thumbW      = static_cast<int>(height * 0.7f);
+  const int      thumbW      = static_cast<int>(height * 220.0f / 320.0f);
   const int      thumbH      = height;
   const uint32_t srcRowBytes = (static_cast<uint32_t>(pw) + 7) / 8;
   const uint32_t dstRowSize  = (static_cast<uint32_t>(thumbW) + 31) / 32 * 4;
