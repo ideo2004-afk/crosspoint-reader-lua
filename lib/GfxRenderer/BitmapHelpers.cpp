@@ -28,13 +28,11 @@ static inline int applyGamma(int gray) {
   return x > 255 ? 255 : x;
 }
 
-// Apply contrast adjustment around midpoint (128)
-// factor > 1.0 increases contrast, < 1.0 decreases
 static inline int applyContrast(int gray) {
-  // Integer-based contrast: (gray - 128) * factor + 128
+  // Integer-based contrast: (gray - 120) * factor + 120
   // Using fixed-point: factor 1.15 ≈ 115/100
   constexpr int factorNum = static_cast<int>(CONTRAST_FACTOR * 100);
-  int adjusted = ((gray - 128) * factorNum) / 100 + 128;
+  int adjusted = ((gray - 120) * factorNum) / 100 + 120;
   if (adjusted < 0) adjusted = 0;
   if (adjusted > 255) adjusted = 255;
   return adjusted;

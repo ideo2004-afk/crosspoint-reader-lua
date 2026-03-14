@@ -573,12 +573,25 @@ void XtcReaderActivity::renderBookmarkIndicator() const {
   if (isPageBookmarked(currentPage)) {
     const int sw = renderer.getScreenWidth();
     const int rw = 20;
-    const int rh = 40;
+    const int rh = 36;
     const int rx = sw - rw - 30;
     const int ry = 0;
+    const int notchH = 8;
+    const bool color = !SETTINGS.darkMode;
     
-    // Draw ribbon (inverted when in dark mode to stay visible)
-    renderer.fillRect(rx, ry, rw, rh, !SETTINGS.darkMode);
+    // Draw ribbon body
+    renderer.fillRect(rx, ry, rw, rh - notchH, color);
+
+    // Draw notched bottom (filling line by line to create the triangle cutout)
+    for (int i = 0; i < notchH; i++) {
+      int y = rh - notchH + i;
+      int cutoutW = (i * rw) / notchH;
+      int sideW = (rw - cutoutW) / 2;
+      if (sideW > 0) {
+        renderer.fillRect(rx, ry + y, sideW, 1, color);
+        renderer.fillRect(rx + rw - sideW, ry + y, sideW, 1, color);
+      }
+    }
   }
 }
 

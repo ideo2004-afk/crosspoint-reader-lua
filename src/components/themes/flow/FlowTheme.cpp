@@ -13,6 +13,8 @@
 #include "components/UITheme.h"
 #include "components/icons/cover.h"
 #include "fontIds.h"
+#include "CrossPointSettings.h"
+#include "util/TimeService.h"
 
 namespace {
 constexpr int cornerRadius = 6;
@@ -39,6 +41,71 @@ void cutRoundedCorners(GfxRenderer& renderer, int x, int y, int w, int h, int r)
                 renderer.drawPixel(x + w - 1 - dx, y + h - 1 - dy, false);      // Bottom-right
                 renderer.drawPixel(x + dx, y + h - 1 - dy, false);              // Bottom-left
             }
+        }
+    }
+}
+// Helper to draw a single 7-segment digit
+// x,y: top-left of the digit box
+// w,h: width and height of the digit
+// thickness: thickness of the segments
+void draw7SegmentDigit(GfxRenderer& renderer, int x, int y, int w, int h, int digit, int thickness, Color color) {
+    if (digit < 0 || digit > 9) return;
+    
+    // Segment mapping (standard a-g)
+    //    -a-
+    //   f   b
+    //    -g-
+    //   e   c
+    //    -d-
+    static const bool segments[10][7] = {
+        {1, 1, 1, 1, 1, 1, 0}, // 0
+        {0, 1, 1, 0, 0, 0, 0}, // 1
+        {1, 1, 0, 1, 1, 0, 1}, // 2
+        {1, 1, 1, 1, 0, 0, 1}, // 3
+        {0, 1, 1, 0, 0, 1, 1}, // 4
+        {1, 0, 1, 1, 0, 1, 1}, // 5
+        {1, 0, 1, 1, 1, 1, 1}, // 6
+        {1, 1, 1, 0, 0, 0, 0}, // 7
+        {1, 1, 1, 1, 1, 1, 1}, // 8
+        {1, 1, 1, 1, 0, 1, 1}  // 9
+    };
+    
+    const bool* seg = segments[digit];
+    const int midY = y + h / 2;
+    
+    // a (top)
+    if (seg[0]) renderer.fillRect(x + thickness, y, w - 2 * thickness, thickness, color == Color::Black);
+    // b (top-right)
+    if (seg[1]) renderer.fillRect(x + w - thickness, y + thickness, thickness, midY - y - thickness - thickness/2, color == Color::Black);
+    // c (bottom-right)
+    if (seg[2]) renderer.fillRect(x + w - thickness, midY + thickness/2, thickness, y + h - midY - thickness - thickness/2, color == Color::Black);
+    // d (bottom)
+    if (seg[3]) renderer.fillRect(x + thickness, y + h - thickness, w - 2 * thickness, thickness, color == Color::Black);
+    // e (bottom-left)
+    if (seg[4]) renderer.fillRect(x, midY + thickness/2, thickness, y + h - midY - thickness - thickness/2, color == Color::Black);
+    // f (top-left)
+    if (seg[5]) renderer.fillRect(x, y + thickness, thickness, midY - y - thickness - thickness/2, color == Color::Black);
+    // g (middle)
+    if (seg[6]) renderer.fillRect(x + thickness, midY - thickness/2, w - 2 * thickness, thickness, color == Color::Black);
+}
+
+void draw7SegmentTime(GfxRenderer& renderer, int x, int y, int digitH, const char* timeStr, Color color, int thickness) {
+    int digitW = digitH * 0.3; // Adjusted from 0.6 to keep width same while height doubles
+    if (thickness <= 0) thickness = std::max(2, digitH / 10);
+    int spacing = digitW / 4;
+    int curX = x;
+    
+    for (int i = 0; timeStr[i] != '\0'; i++) {
+        char c = timeStr[i];
+        if (c >= '0' && c <= '9') {
+            draw7SegmentDigit(renderer, curX, y, digitW, digitH, c - '0', thickness, color);
+            curX += digitW + spacing;
+        } else if (c == ':') {
+            // Draw separator dots
+            int dotSize = thickness;
+            renderer.fillRect(curX + spacing/2, y + digitH/3 - dotSize/2, dotSize, dotSize, color == Color::Black);
+            renderer.fillRect(curX + spacing/2, y + 2*digitH/3 - dotSize/2, dotSize, dotSize, color == Color::Black);
+            curX += dotSize + spacing * 2;
         }
     }
 }
@@ -211,6 +278,73 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
     // Add button hints for Home navigation in Flow theme
     drawButtonHints(renderer, btn1, btn2, btn3, btn4);
+
+    // Draw today's total reading time in the bottom-right corner (Casio style)
+    {
+        uint32_t todaySeconds = READING_STATS.getTodaySeconds();
+        uint32_t hours = todaySeconds / 3600;
+        uint32_t minutes = (todaySeconds % 3600) / 60;
+        char todayTimeStr[32];
+        snprintf(todayTimeStr, sizeof(todayTimeStr), "%02u:%02u", hours, minutes);
+
+        int digitH = 96; // Doubled from 48
+        int digitW = digitH * 0.3; // Half of 0.6 to keep width same
+        int thickness = 4;        // FIXED thin lines for Casio style
+        int spacing = digitW / 4;
+        int colonW = thickness + spacing * 2;
+        int totalWidth = digitW * 4 + spacing * 3 + colonW; // space for 00:00
+
+        // Position: Align with previous requested coordinates but adjusted for new size
+        // The user previously wanted renderer.getScreenWidth() - todayTimeWidth - 32
+        // Let's keep a similar right margin.
+        int drawX = renderer.getScreenWidth() - totalWidth - 32;
+        int drawY = renderer.getScreenHeight() - digitH - 100;
+
+        draw7SegmentTime(renderer, drawX, drawY, digitH, todayTimeStr, Color::Black, thickness);
+
+        // Draw Date above the reading time, aligned right
+        if (SETTINGS.statusBarClock) {
+            char dateStr[32] = {};
+            const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "";
+            int dateWidth = renderer.getTextWidth(SMALL_FONT_ID, dateText);
+            // x = screenWidth - rightMargin(32) - dateWidth
+            renderer.drawText(SMALL_FONT_ID, renderer.getScreenWidth() - 32 - dateWidth, drawY - 25, dateText, Color::Black);
+        }
+    }
+}
+
+void FlowTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle) const {
+  renderer.fillRect(rect.x, rect.y, rect.width, rect.height, false);
+
+  const bool showBatteryPercentage =
+      SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
+  
+  // Position icon at right edge, drawBatteryRight will place text to the left
+  const int batteryX = rect.x + rect.width - 12 - LyraMetrics::values.batteryWidth;
+  drawBatteryRight(renderer,
+                   Rect{batteryX, rect.y + 5, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
+                   showBatteryPercentage);
+
+  // NOTE: Date is omitted here in FlowTheme and moved to drawRecentBookCover (Home Screen) instead.
+
+  int maxTitleWidth =
+      rect.width - LyraMetrics::values.contentSidePadding * 2 - (subtitle != nullptr ? 100 : 0);
+
+  if (title) {
+    auto truncatedTitle = renderer.truncatedText(UI_12_FONT_ID, title, maxTitleWidth, EpdFontFamily::BOLD);
+    renderer.drawText(UI_12_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding,
+                      rect.y + LyraMetrics::values.batteryBarHeight + 3, truncatedTitle.c_str(), true,
+                      EpdFontFamily::BOLD);
+    renderer.drawLine(rect.x, rect.y + rect.height - 3, rect.x + rect.width - 1, rect.y + rect.height - 3, 3, true);
+  }
+
+  if (subtitle) {
+    auto truncatedSubtitle = renderer.truncatedText(SMALL_FONT_ID, subtitle, 100, EpdFontFamily::REGULAR);
+    int truncatedSubtitleWidth = renderer.getTextWidth(SMALL_FONT_ID, truncatedSubtitle.c_str());
+    renderer.drawText(SMALL_FONT_ID,
+                      rect.x + rect.width - LyraMetrics::values.contentSidePadding - truncatedSubtitleWidth,
+                      rect.y + 50, truncatedSubtitle.c_str(), true);
+  }
 }
 
 void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
@@ -221,7 +355,7 @@ void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   
   const int centerX = rect.width / 2;
   const int menuLeft = centerX - 190;
-  const int menuWidth = 380;
+  const int menuWidth = 209; // Reduced to 55% of 380 to avoid overlapping with clock
   
   for (int i = 0; i < buttonCount; ++i) {
     const bool selected = (selectedIndex == i);
@@ -248,8 +382,8 @@ void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
     int nudge = hasDescenders ? -8 : -4;
     
     // Text starts after the icon area (rowHeight ensures consistent spacing)
-    int textY = y + (rowHeight - renderer.getLineHeight(NOTOSANS_14_FONT_ID)) / 2 + nudge;
-    renderer.drawText(NOTOSANS_14_FONT_ID, menuLeft + rowHeight, textY, label.c_str(), selected ? White : Black, EpdFontFamily::REGULAR);
+    int textY = y + (rowHeight - renderer.getLineHeight(NOTOSANS_12_FONT_ID)) / 2 + nudge;
+    renderer.drawText(NOTOSANS_12_FONT_ID, menuLeft + rowHeight, textY, label.c_str(), selected ? White : Black, EpdFontFamily::REGULAR);
   }
 }
 
