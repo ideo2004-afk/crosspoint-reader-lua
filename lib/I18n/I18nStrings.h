@@ -8,5 +8,6 @@
 namespace i18n_strings {
 
 extern const char* const STRINGS_EN[];
+extern const char* const STRINGS_T_[];
 
 }  // namespace i18n_strings

@@ -261,7 +261,13 @@ void setup() {
     enterNewActivity(new FullScreenMessageActivity(renderer, mappedInputManager, "SD card error", EpdFontFamily::BOLD));
     return;
   }
-  SETTINGS.loadFromFile(); I18N.loadSettings(); UITheme::getInstance().reload();
+  SETTINGS.loadFromFile(); I18N.loadSettings(); 
+  // Sync I18n with global settings if different (I18N.loadSettings loads from its own file, 
+  // but SETTINGS.language is the source of truth for the UI enum)
+  if (I18N.getLanguage() != static_cast<Language>(SETTINGS.language)) {
+    I18N.setLanguage(static_cast<Language>(SETTINGS.language));
+  }
+  UITheme::getInstance().reload();
   TIME_SERVICE.begin();
   FontMgr.scanFonts(); FontMgr.loadSettings();
   renderer.setFadingFix(SETTINGS.fadingFix);

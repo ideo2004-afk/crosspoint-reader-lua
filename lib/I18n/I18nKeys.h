@@ -6,11 +6,13 @@
 // Forward declaration for string arrays
 namespace i18n_strings {
 extern const char* const STRINGS_EN[];
+extern const char* const STRINGS_T_[];
 }  // namespace i18n_strings
 
 // Language enum
 enum class Language : uint8_t {
   ENGLISH = 0,
+  T_CHINESE = 1,
   _COUNT
 };
 
@@ -280,6 +282,7 @@ enum class StrId : uint16_t {
   STR_STATUS_BAR_BOOK_ONLY,
   STR_STATUS_BAR_FULL_CHAPTER,
   STR_UI_THEME,
+  STR_PLUGINS,
   STR_THEME_CLASSIC,
   STR_THEME_LYRA,
   STR_THEME_LYRA_EXTENDED,
@@ -367,6 +370,14 @@ enum class StrId : uint16_t {
   STR_CTRL_R_DN_LONG,
   STR_CTRL_R_L_UP_DN,
   STR_CTRL_R_R_UP_DN,
+  STR_LANG_ENGLISH,
+  STR_LANG_T_CHINESE,
+  STR_RESUME,
+  STR_TOC,
+  STR_GO_TO,
+  STR_DAY_MODE,
+  STR_SCRUBBER_HINT_1,
+  STR_SCRUBBER_HINT_2,
   // Sentinel - must be last
   _COUNT
 };
@@ -376,6 +387,8 @@ inline const char* const* getStringArray(Language lang) {
   switch (lang) {
     case Language::ENGLISH:
       return i18n_strings::STRINGS_EN;
+    case Language::T_CHINESE:
+      return i18n_strings::STRINGS_T_;
     default:
       return i18n_strings::STRINGS_EN;
   }

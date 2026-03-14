@@ -154,7 +154,7 @@ void ReadingStatsActivity::render(Activity::RenderLock&&) {
   drawSectionTitle(renderer, Rect(sidePadding, listSectionY, contentWidth, 20), tr(STR_STATS_RECENT_BOOKS));
   
   int listStartY = listSectionY + 25;
-  int listHeight = pageHeight - listStartY - metrics.verticalSpacing;
+  int listHeight = pageHeight - listStartY - metrics.verticalSpacing - metrics.buttonHintsHeight;
 
   GUI.drawList(
       renderer, Rect{0, listStartY, pageWidth, listHeight}, bookCount, selectedIndex,
@@ -191,6 +191,9 @@ void ReadingStatsActivity::render(Activity::RenderLock&&) {
         return std::string(timeStr);
       },
       nullptr, nullptr, false);
+
+  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_CONFIRM), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }

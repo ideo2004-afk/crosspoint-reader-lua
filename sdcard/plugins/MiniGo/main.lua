@@ -1,18 +1,18 @@
--- ABBA Go (MiniGo) - Lua Port
--- VERSION: 2026-03-09 "Zhuge Liang" Evolved - Optimized Engine
+-- Mini Go
+-- DESCRIPTION: 7x7 and 9x9 Go game with AI.
 
 local EMPTY = 0
 local BLACK = 1
 local WHITE = 2
 
 local KOMI              = 7.5
-local AI_MAX_SIMS       = 300
+local AI_MAX_SIMS       = 300i
 local AI_ROLLOUT_DEPTH  = 4
 local AI_EXPLORATION_C  = 1.414
 
 local H_RESCUE_1LIB    = 0.250
-local H_RESCUE_2LIB    = 0.100
-local H_CAPTURE_BONUS  = 0.300
+local H_RESCUE_2LIB    = 0.200
+local H_CAPTURE_BONUS  = 0.200
 local H_BLOCK_EXT      = 0.120
 local H_CUT_BIAS       = 0.130
 local H_BLOCK_BASE     = 0.050

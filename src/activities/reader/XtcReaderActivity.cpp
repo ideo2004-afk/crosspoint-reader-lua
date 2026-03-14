@@ -6,6 +6,7 @@
  */
 
 #include "XtcReaderActivity.h"
+#include "XtcReaderChapterSelectionActivity.h"
 
 #include <esp_system.h>
 
@@ -133,33 +134,44 @@ void XtcReaderActivity::loop() {
     }
 
     if (mappedInput.wasReleasedRaw(HalGPIO::BTN_UP)) {
-      menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : 4;
+      menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : 5;
       requestUpdate();
     } else if (mappedInput.wasReleasedRaw(HalGPIO::BTN_DOWN)) {
-      menuSelectedIndex = (menuSelectedIndex < 4) ? menuSelectedIndex + 1 : 0;
+      menuSelectedIndex = (menuSelectedIndex < 5) ? menuSelectedIndex + 1 : 0;
       requestUpdate();
     } else if (mappedInput.wasShortPressed(MappedInputManager::Button::Confirm)) {
       // Execute Menu Action (Right Cluster)
       if (menuSelectedIndex == 0) { // Resume
         inMenu = false;
         requestUpdate();
-      } else if (menuSelectedIndex == 1) { // Go to — inline scrubber
+      } else if (menuSelectedIndex == 1) { // Chapters
+        inMenu = false;
+        enterNewActivity(new XtcReaderChapterSelectionActivity(
+          renderer, mappedInput, xtc, currentPage,
+          [this] { exitActivity(); requestUpdate(); },
+          [this](uint32_t newPage) {
+            currentPage = newPage;
+            exitActivity();
+            requestUpdate();
+          }
+        ));
+      } else if (menuSelectedIndex == 2) { // Go to (Scrubber)
         if (xtc) {
           const size_t total = xtc->getPageCount();
           scrubberPercent = total > 0 ? (int)(currentPage * 100 / total) : 0;
           inScrubber = true;
           requestUpdate();
         }
-      } else if (menuSelectedIndex == 2) { // Dark Mode Toggle
+      } else if (menuSelectedIndex == 3) { // Dark Mode Toggle
         inMenu = false;
         SETTINGS.darkMode = !SETTINGS.darkMode;
         SETTINGS.saveToFile();
         requestUpdate();
-      } else if (menuSelectedIndex == 3) { // Screenshot
+      } else if (menuSelectedIndex == 4) { // Screenshot
         inMenu = false;
         pendingScreenshot = true;
         requestUpdate();
-      } else if (menuSelectedIndex == 4) { // Exit
+      } else if (menuSelectedIndex == 5) { // Exit
         inMenu = false;
         mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
         onGoHome();
@@ -329,7 +341,7 @@ void XtcReaderActivity::renderMenu() const {
     const int py = (sh - ph) / 2;
     renderer.fillRoundedRect(px, py, pw, ph, 10, darkMode ? Color::Black : Color::White);
     renderer.drawRoundedRect(px, py, pw, ph, 2, 10, textColor);
-    renderer.drawCenteredText(UI_12_FONT_ID, py + 35, "Go to", textColor, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, py + 35, tr(STR_GO_TO), textColor, EpdFontFamily::BOLD);
     char pctBuf[8];
     snprintf(pctBuf, sizeof(pctBuf), "%d%%", scrubberPercent);
     renderer.drawCenteredText(UI_12_FONT_ID, py + 78, pctBuf, textColor, EpdFontFamily::BOLD);
@@ -341,14 +353,14 @@ void XtcReaderActivity::renderMenu() const {
     const int fillW = (barW - 4) * scrubberPercent / 100;
     if (fillW > 0) renderer.fillRect(barX + 2, barY + 2, fillW, barH - 4, textColor);
     renderer.fillRect(barX + 2 + fillW - 2, barY - 4, 4, barH + 8, textColor);
-    renderer.drawCenteredText(SMALL_FONT_ID, py + 165, "< > +-1%   UP/DN +-10%", textColor);
-    renderer.drawCenteredText(SMALL_FONT_ID, py + 192, "Confirm: jump   Back: cancel", textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 165, tr(STR_SCRUBBER_HINT_1), textColor);
+    renderer.drawCenteredText(SMALL_FONT_ID, py + 192, tr(STR_SCRUBBER_HINT_2), textColor);
     renderer.displayBuffer();
     return;
   }
 
   const int mw = 320;
-  const int mh = 330;
+  const int mh = 370; // Increased for extra item
   const int mx = (sw - mw) / 2;
   const int my = (sh - mh) / 2;
 
@@ -356,11 +368,11 @@ void XtcReaderActivity::renderMenu() const {
   renderer.fillRoundedRect(mx, my, mw, mh, 10, darkMode ? Color::Black : Color::White);
   renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, textColor);
 
-  const char* options[] = {"Resume", "Go to",
-                           darkMode ? "Day Mode" : "Dark Mode", "Screenshot", "Exit"};
+  const char* options[] = {tr(STR_RESUME), tr(STR_SELECT_CHAPTER), tr(STR_GO_TO),
+                           darkMode ? tr(STR_DAY_MODE) : tr(STR_DARK_MODE), tr(STR_SCREENSHOT_BUTTON), tr(STR_EXIT)};
 
-  for (int i = 0; i < 5; i++) {
-    int ry = my + 45 + (i * 55);
+  for (int i = 0; i < 6; i++) {
+    int ry = my + 45 + (i * 52); // Adjusted spacing
     if (menuSelectedIndex == i) {
       renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 40, 8, textColor ? Color::Black : Color::White);
     }

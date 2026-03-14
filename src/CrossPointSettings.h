@@ -162,6 +162,8 @@ class CrossPointSettings {
   uint8_t longPressChapterSkip = 1;
   // UI Theme
   uint8_t uiTheme = LYRA;
+  // Interface language
+  uint8_t language = 0;  // 0 = English
   // Sunlight fading compensation
   uint8_t fadingFix = 0;
   // Use book's embedded CSS styles for EPUB rendering (1 = enabled, 0 = disabled)

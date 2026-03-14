@@ -222,6 +222,11 @@ void SettingsActivity::toggleCurrentSetting() {
 
   SETTINGS.saveToFile();
   renderer.setDarkMode(SETTINGS.darkMode);
+  
+  // Sync I18n language if it was changed
+  if (I18N.getLanguage() != static_cast<Language>(SETTINGS.language)) {
+    I18N.setLanguage(static_cast<Language>(SETTINGS.language));
+  }
 }
 
 void SettingsActivity::render(Activity::RenderLock&&) {

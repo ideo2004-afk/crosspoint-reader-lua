@@ -75,6 +75,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["fadingFix"] = s.fadingFix;
   doc["embeddedStyle"] = s.embeddedStyle;
   doc["darkMode"] = s.darkMode;
+  doc["language"] = s.language;
 
   String json;
   serializeJson(doc, json);
@@ -132,6 +133,7 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.fadingFix = doc["fadingFix"] | (uint8_t)0;
   s.embeddedStyle = doc["embeddedStyle"] | (uint8_t)1;
   s.darkMode = doc["darkMode"] | (uint8_t)0;
+  s.language = doc["language"] | (uint8_t)0;
 
   LOG_DBG("CPS", "Settings loaded from file");
   return true;

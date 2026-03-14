@@ -339,7 +339,7 @@ void HomeActivity::render(Activity::RenderLock&&) {
                           labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_RECENTS),
-                                        "Plugins", tr(STR_SETTINGS_TITLE)};
+                                        tr(STR_PLUGINS), tr(STR_SETTINGS_TITLE)};
   std::vector<UIIcon> menuIcons = {Folder, Recent, Game, Settings};
 
   // Add 50px extra spacing below books (+50) for better visual separation
