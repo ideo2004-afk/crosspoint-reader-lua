@@ -7,8 +7,8 @@
 
 // Brightness/Contrast adjustments:
 constexpr bool USE_BRIGHTNESS = true;        // true: apply brightness/gamma adjustments
-constexpr int BRIGHTNESS_BOOST = 0;         // Brightness offset (0-50)
-constexpr bool GAMMA_CORRECTION = false;     // Gamma curve (brightens midtones)
+constexpr int BRIGHTNESS_BOOST = 10;         // Brightness offset (0-50)
+constexpr bool GAMMA_CORRECTION = true;     // Gamma curve (brightens midtones)
 constexpr float CONTRAST_FACTOR = 1.8f;      // Contrast multiplier (1.0 = no change, >1 = more contrast)
 constexpr bool USE_NOISE_DITHERING = false;  // Hash-based noise dithering
 
@@ -29,10 +29,10 @@ static inline int applyGamma(int gray) {
 }
 
 static inline int applyContrast(int gray) {
-  // Integer-based contrast: (gray - 120) * factor + 120
+  // Integer-based contrast: (gray - 128) * factor + 128
   // Using fixed-point: factor 1.15 ≈ 115/100
   constexpr int factorNum = static_cast<int>(CONTRAST_FACTOR * 100);
-  int adjusted = ((gray - 120) * factorNum) / 100 + 120;
+  int adjusted = ((gray - 128) * factorNum) / 100 + 128;
   if (adjusted < 0) adjusted = 0;
   if (adjusted > 255) adjusted = 255;
   return adjusted;

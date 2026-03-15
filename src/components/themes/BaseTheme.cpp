@@ -786,8 +786,8 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
 Rect BaseTheme::drawPopup(const GfxRenderer& renderer, const char* message) const {
   constexpr int margin = 15;
   constexpr int y = 60;
-  const int textWidth = renderer.getTextWidth(UI_12_FONT_ID, message, EpdFontFamily::BOLD);
-  const int textHeight = renderer.getLineHeight(UI_12_FONT_ID);
+  const int textWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, message, EpdFontFamily::BOLD);
+  const int textHeight = renderer.getLineHeight(NOTOSANS_12_FONT_ID);
   const int w = textWidth + margin * 2;
   const int h = textHeight + margin * 2;
   const int x = (renderer.getScreenWidth() - w) / 2;
@@ -797,7 +797,7 @@ Rect BaseTheme::drawPopup(const GfxRenderer& renderer, const char* message) cons
 
   const int textX = x + (w - textWidth) / 2;
   const int textY = y + margin - 2;
-  renderer.drawText(UI_12_FONT_ID, textX, textY, message, true, EpdFontFamily::BOLD);
+  renderer.drawText(NOTOSANS_12_FONT_ID, textX, textY, message, true, EpdFontFamily::BOLD);
   renderer.displayBuffer();
   return Rect{x, y, w, h};
 }
