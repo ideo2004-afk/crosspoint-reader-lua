@@ -161,7 +161,7 @@ class CrossPointSettings {
   // Long-press chapter skip on side buttons
   uint8_t longPressChapterSkip = 1;
   // UI Theme
-  uint8_t uiTheme = LYRA;
+  uint8_t uiTheme = FLOW;
   // Interface language
   uint8_t language = 0;  // 0 = English
   // Sunlight fading compensation

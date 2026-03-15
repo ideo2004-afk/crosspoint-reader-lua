@@ -101,6 +101,8 @@ constexpr ThemeMetrics values = {.batteryWidth = 15,
 class BaseTheme {
  public:
   virtual ~BaseTheme() = default;
+  
+  static const uint8_t* iconForName(UIIcon icon, int size);
 
   // Component drawing methods
   virtual void drawProgressBar(const GfxRenderer& renderer, Rect rect, size_t current, size_t total) const;
@@ -128,6 +130,7 @@ class BaseTheme {
                                    bool& bufferRestored, std::function<bool()> storeCoverBuffer,
                                    const char* btn1 = nullptr, const char* btn2 = nullptr,
                                    const char* btn3 = nullptr, const char* btn4 = nullptr) const;
+  virtual void drawEmptyRecents(const GfxRenderer& renderer, const Rect rect) const;
   virtual void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                               const std::function<std::string(int index)>& buttonLabel,
                               const std::function<UIIcon(int index)>& rowIcon) const;

@@ -24,15 +24,18 @@ void ReadingStatsStore::addReadingTime(const std::string& path, const std::strin
   totalReadingSeconds += seconds;
 
   uint32_t today = TIME_SERVICE.getTodayValue(); // YYYYMMDD
+  if (today == 0) today = 19700101; // Fallback to 1970-01-01 if clock is completely invalid
   stat.lastReadDate = today;
 
   // Record daily stats
-  if (today > 0) {
-    dailyReadingSeconds[today] += seconds;
-    
-    // Cleanup: Keep only last 30 days (though we only display 7)
-    if (dailyReadingSeconds.size() > 30) {
-      dailyReadingSeconds.erase(dailyReadingSeconds.begin());
+  dailyReadingSeconds[today] += seconds;
+  
+  // Cleanup: Keep only last 30 days (though we only display 7)
+  if (dailyReadingSeconds.size() > 30) {
+    auto it = dailyReadingSeconds.begin();
+    // Don't erase the fallback entry if it's the only one or if it's active
+    if (it->first != 19700101 || dailyReadingSeconds.size() > 31) {
+       dailyReadingSeconds.erase(it);
     }
   }
 

@@ -44,6 +44,7 @@ MappedInputManager mappedInputManager(gpio);
 GfxRenderer renderer(display);
 FontDecompressor fontDecompressor;
 Activity* currentActivity;
+unsigned long lastActivityMillis = 0;
 
 // Fonts
 EpdFont bookerly14RegularFont(&bookerly_14_regular);
@@ -262,6 +263,7 @@ void setup() {
     return;
   }
   SETTINGS.loadFromFile(); I18N.loadSettings(); 
+  lastActivityMillis = millis();
   // Sync I18n with global settings if different (I18N.loadSettings loads from its own file, 
   // but SETTINGS.language is the source of truth for the UI enum)
   if (I18N.getLanguage() != static_cast<Language>(SETTINGS.language)) {
@@ -289,14 +291,28 @@ void setup() {
 }
 
 void loop() {
-  if (nextActivity) { Activity* a = nextActivity; nextActivity = nullptr; exitActivity(); currentActivity = a; currentActivity->onEnter(); }
+  if (nextActivity) { Activity* a = nextActivity; nextActivity = nullptr; exitActivity(); currentActivity = a; currentActivity->onEnter(); lastActivityMillis = millis(); }
   mappedInputManager.update();
+
+  if (mappedInputManager.wasAnyPressed() || mappedInputManager.wasAnyReleased()) {
+    lastActivityMillis = millis();
+  }
+
   if (TIME_SERVICE.syncIfDue() && currentActivity) {
     currentActivity->requestUpdate();
   }
   renderer.setFadingFix(SETTINGS.fadingFix);
-  if (currentActivity && currentActivity->preventAutoSleep()) powerManager.setPowerSaving(false);
+  if (currentActivity && currentActivity->preventAutoSleep()) {
+    powerManager.setPowerSaving(false);
+    lastActivityMillis = millis();
+  }
+
   if (millis() > 3000 && gpio.isPressed(HalGPIO::BTN_POWER) && gpio.getHeldTime() > SETTINGS.getPowerButtonDuration()) enterDeepSleep();
+
+  if (currentActivity && !currentActivity->preventAutoSleep() && (millis() - lastActivityMillis > SETTINGS.getSleepTimeoutMs())) {
+    enterDeepSleep();
+  }
+
   if (currentActivity) currentActivity->loop();
   if (currentActivity && currentActivity->skipLoopDelay()) { powerManager.setPowerSaving(false); yield(); }
   else { delay(10); }

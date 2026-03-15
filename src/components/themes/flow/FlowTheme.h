@@ -1,6 +1,6 @@
 #pragma once
 
-#include "components/themes/lyra/LyraTheme.h"
+#include "components/themes/BaseTheme.h"
 
 class GfxRenderer;
 
@@ -17,7 +17,7 @@ constexpr ThemeMetrics values = {.batteryWidth = 16,
                                  .listWithSubtitleRowHeight = 75,
                                  .menuRowHeight = 56,  // Increased for better readability
                                  .menuSpacing = 8,
-                                 .tabSpacing = 8,
+                                 .tabSpacing = 12,
                                  .tabBarHeight = 40,
                                  .scrollBarWidth = 4,
                                  .scrollBarRightOffset = 5,
@@ -36,7 +36,7 @@ constexpr ThemeMetrics values = {.batteryWidth = 16,
                                  .keyboardCenteredText = true};
 }
 
-class FlowTheme : public LyraTheme {
+class FlowTheme : public BaseTheme {
  public:
   void drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
                            const int selectorIndex, bool& coverRendered, bool& coverBufferStored, bool& bufferRestored,
