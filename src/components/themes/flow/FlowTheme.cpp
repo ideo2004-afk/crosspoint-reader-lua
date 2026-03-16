@@ -276,8 +276,8 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
   
     // (drawFooter removed to move reading time per-book)
 
-    // Add button hints for Home navigation in Flow theme
-    drawButtonHints(renderer, btn1, btn2, btn3, btn4, highlightMask);
+    // Add button hints for Home navigation in Flow theme (Back button is inactive on Home)
+    drawButtonHints(renderer, nullptr, btn2, btn3, btn4, highlightMask);
 
     // Draw today's total reading time in the bottom-right corner (Casio style)
     {
