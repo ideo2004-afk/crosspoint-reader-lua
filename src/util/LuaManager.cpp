@@ -76,24 +76,28 @@ static int l_gui_refresh(lua_State* L) {
     return 0;
 }
 
+static Color get_lua_color(lua_State* L, int argIdx, Color defaultColor = Color::Black) {
+    if (lua_isnoneornil(L, argIdx)) return defaultColor;
+    if (lua_isboolean(L, argIdx)) return lua_toboolean(L, argIdx) ? Color::Black : Color::White;
+    return (Color)lua_tointeger(L, argIdx);
+}
+
 static int l_gui_draw_rect(lua_State* L) {
     auto r = get_renderer(L);
-    if (r) r->drawRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
-                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4));
+    if (!r) return 0;
+    Color color = get_lua_color(L, 5);
+    r->drawRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), color != Color::White);
     return 0;
 }
 
 static int l_gui_fill_rect(lua_State* L) {
     auto r = get_renderer(L);
-    if (r) r->fillRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
-                       luaL_checkinteger(L, 3), luaL_checkinteger(L, 4));
+    if (!r) return 0;
+    Color color = get_lua_color(L, 5);
+    r->fillRect(luaL_checkinteger(L, 1), luaL_checkinteger(L, 2),
+                luaL_checkinteger(L, 3), luaL_checkinteger(L, 4), color != Color::White);
     return 0;
-}
-
-static Color get_lua_color(lua_State* L, int argIdx, Color defaultColor = Color::Black) {
-    if (lua_isnoneornil(L, argIdx)) return defaultColor;
-    if (lua_isboolean(L, argIdx)) return lua_toboolean(L, argIdx) ? Color::Black : Color::White;
-    return (Color)lua_tointeger(L, argIdx);
 }
 
 static int l_gui_draw_line(lua_State* L) {
