@@ -277,7 +277,13 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     // (drawFooter removed to move reading time per-book)
 
     // Add button hints for Home navigation in Flow theme (Back button is inactive on Home)
-    drawButtonHints(renderer, nullptr, btn2, btn3, btn4, highlightMask);
+    // Filter out "BACK" hint dynamically based on content (logic-aware)
+    const char* h1 = (btn1 && strcmp(btn1, BaseTheme::HINT_BACK) == 0) ? nullptr : btn1;
+    const char* h2 = (btn2 && strcmp(btn2, BaseTheme::HINT_BACK) == 0) ? nullptr : btn2;
+    const char* h3 = (btn3 && strcmp(btn3, BaseTheme::HINT_BACK) == 0) ? nullptr : btn3;
+    const char* h4 = (btn4 && strcmp(btn4, BaseTheme::HINT_BACK) == 0) ? nullptr : btn4;
+
+    drawButtonHints(renderer, h1, h2, h3, h4, highlightMask);
 
     // Draw today's total reading time in the bottom-right corner (Casio style)
     {
