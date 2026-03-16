@@ -115,7 +115,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
                                    const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                    bool& bufferRestored, std::function<bool()> storeCoverBuffer,
                                    const char* btn1, const char* btn2, const char* btn3,
-                                   const char* btn4) const {
+                                   const char* btn4, uint8_t highlightMask) const {
   const bool hasRecentBooks = !recentBooks.empty();
   const int pageWidth = renderer.getScreenWidth();
   const int centerY = rect.y + 40; // Moved up slightly from 45 to 40 to ensure menu clearance
@@ -277,7 +277,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     // (drawFooter removed to move reading time per-book)
 
     // Add button hints for Home navigation in Flow theme
-    drawButtonHints(renderer, btn1, btn2, btn3, btn4);
+    drawButtonHints(renderer, btn1, btn2, btn3, btn4, highlightMask);
 
     // Draw today's total reading time in the bottom-right corner (Casio style)
     {

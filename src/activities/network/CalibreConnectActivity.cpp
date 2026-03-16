@@ -222,7 +222,7 @@ void CalibreConnectActivity::render(Activity::RenderLock&&) {
                                    EpdFontFamily::REGULAR);
       renderer.drawText(SMALL_FONT_ID, metrics.contentSidePadding, y, msg.c_str());
     }
-    const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+    const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
   }
 

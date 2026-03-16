@@ -11,18 +11,22 @@ local PLUGIN_PATH = "/plugins/Flashcard"
 
 local STATE_DECK = 1
 local STATE_CARD = 2
+local STATE_EXIT = 3
 
 local state     = STATE_DECK
 local decks     = {}
 local titles    = {}
 local deckIdx   = 1
 
-local cards     = {}   -- {word, pos, meaning, ex_en, ex_zh}
+local cards     = {}   -- {word, pos, meaning, ex_en, ex_zh, count}
 local cardIdx   = 1
 local showBack  = false
 local deckTitle = ""
+local deckFile  = ""   -- Store filename for stats persistence
 local errorMsg  = nil
 local needsDraw = true
+local forceFullRefresh = false
+local prevState = STATE_DECK
 
 -- ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,25 +47,82 @@ local function wrapText(font, text, maxW)
     return lines
 end
 
+local function saveStats()
+    if not deckFile or #cards == 0 then return end
+    local path = PLUGIN_PATH .. "/" .. deckFile .. ".idx"
+    local lines = {}
+    for _, c in ipairs(cards) do
+        table.insert(lines, c.word .. "|" .. tostring(c.count or 0))
+    end
+    fs.writeFile(path, table.concat(lines, "\n"))
+end
+
+local function nextRandomCard()
+    if #cards <= 1 then
+        cardIdx = 1
+        if #cards == 1 then
+            cards[1].count = (cards[1].count or 0) + 1
+            saveStats()
+        end
+        return
+    end
+
+    -- 1. Find the minimum count
+    local minCount = 2147483647
+    for _, c in ipairs(cards) do
+        local count = c.count or 0
+        if count < minCount then minCount = count end
+    end
+
+    -- 2. Collect all candidates with the minimum count
+    local candidates = {}
+    local oldIdx = cardIdx
+    for i, c in ipairs(cards) do
+        if (c.count or 0) == minCount then
+            -- Optional: try not to pick the same card twice in a row if there are other candidates
+            if i ~= oldIdx or #candidates == 0 then
+                table.insert(candidates, i)
+            end
+        end
+    end
+    
+    -- If only the current card matches minCount, we have to pick it (unless we want to pick a minCount+1)
+    if #candidates == 0 then table.insert(candidates, oldIdx) end
+
+    -- 3. Pick one randomly
+    cardIdx = candidates[math.random(#candidates)]
+    
+    -- 4. Increment and save
+    cards[cardIdx].count = (cards[cardIdx].count or 0) + 1
+    saveStats()
+end
+
 -- ── TXT parse ─────────────────────────────────────────────────────────────────
 
 local function parseLine(line)
-    -- strip CR
-    if line:sub(-1) == "\r" then line = line:sub(1, -2) end
-    if line == "" then return end
-    if line:sub(1, 1) == "#" then
-        local t = line:match("^#title:(.+)$")
-        if t then deckTitle = t end
+    -- Remove any leading/trailing whitespace including \r \n \t
+    line = line:match("^%s*(.-)%s*$")
+    if line == "" or line:sub(1,1) == "#" then
+        if line:sub(1,7) == "#title:" then
+            deckTitle = line:sub(8):match("^%s*(.-)%s*$")
+        end
         return
     end
-    local f1, f2, f3, f4, f5 = line:match("^([^|]*)|([^|]*)|([^|]*)|([^|]*)|(.*)$")
-    if f1 and f1 ~= "" then
+
+    -- Split by '|'
+    local fields = {}
+    for f in (line .. "|"):gmatch("([^|]*)|") do
+        table.insert(fields, f:match("^%s*(.-)%s*$"))
+    end
+
+    if #fields > 0 and fields[1] ~= "" then
         table.insert(cards, {
-            word    = f1,
-            pos     = f2 or "",
-            meaning = f3 or "",
-            ex_en   = f4 or "",
-            ex_zh   = f5 or "",
+            word    = fields[1] or "",
+            pos     = fields[2] or "",
+            meaning = fields[3] or "",
+            ex_en   = fields[4] or "",
+            ex_zh   = fields[5] or "",
+            count   = 0, -- Default
         })
     end
 end
@@ -94,6 +155,23 @@ local function loadDeck(filename)
         end
         parseLine(line)
     end
+
+    -- Load stats
+    local statsPath = path .. ".idx"
+    local statsContent = fs.readFile(statsPath)
+    if statsContent then
+        local stats = {}
+        for w, cnt in statsContent:gmatch("([^|\n]+)|(%d+)") do
+            stats[w] = tonumber(cnt)
+        end
+        for _, c in ipairs(cards) do
+            if stats[c.word] then
+                c.count = stats[c.word]
+            end
+        end
+    end
+
+    deckFile = filename -- Save for later persistence
 
     if #cards == 0 then
         errorMsg = "No cards found in:\n" .. filename
@@ -130,21 +208,22 @@ local function drawDeckSelect()
         gui.drawCenteredText(FONT_UI_10, 260, "No .txt files found in", COLOR_BLACK, STYLE_REGULAR)
         gui.drawCenteredText(FONT_SMALL,  290, PLUGIN_PATH,             COLOR_BLACK, STYLE_REGULAR)
     else
-        local y = 90
+        local y = 86
+        local bh = 54
         for i = 1, #decks do
             local title = titles[i]
             if i == deckIdx then
-                gui.fillRoundedRect(24, y - 4, sw - 48, 44, 8, COLOR_BLACK)
-                gui.drawCenteredText(FONT_BOOKERLY_12, y + 14, title, COLOR_WHITE, STYLE_BOLD)
+                gui.fillRoundedRect(24, y, sw - 48, bh, 8, COLOR_BLACK)
+                gui.drawCenteredText(FONT_BOOKERLY_12, y + math.floor(bh/2) - 2, title, COLOR_WHITE, STYLE_BOLD)
             else
-                gui.drawRoundedRect(24, y - 4, sw - 48, 44, 1, 8, COLOR_BLACK)
-                gui.drawCenteredText(FONT_BOOKERLY_12, y + 14, title, COLOR_BLACK, STYLE_REGULAR)
+                gui.drawRoundedRect(24, y, sw - 48, bh, 1, 8, COLOR_BLACK)
+                gui.drawCenteredText(FONT_BOOKERLY_12, y + math.floor(bh/2) - 2, title, COLOR_BLACK, STYLE_REGULAR)
             end
-            y = y + 58
+            y = y + bh + 14
         end
     end
 
-    gui.drawButtonHints("Exit", "Open", "Up", "Down")
+    gui.drawButtonHints("<<", "o", "<", ">")
     gui.refresh(REFRESH_FAST)
 end
 
@@ -155,7 +234,7 @@ local function drawCard()
     local maxW = sw - pad * 2
     gui.clear()
 
-    -- Header (shifted down 20px)
+    -- Header
     gui.drawText(FONT_UI_10, pad, 36, deckTitle, COLOR_BLACK, STYLE_BOLD)
     local idx_str = tostring(cardIdx) .. " / " .. tostring(#cards)
     local iw = gui.getTextWidth(FONT_UI_10, idx_str)
@@ -164,7 +243,7 @@ local function drawCard()
 
     -- Word + pos (same position on both A and B sides)
     local ww = gui.getTextWidth(FONT_BOOKERLY_14, c.word)
-    gui.drawText(FONT_BOOKERLY_14, (sw - ww) / 2, 210, c.word, COLOR_BLACK, STYLE_BOLD)
+    gui.drawText(FONT_BOOKERLY_14, math.floor((sw - ww) / 2), 210, c.word, COLOR_BLACK, STYLE_BOLD)
     if c.pos ~= "" then
         gui.drawCenteredText(FONT_BOOKERLY_12, 252, "(" .. c.pos .. ")", COLOR_BLACK, STYLE_REGULAR)
     end
@@ -194,10 +273,18 @@ local function drawCard()
                 y = y + 32
             end
         end
+
+        -- Draw read count at the bottom of B-side (above button hints)
+        local countText = "Read count: " .. tostring(c.count or 0)
+        local cw = gui.getTextWidth(FONT_SMALL, countText)
+        local ch = gui.height()
+        gui.drawText(FONT_SMALL, sw - pad - cw, ch - 64, countText, COLOR_BLACK, STYLE_REGULAR)
     end
 
     gui.drawButtonHints("<<", "o", "<", ">")
-    gui.refresh(REFRESH_FAST)
+    local refreshMode = forceFullRefresh and REFRESH_HALF or REFRESH_FAST
+    gui.refresh(refreshMode)
+    forceFullRefresh = false
 end
 
 local function drawError()
@@ -209,7 +296,17 @@ local function drawError()
         gui.drawCenteredText(FONT_UI_10, y, ln, COLOR_BLACK, STYLE_REGULAR)
         y = y + 28
     end
-    gui.drawButtonHints("Back", "", "", "")
+    gui.drawButtonHints("<<", "", "", "")
+    gui.refresh(REFRESH_FAST)
+end
+
+local function drawExitConfirm()
+    local sw = gui.width()
+    gui.clear()
+    gui.drawCenteredText(FONT_BOOKERLY_14, 210, "Return to list?", COLOR_BLACK, STYLE_BOLD)
+    gui.drawCenteredText(FONT_UI_10, 260, "Exit card view?", COLOR_BLACK, STYLE_REGULAR)
+    
+    gui.drawButtonHints("<<", "o", "", "")
     gui.refresh(REFRESH_FAST)
 end
 
@@ -242,20 +339,19 @@ function draw()
         if input.wasReleased("confirm") and #decks > 0 then
             loadDeck(decks[deckIdx])
             if not errorMsg and #cards > 0 then
-                cardIdx  = math.random(#cards)
+                nextRandomCard()
                 showBack = false
                 state    = STATE_CARD
+                forceFullRefresh = true
             end
             needsDraw = true
         end
-    else
+    elseif state == STATE_CARD then
         if input.wasReleased("back") then
-            -- Free cards while idle at deck select; GC is safe here
-            cards     = {}
-            collectgarbage("collect")
-            state     = STATE_DECK
-            showBack  = false
+            prevState = STATE_CARD
+            state = STATE_EXIT
             needsDraw = true
+            return
         end
         if input.wasReleased("confirm") then
             showBack  = not showBack
@@ -272,8 +368,24 @@ function draw()
             needsDraw = true
         end
         if input.wasReleased("left") or input.wasReleased("right") then
-            cardIdx  = math.random(#cards)
+            nextRandomCard()
             showBack = false
+            needsDraw = true
+        end
+    elseif state == STATE_EXIT then
+        if input.wasReleased("confirm") then
+            if prevState == STATE_CARD then
+                cards     = {}
+                collectgarbage("collect")
+                state     = STATE_DECK
+            else
+                sys.exit()
+            end
+            needsDraw = true
+            return
+        end
+        if input.wasReleased("back") then
+            state = prevState
             needsDraw = true
         end
     end
@@ -286,6 +398,8 @@ function draw()
         drawError()
     elseif state == STATE_DECK then
         drawDeckSelect()
+    elseif state == STATE_EXIT then
+        drawExitConfirm()
     else
         drawCard()
     end

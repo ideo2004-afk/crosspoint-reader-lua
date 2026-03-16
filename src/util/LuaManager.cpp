@@ -656,6 +656,15 @@ void LuaManager::registerBindings() {
     lua_pushcfunction(L, l_gui_draw_circle);        lua_setfield(L, -2, "drawCircle");
     lua_pushcfunction(L, l_gui_fill_circle);        lua_setfield(L, -2, "fillCircle");
     lua_pushcfunction(L, l_gui_fill_polygon);       lua_setfield(L, -2, "fillPolygon");
+    
+    // Hint constants
+    lua_pushstring(L, BaseTheme::HINT_BACK); lua_setfield(L, -2, "HINT_BACK");
+    lua_pushstring(L, BaseTheme::HINT_OK);   lua_setfield(L, -2, "HINT_OK");
+    lua_pushstring(L, BaseTheme::HINT_PREV); lua_setfield(L, -2, "HINT_PREV");
+    lua_pushstring(L, BaseTheme::HINT_NEXT); lua_setfield(L, -2, "HINT_NEXT");
+    lua_pushstring(L, BaseTheme::HINT_UP);   lua_setfield(L, -2, "HINT_UP");
+    lua_pushstring(L, BaseTheme::HINT_DOWN); lua_setfield(L, -2, "HINT_DOWN");
+    
     lua_setglobal(L, "gui");
 
     // input.*

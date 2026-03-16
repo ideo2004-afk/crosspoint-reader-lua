@@ -50,7 +50,7 @@ void BmpViewerActivity::onEnter() {
       }
 
       // 4. Prepare Rendering
-      const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+      const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, "", "", "");
       GUI.fillPopupProgress(renderer, popupRect, 50);
 
       renderer.clearScreen();
@@ -68,7 +68,7 @@ void BmpViewerActivity::onEnter() {
       // Handle file parsing error
       renderer.clearScreen();
       renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2, "Invalid BMP File");
-      const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+      const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, "", "", "");
       GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
       renderer.displayBuffer(HalDisplay::FAST_REFRESH);
     }

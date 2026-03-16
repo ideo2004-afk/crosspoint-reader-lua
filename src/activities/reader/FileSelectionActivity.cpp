@@ -177,7 +177,7 @@ void FileSelectionActivity::render() const {
   renderer.drawCenteredText(UI_12_FONT_ID, 15, "Books", true, EpdFontFamily::BOLD);
 
   // Help text
-  const auto labels = mappedInput.mapLabels("« Home", "Open", "", "");
+  const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, BaseTheme::HINT_OK, "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   if (files.empty()) {

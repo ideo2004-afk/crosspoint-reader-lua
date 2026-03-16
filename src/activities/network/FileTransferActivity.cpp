@@ -267,7 +267,7 @@ void FileTransferActivity::render(Activity::RenderLock&&) {
       renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_STARTING_HOTSPOT));
     }
     
-    const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
+    const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, "", "", "");
     GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
     
     renderer.displayBuffer();

@@ -313,11 +313,11 @@ void KeyboardEntryActivity::render(Activity::RenderLock&&) {
   }
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_LEFT), tr(STR_DIR_RIGHT));
+  const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, BaseTheme::HINT_OK, BaseTheme::HINT_PREV, BaseTheme::HINT_NEXT);
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Draw side button hints for Up/Down navigation
-  GUI.drawSideButtonHints(renderer, ">", "<");
+  GUI.drawSideButtonHints(renderer, BaseTheme::HINT_UP, BaseTheme::HINT_DOWN);
 
   renderer.displayBuffer();
 }

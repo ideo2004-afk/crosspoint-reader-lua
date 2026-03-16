@@ -105,13 +105,22 @@ class BaseTheme {
   static const uint8_t* iconForName(UIIcon icon, int size);
 
   // Component drawing methods
+  // Common functional symbol hints
+  static constexpr const char* HINT_BACK    = "<<";
+  static constexpr const char* HINT_OK      = "o";
+  static constexpr const char* HINT_PREV    = "<";
+  static constexpr const char* HINT_NEXT    = ">";
+  static constexpr const char* HINT_UP      = "^";
+  static constexpr const char* HINT_DOWN    = "v";
+
+  // Component drawing methods
   virtual void drawProgressBar(const GfxRenderer& renderer, Rect rect, size_t current, size_t total) const;
   virtual void drawBatteryLeft(const GfxRenderer& renderer, Rect rect,
                                bool showPercentage = true) const;  // Left aligned (reader mode)
   virtual void drawBatteryRight(const GfxRenderer& renderer, Rect rect,
                                 bool showPercentage = true) const;  // Right aligned (UI headers)
   virtual void drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
-                               const char* btn4) const;
+                               const char* btn4, uint8_t highlightMask = 0) const;
   virtual void drawSideButtonHints(const GfxRenderer& renderer, const char* topBtn, const char* bottomBtn) const;
   virtual void drawList(const GfxRenderer& renderer, Rect rect, int itemCount, int selectedIndex,
                         const std::function<std::string(int index)>& rowTitle,
@@ -126,10 +135,11 @@ class BaseTheme {
   virtual void drawTabBar(const GfxRenderer& renderer, Rect rect, const std::vector<TabInfo>& tabs,
                           bool selected) const;
   virtual void drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
-                                   const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
+                                   int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                    bool& bufferRestored, std::function<bool()> storeCoverBuffer,
                                    const char* btn1 = nullptr, const char* btn2 = nullptr,
-                                   const char* btn3 = nullptr, const char* btn4 = nullptr) const;
+                                   const char* btn3 = nullptr, const char* btn4 = nullptr,
+                                   uint8_t highlightMask = 0) const;
   virtual void drawEmptyRecents(const GfxRenderer& renderer, const Rect rect) const;
   virtual void drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount, int selectedIndex,
                               const std::function<std::string(int index)>& buttonLabel,

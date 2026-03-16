@@ -181,30 +181,42 @@ void BaseTheme::drawProgressBar(const GfxRenderer& renderer, Rect rect, const si
 }
 
 void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const char* btn2, const char* btn3,
-                                const char* btn4) const {
-  const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
-  renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-
+                                const char* btn4, uint8_t highlightMask) const {
   const auto& metrics = UITheme::getInstance().getMetrics();
+  const int pageWidth = renderer.getScreenWidth();
   const int pageHeight = renderer.getScreenHeight();
-  constexpr int buttonWidth = 106;
-  const int buttonHeight = metrics.buttonHintsHeight;
-  const int buttonY = metrics.buttonHintsHeight;  // Distance from bottom
-  constexpr int textYOffset = 7;                                  // Distance from top of button to text baseline
-  constexpr int buttonPositions[] = {25, 130, 245, 350};
+  const int footerHeight = metrics.buttonHintsHeight;
   const char* labels[] = {btn1, btn2, btn3, btn4};
+  
+  // Center 4 buttons in a concentrated area (e.g., 400 pixels wide)
+  const int totalWidth = 400;
+  const int startX = (pageWidth - totalWidth) / 2;
+  const int buttonWidth = totalWidth / 4;
+  
+  // Note: We don't draw any background fill as the screen is usually cleared. 
+  // If we wanted to ensure white, we'd fillRect(..., false).
+  renderer.fillRect(0, pageHeight - footerHeight, pageWidth, footerHeight, false);
+
+  const int fontId = SMALL_FONT_ID;
+  const int textHeight = renderer.getLineHeight(fontId);
+  const int textY = pageHeight - footerHeight + (footerHeight - textHeight) / 2;
 
   for (int i = 0; i < 4; i++) {
-    // Only draw if the label is non-empty
     if (labels[i] != nullptr && labels[i][0] != '\0') {
-      const int x = buttonPositions[i];
-      const int textWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, labels[i]);
-      const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(NOTOSANS_12_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      const int x = startX + i * buttonWidth;
+      const bool isHighlighted = (highlightMask & (1 << i));
+      
+      if (isHighlighted) {
+        // Draw black box for highlighted button
+        renderer.fillRoundedRect(x + 4, pageHeight - footerHeight + 4, buttonWidth - 8, footerHeight - 8, 4, Color::Black);
+      }
+
+      const int textWidth = renderer.getTextWidth(fontId, labels[i]);
+      const int textX = x + (buttonWidth - textWidth) / 2;
+      
+      renderer.drawText(fontId, textX, textY, labels[i], isHighlighted ? Color::White : Color::Black);
     }
   }
-
-  renderer.setOrientation(orig_orientation);
 }
 
 void BaseTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* topBtn, const char* bottomBtn) const {
@@ -230,15 +242,13 @@ void BaseTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
     if (labels[i] != nullptr && labels[i][0] != '\0') {
       const int y = topButtonY + i * buttonHeight;
 
-      // Draw rotated text centered in the button
       const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
-      const int textHeight = renderer.getTextHeight(SMALL_FONT_ID);
+      const int textHeight = renderer.getLineHeight(SMALL_FONT_ID);
 
-      // Center the rotated text in the button
-      const int textX = x + (buttonWidth - textHeight) / 2;
-      const int textY = y + (buttonHeight + textWidth) / 2;
+      const int textX = x + (buttonWidth - textWidth) / 2;
+      const int textY = y + (buttonHeight - textHeight) / 2;
 
-      renderer.drawTextRotated90CW(SMALL_FONT_ID, textX, textY, labels[i]);
+      renderer.drawText(SMALL_FONT_ID, textX, textY, labels[i]);
     }
   }
 }
@@ -419,7 +429,7 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
                                     const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                     bool& bufferRestored, std::function<bool()> storeCoverBuffer,
                                     const char* btn1, const char* btn2, const char* btn3,
-                                    const char* btn4) const {
+                                    const char* btn4, uint8_t highlightMask) const {
   const bool hasContinueReading = !recentBooks.empty();
   const bool bookSelected = hasContinueReading && selectorIndex == 0;
 
@@ -743,7 +753,7 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
   }
 
   // Restore button hints to Home screen
-  drawButtonHints(renderer, btn1, btn2, btn3, btn4);
+  drawButtonHints(renderer, btn1, btn2, btn3, btn4, highlightMask);
 }
 
 void BaseTheme::drawEmptyRecents(const GfxRenderer& renderer, const Rect rect) const {
