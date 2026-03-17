@@ -565,7 +565,7 @@ bool Xtc::generateThumbBmp(int height) const {
         }
 
         uint8_t avgGray = (totalCount > 0) ? static_cast<uint8_t>(graySum / totalCount) : 255;
-        if (avgGray < 128) {
+        if (avgGray < 116) {
           rowBuffer[dstX / 8] &= ~(1 << (7 - (dstX % 8))); // Black
         }
       }
