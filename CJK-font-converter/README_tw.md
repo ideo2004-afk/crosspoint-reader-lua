@@ -25,17 +25,29 @@ python convert_font.py --font fonts/您的字型檔.ttf --size 32
 - `--size`: 字體大小（必填，單位為 pt）。
 - `--measure`: 僅測量建議的網格大小（Cell Size），不進行實際轉換。
 - `--width` / `--height`: 手動指定網格寬高（若不指定，工具會根據字型內容自動偵測）。
+- `--threshold`: 二值化閥值 (0-255，預設為 128)。越低越粗，越高越細。
+- `--sharpen`: 在二值化前應用銳化濾鏡，使邊緣更清晰。
+- `--preview`: 在輸出目錄自動生成 `preview.png` 以供視覺檢查。
+- `--upscale`: 超採樣倍率 (例如 4)。先以高解析度渲染再縮放回目標尺寸，可獲得極平滑的邊緣。
+- `--dither`: 使用 Floyd-Steinberg 抖動處理 (建議在 E-ink 螢幕上開啟，能模擬灰階質感)。
+- `--gamma`: 伽瑪校正調整視覺厚度 (預設為 1.0)。`> 1.0` 變厚實，`< 1.0` 變纖細。
 
 ### 範例：預覽建議網格大小
 ```bash
 python convert_font.py --font fonts/TaipeiSansTC-Regular.ttf --size 32 --measure
 ```
 
-### 範例：完整轉換
+### 範例：基礎轉換
 ```bash
 python convert_font.py --font fonts/TaipeiSansTC-Regular.ttf --size 32
 ```
-轉換完成後，轉出的檔案會出現在 `output/` 資料夾中。
+
+### 範例：高品質 E-ink 最佳化 (建議)
+此指令結合了超採樣與抖動技術，能達到類似專業排版引擎的字體平滑度。
+```bash
+python convert_font.py --font fonts/TaipeiSansTC-Regular.ttf --size 32 --upscale 4 --dither --gamma 1.5 --preview
+```
+轉換完成後，產出的 `.bin` 檔案會出現在 `output/` 資料夾，並附帶一張 `preview.png` 預覽圖。
 
 ## 放置到 SD 卡
 

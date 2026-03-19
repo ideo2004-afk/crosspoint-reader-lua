@@ -25,17 +25,29 @@ python convert_font.py --font fonts/your_font.ttf --size 32
 - `--size`: Font size in pt (Required).
 - `--measure`: Measure the suggested cell (grid) size without performing actual conversion.
 - `--width` / `--height`: Manually specify the cell width/height (Auto-detected if omitted).
+- `--threshold`: Binarization threshold (0-255, default 128). Lower = Bolder, Higher = Thinner.
+- `--sharpen`: Apply sharpening filter before binarization.
+- `--preview`: Generate a `preview.png` in the output directory for visual check.
+- `--upscale`: Super-sampling factor (e.g. 4). Renders at higher resolution before downscaling for better quality.
+- `--dither`: Use Floyd-Steinberg dithering instead of hard thresholding (Recommended for E-ink).
+- `--gamma`: Gamma correction for weight adjustment (default 1.0). Use `> 1.0` for bolder, `< 1.0` for thinner.
 
 ### Example: Preview Suggested Cell Size
 ```bash
 python convert_font.py --font fonts/TaipeiSansTC-Regular.ttf --size 32 --measure
 ```
 
-### Example: Full Conversion
+### Example: Basic Conversion
 ```bash
 python convert_font.py --font fonts/TaipeiSansTC-Regular.ttf --size 32
 ```
-The converted file will be generated in the `output/` directory.
+
+### Example: High-Quality E-ink Optimized (Recommended)
+This command uses super-sampling and dithering to achieve smoothness similar to professional layout engines.
+```bash
+python convert_font.py --font fonts/TaipeiSansTC-Regular.ttf --size 32 --upscale 4 --dither --gamma 1.5 --preview
+```
+The converted file will be generated in the `output/` directory alongside a `preview.png`.
 
 ## Installation to SD Card
 
