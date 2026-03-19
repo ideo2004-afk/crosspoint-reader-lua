@@ -1,290 +1,231 @@
--- X4 Tower Defense Plugin
--- Character-based tower defense optimized for E-ink
--- Grid: 24 columns x 36 rows
+-- TowerDefense Prototype for XTEINK X4
+-- DESCRIPTION: Simple tower defense clone where shapes fall from the top.
+-- USES Solid Filled Shapes for maximum visibility on E-ink screens.
 
 -- ── Constants ─────────────────────────────────────────────────────────────────
-local GRID_COLS = 24
-local GRID_ROWS = 36
-local MARGIN_TOP = 100
-local MARGIN_SIDE = 0
-local CELL_W = 20
-local CELL_H = math.floor((800 - MARGIN_TOP - 40) / GRID_ROWS) -- ~19px
+local STATE_START = 0
+local STATE_PLAYING = 1
+local STATE_GAMEOVER = 2
 
--- ── Game State ────────────────────────────────────────────────────────────────
-local grid = {} -- 0: empty, 1: tower
-local cursor = {x = 12, y = 18}
-local gold = 100
-local lives = 20
+local SHAPE_SIZE = 40
+local SPAWN_INTERVAL = 1500 -- ms
+local LIFE_INITIAL = 20
+local TICK_INTERVAL = 300   -- ms (Adjusted for stable E-ink refresh)
+
+-- Speeds in PIXELS PER TICK (every 300ms)
+local SHAPE_TYPES = {
+    { name = "Triangle", speed = 15, score = 10 },
+    { name = "Square",   speed = 20, score = 15 },
+    { name = "Circle",   speed = 25, score = 20 },
+    { name = "Star",     speed = 30, score = 25 },
+    { name = "Diamond",  speed = 35, score = 30 }
+}
+
+-- ── Global State ──────────────────────────────────────────────────────────────
+local gameState = STATE_START
+local life = LIFE_INITIAL
 local score = 0
-local isRunning = false -- false: Build Mode, true: Run Mode
-local firstDraw = true
-local lastRefreshTime = 0
+local entities = {} -- list of {x, y, type_idx, speed}
+local lastTickTime = 0
+local lastSpawnTime = 0
+local boardW, boardH = 480, 800 
+local needsDraw = true
+local hasRefreshedStart = false
 
--- ── Pathfinding (BFS) ────────────────────────────────────────────────────────
-local path = {} -- List of {x, y}
+-- ── Drawing Helpers (Solid Shapes) ───────────────────────────────────────────
 
-local function calculatePath()
-    local startNode = {x = 12, y = 1}
-    local endNode = {x = 12, y = GRID_ROWS}
-    
-    local queue = {startNode}
-    local visited = {}
-    local parent = {}
-    
-    visited[startNode.y * 100 + startNode.x] = true
-    
-    local found = false
-    local head = 1
-    while head <= #queue do
-        local curr = queue[head]
-        head = head + 1
-        
-        if curr.x == endNode.x and curr.y == endNode.y then
-            found = true
-            break
-        end
-        
-        -- Neighbors: Up, Down, Left, Right
-        local dirs = {{0,1}, {0,-1}, {1,0}, {-1,0}}
-        for _, d in ipairs(dirs) do
-            local nx, ny = curr.x + d[1], curr.y + d[2]
-            if nx >= 1 and nx <= GRID_COLS and ny >= 1 and ny <= GRID_ROWS then
-                local key = ny * 100 + nx
-                if not visited[key] and grid[ny][nx] ~= 1 then
-                    visited[key] = true
-                    parent[key] = curr
-                    table.insert(queue, {x = nx, y = ny})
-                end
-            end
-        end
+local function fillTriangle(cx, cy, size, color)
+    local h = size * 0.866
+    -- Draw multiple lines to simulate a fill
+    for i = 0, size/2, 2 do
+        local curr_s = size - (i * 2)
+        local curr_h = curr_s * 0.866
+        local x1, y1 = cx, cy - curr_h/2 + i*0.5
+        local x2, y2 = cx - curr_s/2, cy + curr_h/2 - i*0.5
+        local x3, y3 = cx + curr_s/2, cy + curr_h/2 - i*0.5
+        gui.drawLine(x1, y1, x2, y2, 2, color)
+        gui.drawLine(x2, y2, x3, y3, 2, color)
+        gui.drawLine(x3, y3, x1, y1, 2, color)
     end
-    
-    if found then
-        local newPath = {}
-        local curr = endNode
-        while curr do
-            table.insert(newPath, 1, curr)
-            curr = parent[curr.y * 100 + curr.x]
-        end
-        path = newPath
-        return true
-    end
-    return false
 end
 
--- ── Game Logic ────────────────────────────────────────────────────────────────
-local creeps = {}
-local towers = {} -- {x, y, range, damage, cooldown, lastFire}
-local spawnTimer = 0
-local wave = 1
+local function fillDiamond(cx, cy, size, color)
+    for i = 0, size/2, 2 do
+        local s = size - i*2
+        local x1, y1 = cx, cy - s/2
+        local x2, y2 = cx + s/2, cy
+        local x3, y3 = cx, cy + s/2
+        local x4, y4 = cx - s/2, cy
+        gui.drawLine(x1, y1, x2, y2, 2, color)
+        gui.drawLine(x2, y2, x3, y3, 2, color)
+        gui.drawLine(x3, y3, x4, y4, 2, color)
+        gui.drawLine(x4, y4, x1, y1, 2, color)
+    end
+end
 
-local function spawnEnemy()
-    table.insert(creeps, {
-        hp = 10 + wave * 5,
-        maxHp = 10 + wave * 5,
-        pathIdx = 1,
-        x = path[1].x,
-        y = path[1].y,
-        lastMove = sys.millis()
+local function fillStar(cx, cy, r, color)
+    local PI = 3.14159
+    -- Draw 3-4 nested stars to make it look solid
+    for offset = 0, r/2, 4 do
+        local curr_r = r - offset
+        local points = {}
+        for i = 0, 9 do
+            local angle = (i * 36 - 90) * (PI / 180)
+            local rad = (i % 2 == 0) and curr_r or (curr_r / 2)
+            table.insert(points, {x = cx + math.cos(angle) * rad, y = cy + math.sin(angle) * rad})
+        end
+        for i = 1, #points do
+            local next_i = (i % #points) + 1
+            gui.drawLine(points[i].x, points[i].y, points[next_i].x, points[next_i].y, 2, color)
+        end
+    end
+end
+
+-- ── Logic ─────────────────────────────────────────────────────────────────────
+
+local function spawnShape()
+    local type_idx = math.random(1, #SHAPE_TYPES)
+    local t = SHAPE_TYPES[type_idx]
+    local margin = 60
+    local x = math.random(margin, boardW - margin)
+    local y = -20
+    table.insert(entities, {
+        x = x,
+        y = y,
+        type_idx = type_idx,
+        speed = t.speed
     })
 end
 
-local function updateGame()
+local function resetGame()
+    boardW = gui.width() > 0 and gui.width() or 480
+    boardH = gui.height() > 0 and gui.height() or 800
+    
+    life = LIFE_INITIAL
+    score = 0
+    entities = {}
+    gameState = STATE_PLAYING
+    
     local now = sys.millis()
-    local changed = false
-    
-    -- 1. Spawning
-    if isRunning and now - spawnTimer > 2000 then
-        spawnEnemy()
-        spawnTimer = now
-        changed = true
-    end
-    
-    -- 2. Enemy Movement
-    for i = #creeps, 1, -1 do
-        local c = creeps[i]
-        if now - c.lastMove > 500 then
-            c.pathIdx = c.pathIdx + 1
-            if c.pathIdx <= #path then
-                c.x = path[c.pathIdx].x
-                c.y = path[c.pathIdx].y
-                c.lastMove = now
-                changed = true
-            else
-                -- Reached exit
-                lives = lives - 1
-                table.remove(creeps, i)
-                changed = true
-            end
-        end
-    end
-    
-    -- 3. Tower Combat
-    for _, t in ipairs(towers) do
-        if now - t.lastFire > t.cooldown then
-            -- Find target
-            for i = #creeps, 1, -1 do
-                local c = creeps[i]
-                local dist = math.abs(c.x - t.x) + math.abs(c.y - t.y)
-                if dist <= t.range then
-                    c.hp = c.hp - t.damage
-                    t.lastFire = now
-                    changed = true
-                    if c.hp <= 0 then
-                        gold = gold + 2
-                        score = score + 10
-                        table.remove(creeps, i)
-                    end
-                    break -- Single target
-                end
-            end
-        end
-    end
-    
-    if lives <= 0 then
-        isRunning = false
-        changed = true
-    end
-    return changed
+    lastTickTime = now
+    lastSpawnTime = now
+    needsDraw = true
+    spawnShape() 
 end
 
--- ── Initialization ────────────────────────────────────────────────────────────
-function init()
-    math.randomseed(sys.millis())
-    grid = {}
-    for y = 1, GRID_ROWS do
-        grid[y] = {}
-        for x = 1, GRID_COLS do
-            grid[y][x] = 0
+local function update()
+    if gameState ~= STATE_PLAYING then return end
+    local now = sys.millis()
+    
+    -- Spawn logic
+    if now - lastSpawnTime > SPAWN_INTERVAL then
+        spawnShape()
+        lastSpawnTime = now
+    end
+
+    -- Movement logic
+    for i = #entities, 1, -1 do
+        local e = entities[i]
+        e.y = e.y + e.speed
+        
+        -- Boundary check
+        if e.y > boardH then
+            table.remove(entities, i)
+            life = life - 1
+            if life <= 0 then
+                life = 0
+                gameState = STATE_GAMEOVER
+                needsDraw = true
+            end
         end
     end
-
-    for x = 11, 14 do
-        grid[1][x] = 2
-        grid[GRID_ROWS][x] = 2
-    end
-
-    isRunning = false
-    firstDraw = true
-    lastRefreshTime = 0
-    creeps = {}
-    towers = {}
-    gold = 100
-    lives = 20
-    score = 0
-    calculatePath()
-    spawnTimer = 0
 end
 
 -- ── Rendering ─────────────────────────────────────────────────────────────────
-local function render()
+
+local function renderStart()
     gui.clear()
-
-    gui.drawText(FONT_BOOKERLY_14, 20, 20, "TD: XTEINK Edition", COLOR_BLACK, STYLE_BOLD)
-    local stats = string.format("Gold: %d  Lives: %d  Score: %d", gold, lives, score)
-    gui.drawText(FONT_BOOKERLY_12, 20, 55, stats, COLOR_BLACK, STYLE_REGULAR)
-    
-    local modeText = isRunning and "[ RUNNING ]" or "[ BUILD MODE ]"
-    gui.drawText(FONT_BOOKERLY_12, gui.width() - 150, 20, modeText, COLOR_BLACK, STYLE_BOLD)
-    gui.drawLine(0, 85, gui.width(), 85, 2, COLOR_BLACK)
-
-    local startY = MARGIN_TOP
-    for y = 1, GRID_ROWS do
-        for x = 1, GRID_COLS do
-            local px = (x - 1) * CELL_W
-            local py = startY + (y - 1) * CELL_H
-            local cellType = grid[y][x]
-            
-            if cellType == 1 then
-                gui.fillRect(px + 1, py + 1, CELL_W - 2, CELL_H - 2, COLOR_BLACK)
-            elseif cellType == 2 then
-                gui.drawRect(px + 1, py + 1, CELL_W - 2, CELL_H - 2, 2, COLOR_BLACK)
-                local char = (y == 1) and "v" or "^"
-                gui.drawText(FONT_NOTOSANS_12, px + 5, py + 1, char, COLOR_BLACK, STYLE_BOLD)
-            else
-                gui.fillRect(px + CELL_W/2 - 1, py + CELL_H/2 - 1, 2, 2, COLOR_BLACK)
-            end
-            
-            if not isRunning and cursor.x == x and cursor.y == y then
-                gui.drawRect(px, py, CELL_W, CELL_H, 2, COLOR_BLACK)
-            end
-        end
-    end
-    
-    -- Draw Creeps
-    for _, c in ipairs(creeps) do
-        local px = (c.x - 1) * CELL_W
-        local py = startY + (c.y - 1) * CELL_H
-        gui.drawText(FONT_NOTOSANS_12, px + 4, py, "&", COLOR_BLACK, STYLE_BOLD)
-    end
-
-    gui.drawButtonHints("<<", "o", "<", ">")
-
-    local refreshMode = firstDraw and REFRESH_HALF or REFRESH_FAST
-    gui.refresh(refreshMode)
-    firstDraw = false
-    lastRefreshTime = sys.millis()
+    local cx, cy = boardW / 2, boardH / 2
+    gui.drawText(FONT_BOOKERLY_14, cx - 80, cy - 100, "Tower Defense", COLOR_BLACK, STYLE_BOLD)
+    local bw, bh = 220, 70
+    gui.drawRoundedRect(cx - bw/2, cy - 20, bw, bh, 3, 15, COLOR_BLACK)
+    gui.drawText(FONT_BOOKERLY_14, cx - 35, cy + 5, "START", COLOR_BLACK, STYLE_BOLD)
+    gui.drawText(FONT_BOOKERLY_12, cx - 110, cy + 100, "Press CONFIRM to Play", COLOR_BLACK, STYLE_REGULAR)
+    gui.refresh(REFRESH_HALF)
+    hasRefreshedStart = true
 end
 
--- ── Main Loop ─────────────────────────────────────────────────────────────────
+local function renderGame()
+    gui.clear()
+    -- HUD
+    gui.drawText(FONT_BOOKERLY_14, 20, 20, "LIFE: " .. life, COLOR_BLACK, STYLE_BOLD)
+    gui.drawText(FONT_BOOKERLY_12, boardW - 150, 25, "SCORE: " .. score, COLOR_BLACK, STYLE_REGULAR)
+    gui.drawLine(0, 70, boardW, 70, 2, COLOR_BLACK)
+    gui.drawLine(0, boardH - 2, boardW, boardH - 2, 2, COLOR_BLACK) 
+    
+    -- Entities (Solid Filled)
+    for _, e in ipairs(entities) do
+        local t = SHAPE_TYPES[e.type_idx]
+        if t.name == "Triangle" then 
+            fillTriangle(e.x, e.y, SHAPE_SIZE, COLOR_BLACK)
+        elseif t.name == "Square" then 
+            gui.fillRect(e.x - SHAPE_SIZE/2, e.y - SHAPE_SIZE/2, SHAPE_SIZE, SHAPE_SIZE, COLOR_BLACK)
+        elseif t.name == "Circle" then 
+            gui.fillCircle(e.x, e.y, SHAPE_SIZE/2, COLOR_BLACK)
+        elseif t.name == "Star" then 
+            fillStar(e.x, e.y, SHAPE_SIZE/2, COLOR_BLACK)
+        elseif t.name == "Diamond" then 
+            fillDiamond(e.x, e.y, SHAPE_SIZE, COLOR_BLACK)
+        end
+    end
+    gui.refresh(REFRESH_FAST)
+end
+
+local function renderGameOver()
+    local mw, mh = 360, 240
+    local mx, my = (boardW - mw) / 2, (boardH - mh) / 2
+    gui.fillRoundedRect(mx, my, mw, mh, 15, COLOR_WHITE)
+    gui.drawRoundedRect(mx, my, mw, mh, 3, 15, COLOR_BLACK)
+    gui.drawText(FONT_BOOKERLY_14, mx + 90, my + 50, "GAME OVER", COLOR_BLACK, STYLE_BOLD)
+    gui.drawText(FONT_BOOKERLY_12, mx + 110, my + 110, "Score: " .. score, COLOR_BLACK, STYLE_REGULAR)
+    gui.drawText(FONT_BOOKERLY_12, mx + 40, my + 170, "Press CONFIRM to Restart", COLOR_BLACK, STYLE_REGULAR)
+    gui.refresh(REFRESH_HALF)
+    needsDraw = false
+end
+
+-- ── Lifecycle ─────────────────────────────────────────────────────────────────
+
+function init()
+    math.randomseed(sys.millis())
+    gameState = STATE_START
+    hasRefreshedStart = false
+end
+
 function draw()
     local now = sys.millis()
-    local needsRedraw = false
-
-    -- Mode Switching (Back key)
-    if input.wasPressed("back") then
-        isRunning = not isRunning
-        needsRedraw = true
-        if isRunning then spawnTimer = now - 2000 end -- Spawn one immediately
-    end
-
-    if not isRunning then
-        -- Vertical Movement (including side buttons)
-        if input.wasPressed("up") or input.wasPressed("page_back") then 
-            cursor.y = math.max(1, cursor.y - 1)
-            needsRedraw = true 
-        end
-        if input.wasPressed("down") or input.wasPressed("page_forward") then 
-            cursor.y = math.min(GRID_ROWS, cursor.y + 1)
-            needsRedraw = true 
-        end
-        
-        -- Horizontal Movement
-        if input.wasPressed("left") then cursor.x = math.max(1, cursor.x - 1); needsRedraw = true end
-        if input.wasPressed("right") then cursor.x = math.min(GRID_COLS, cursor.x + 1); needsRedraw = true end
-        
-        -- Place/Remove Tower
-        if input.wasPressed("confirm") then
-            local current = grid[cursor.y][cursor.x]
-            if current == 0 and gold >= 10 then
-                grid[cursor.y][cursor.x] = 1
-                if calculatePath() then
-                    table.insert(towers, {x = cursor.x, y = cursor.y, range = 3, damage = 5, cooldown = 1000, lastFire = 0})
-                    gold = gold - 10
-                else
-                    grid[cursor.y][cursor.x] = 0 -- Revert if blocks path
-                end
-            elseif current == 1 then
-                grid[cursor.y][cursor.x] = 0
-                for i, t in ipairs(towers) do
-                    if t.x == cursor.x and t.y == cursor.y then table.remove(towers, i); break end
-                end
-                gold = gold + 5
-                calculatePath()
-            end
-            needsRedraw = true
+    
+    if input.wasPressed("confirm") then
+        if gameState == STATE_START or gameState == STATE_GAMEOVER then
+            resetGame()
+            return
         end
     end
-
-    if isRunning then
-        if updateGame() then
-            needsRedraw = true
+    if input.wasReleased("back") then sys.exit() end
+    
+    -- State Machine
+    if gameState == STATE_START then
+        if not hasRefreshedStart then renderStart() end
+    elseif gameState == STATE_PLAYING then
+        if now - lastTickTime >= TICK_INTERVAL then
+            update()
+            renderGame()
+            lastTickTime = now
+            -- Add a small delay to let the screen update finish
+            sys.delay(50)
         end
+    elseif gameState == STATE_GAMEOVER then
+        if needsDraw then renderGameOver() end
     end
-
-    -- Dynamic refresh rate: faster when running, slower when building
-    local refreshInterval = isRunning and 500 or 1000
-    if needsRedraw or (now - lastRefreshTime >= refreshInterval) or firstDraw then
-        render()
-    end
+    
+    sys.delay(10)
 end

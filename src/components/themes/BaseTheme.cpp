@@ -211,10 +211,35 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
         renderer.fillRoundedRect(x + 4, pageHeight - footerHeight + 4, buttonWidth - 8, footerHeight - 8, 4, Color::Black);
       }
 
-      const int textWidth = renderer.getTextWidth(fontId, labels[i]);
-      const int textX = x + (buttonWidth - textWidth) / 2;
-      
-      renderer.drawText(fontId, textX, textY, labels[i], isHighlighted ? Color::White : Color::Black);
+      const int cx = x + buttonWidth / 2;
+      const int cy = textY + textHeight / 2;
+      const bool state = !isHighlighted; // Draw white on black box, or black on white background
+
+      if (labels[i] == std::string(HINT_PREV)) {
+        // Left Triangle (base 10, height 10)
+        const int xp[3] = {cx + 4, cx + 4, cx - 6};
+        const int yp[3] = {cy - 5, cy + 5, cy};
+        renderer.fillPolygon(xp, yp, 3, state);
+      } else if (labels[i] == std::string(HINT_NEXT)) {
+        // Right Triangle
+        const int xp[3] = {cx - 4, cx - 4, cx + 6};
+        const int yp[3] = {cy - 5, cy + 5, cy};
+        renderer.fillPolygon(xp, yp, 3, state);
+      } else if (labels[i] == std::string(HINT_BACK)) {
+        // Skip Back (Bar + Left Triangle)
+        renderer.fillRect(cx - 6, cy - 5, 2, 10, state);
+        const int xp[3] = {cx + 6, cx + 6, cx - 2};
+        const int yp[3] = {cy - 5, cy + 5, cy};
+        renderer.fillPolygon(xp, yp, 3, state);
+      } else if (labels[i] == std::string(HINT_OK)) {
+        // Solid Square (8x8)
+        renderer.fillRect(cx - 4, cy - 4, 8, 8, state);
+      } else {
+        // Regular text
+        const int textWidth = renderer.getTextWidth(fontId, labels[i]);
+        const int textX = x + (buttonWidth - textWidth) / 2;
+        renderer.drawText(fontId, textX, textY, labels[i], isHighlighted ? Color::White : Color::Black);
+      }
     }
   }
 }
@@ -248,7 +273,22 @@ void BaseTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
       const int textX = x + (buttonWidth - textWidth) / 2;
       const int textY = y + (buttonHeight - textHeight) / 2;
 
-      renderer.drawText(SMALL_FONT_ID, textX, textY, labels[i]);
+      const int cx = x + buttonWidth / 2;
+      const int cy = y + buttonHeight / 2;
+
+      if (labels[i] == std::string(HINT_UP)) {
+        // Up Triangle
+        const int xp[3] = {cx - 5, cx + 5, cx};
+        const int yp[3] = {cy + 4, cy + 4, cy - 6};
+        renderer.fillPolygon(xp, yp, 3, true);
+      } else if (labels[i] == std::string(HINT_DOWN)) {
+        // Down Triangle
+        const int xp[3] = {cx - 5, cx + 5, cx};
+        const int yp[3] = {cy - 4, cy - 4, cy + 6};
+        renderer.fillPolygon(xp, yp, 3, true);
+      } else {
+        renderer.drawText(SMALL_FONT_ID, textX, textY, labels[i]);
+      }
     }
   }
 }
@@ -269,22 +309,24 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     constexpr int margin = 15;  // Offset from right edge
 
     const int centerX = rect.x + rect.width - indicatorWidth / 2 - margin;
-    const int indicatorTop = rect.y;  // Offset to avoid overlapping side button hints
-    const int indicatorBottom = rect.y + rect.height - arrowSize;
+    const int indicatorTop = rect.y;
+    const int indicatorBottom = rect.y + rect.height;
 
-    // Draw up arrow at top (^) - narrow point at top, wide base at bottom
-    for (int i = 0; i < arrowSize; ++i) {
-      const int lineWidth = 1 + i * 2;
-      const int startX = centerX - i;
-      renderer.drawLine(startX, indicatorTop + i, startX + lineWidth - 1, indicatorTop + i);
-    }
-
-    // Draw down arrow at bottom (v) - wide base at top, narrow point at bottom
-    for (int i = 0; i < arrowSize; ++i) {
-      const int lineWidth = 1 + (arrowSize - 1 - i) * 2;
-      const int startX = centerX - (arrowSize - 1 - i);
-      renderer.drawLine(startX, indicatorBottom - arrowSize + 1 + i, startX + lineWidth - 1,
-                        indicatorBottom - arrowSize + 1 + i);
+    // Draw vertical scroll line (Extended to full height, arrows removed per user request)
+    const int lineTop = indicatorTop + 5;
+    const int lineBottom = indicatorBottom - 5;
+    const int lineHeight = lineBottom - lineTop;
+    const int barWidth = metrics.scrollBarWidth;
+    
+    // Track (thin line)
+    renderer.drawLine(centerX, lineTop, centerX, lineBottom, 1, Color::Black);
+    
+    // Thumb (thicker bar)
+    if (totalPages > 1) {
+      const int thumbHeight = std::max(20, lineHeight / totalPages);
+      const int currentPage = selectedIndex / pageItems;
+      const int thumbY = lineTop + (lineHeight - thumbHeight) * currentPage / (totalPages - 1);
+      renderer.fillRect(centerX - barWidth / 2, thumbY, barWidth, thumbHeight, true);
     }
   }
 
@@ -304,8 +346,19 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     // Draw name
     auto itemName = rowTitle(i);
     auto font = NOTOSANS_12_FONT_ID;
-    auto item = renderer.truncatedText(font, itemName.c_str(), textWidth);
-    renderer.drawText(font, rect.x + metrics.contentSidePadding, itemY + 2, item.c_str(), !isSelected);
+    auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24);
+    
+    int iconPadding = 0;
+    if (rowIcon != nullptr) {
+      UIIcon icon = rowIcon(i);
+      const uint8_t* iconBitmap = iconForName(icon, 24);
+      if (iconBitmap != nullptr) {
+        renderer.drawIcon(iconBitmap, rect.x + metrics.contentSidePadding, itemY + 4, 24, 24, isSelected ? Color::White : Color::Black);
+        iconPadding = 32;
+      }
+    }
+    
+    renderer.drawText(font, rect.x + metrics.contentSidePadding + iconPadding, itemY + 2, item.c_str(), !isSelected);
 
     if (rowSubtitle != nullptr) {
       // Draw subtitle

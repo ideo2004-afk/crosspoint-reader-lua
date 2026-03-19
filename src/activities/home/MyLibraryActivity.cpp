@@ -330,14 +330,7 @@ void MyLibraryActivity::render(Activity::RenderLock&&) {
     const int pageItems   = UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, false);
     const int totalFiles  = static_cast<int>(files.size());
     const int totalPages  = (pageItems > 0) ? (totalFiles + pageItems - 1) / pageItems : 1;
-    const int currentPage = (pageItems > 0) ? selectorIndex / pageItems : 0;
-    if (totalPages > 1) {
-      char pageStr[12];
-      snprintf(pageStr, sizeof(pageStr), "%d / %d", currentPage + 1, totalPages);
-      const int tw = renderer.getTextWidth(SMALL_FONT_ID, pageStr);
-      const int ty = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 16;
-      renderer.drawText(SMALL_FONT_ID, (pageWidth - tw) / 2, ty, pageStr);
-    }
+    // Page number display removed per user request (redundant with scroll bar)
   }
 
   const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, BaseTheme::HINT_OK, BaseTheme::HINT_PREV, BaseTheme::HINT_NEXT);

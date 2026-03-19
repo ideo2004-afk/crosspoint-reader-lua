@@ -71,6 +71,11 @@ std::string UITheme::getCoverThumbPath(std::string coverBmpPath, int coverHeight
 
 UIIcon UITheme::getFileIcon(std::string filename) {
   if (filename.back() == '/') {
+    std::string folderName = filename.substr(0, filename.length() - 1);
+    if (folderName == "Books") return Book;
+    if (folderName == "Games") return Game;
+    if (folderName == "Pictures" || folderName == "Images") return Image;
+    if (folderName == "Text" || folderName == "Documents") return Text;
     return Folder;
   }
   if (StringUtils::checkFileExtension(filename, ".epub") || StringUtils::checkFileExtension(filename, ".xtch") ||
