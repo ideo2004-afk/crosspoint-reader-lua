@@ -29,15 +29,7 @@ for size in ${NOTOSANS_FONT_SIZES[@]}; do
   done
 done
 
-for size in ${OPENDYSLEXIC_FONT_SIZES[@]}; do
-  for style in ${READER_FONT_STYLES[@]}; do
-    font_name="opendyslexic_${size}_$(echo $style | tr '[:upper:]' '[:lower:]')"
-    font_path="../builtinFonts/source/OpenDyslexic/OpenDyslexic-${style}.otf"
-    output_path="../builtinFonts/${font_name}.h"
-    python fontconvert.py $font_name $size $font_path --2bit --compress > $output_path
-    echo "Generated $output_path"
-  done
-done
+
 
 UI_FONT_SIZES=(10 12)
 UI_FONT_STYLES=("Regular" "Bold")
