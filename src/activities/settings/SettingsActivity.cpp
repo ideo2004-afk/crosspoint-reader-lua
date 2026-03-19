@@ -15,6 +15,7 @@
 #include "activities/settings/ReadingStatsActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/TimeService.h"
 
 const StrId SettingsActivity::categoryNames[categoryCount] = {StrId::STR_CAT_DISPLAY, StrId::STR_CAT_READER,
                                                               StrId::STR_CAT_CONTROLS, StrId::STR_CAT_SYSTEM};
@@ -212,6 +213,39 @@ void SettingsActivity::toggleCurrentSetting() {
       case SettingAction::FontSelectReader:
         enterSubActivity(new FontSelectActivity(renderer, mappedInput, FontSelectActivity::SelectMode::Reader, onComplete));
         break;
+      case SettingAction::TimeSync: {
+        GUI.drawPopup(renderer, tr(STR_TIME_SYNCING));
+        renderer.displayBuffer();
+
+        bool success = TIME_SERVICE.syncNow();
+
+        if (success) {
+          char dateStr[32], clockStr[32];
+          TIME_SERVICE.formatDate(dateStr, sizeof(dateStr));
+          TIME_SERVICE.formatClock(clockStr, sizeof(clockStr));
+
+          char msg[128];
+          snprintf(msg, sizeof(msg), tr(STR_SYNC_RESULT_FORMAT), dateStr, clockStr);
+          GUI.drawPopup(renderer, msg);
+        } else {
+          // Show a bit more detail if possible
+          if (WiFi.status() != WL_CONNECTED) {
+            GUI.drawPopup(renderer, tr(STR_WIFI_CONN_FAILED));
+          } else {
+            GUI.drawPopup(renderer, tr(STR_TIME_SYNC_FAILED));
+          }
+        }
+        renderer.displayBuffer();
+
+        // Wait a bit and for any button to dismiss
+        unsigned long start = millis();
+        while (millis() - start < 2000) {
+          if (mappedInput.wasAnyReleased()) break;
+          delay(10);
+        }
+        requestUpdate();
+        break;
+      }
       case SettingAction::None:
         // Do nothing
         break;

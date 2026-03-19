@@ -85,5 +85,6 @@ inline std::vector<SettingInfo> getSettingsList() {
                         "sleepTimeout", StrId::STR_CAT_SYSTEM),
       SettingInfo::Enum(StrId::STR_LANGUAGE, &CrossPointSettings::language,
                         {StrId::STR_LANG_ENGLISH, StrId::STR_LANG_T_CHINESE}, "language", StrId::STR_CAT_SYSTEM),
+      SettingInfo::Action(StrId::STR_TIME_SYNC, SettingAction::TimeSync, StrId::STR_CAT_SYSTEM),
   };
 }

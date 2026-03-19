@@ -290,7 +290,7 @@ local function renderBoard()
     if inEscMenu then
         renderEscMenu()
     else
-        gui.drawButtonHints("«", "o", "<", ">")
+        gui.drawButtonHints("<<", "o", "<", ">")
     end
 
     gui.refresh(REFRESH_FAST)

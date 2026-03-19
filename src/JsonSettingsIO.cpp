@@ -76,6 +76,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["embeddedStyle"] = s.embeddedStyle;
   doc["darkMode"] = s.darkMode;
   doc["language"] = s.language;
+  doc["timeZone"] = s.timeZone;
 
   String json;
   serializeJson(doc, json);
@@ -134,6 +135,7 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.embeddedStyle = doc["embeddedStyle"] | (uint8_t)1;
   s.darkMode = doc["darkMode"] | (uint8_t)0;
   s.language = doc["language"] | (uint8_t)0;
+  s.timeZone = doc["timeZone"] | std::string("CST-8");
 
   LOG_DBG("CPS", "Settings loaded from file");
   return true;

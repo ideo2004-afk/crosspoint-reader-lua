@@ -17,10 +17,11 @@
 #include "WifiCredentialStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "network/HttpDownloader.h"
 
 namespace {
-constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 4000;
-constexpr unsigned long WIFI_SYNC_CONNECT_BUDGET_MS = 8000;
+constexpr unsigned long WIFI_CONNECT_TIMEOUT_MS = 10000;
+constexpr unsigned long WIFI_SYNC_CONNECT_BUDGET_MS = 20000;
 constexpr uint8_t NTP_SYNC_RETRIES = 150;
 constexpr unsigned long NTP_SYNC_DELAY_MS = 100;
 constexpr int TOP_CLOCK_VERTICAL_PADDING = 6;
@@ -148,9 +149,8 @@ void TimeService::adoptTimeSnapshot(const time_t newAnchorEpoch, const uint64_t 
 }
 
 void TimeService::begin() {
-  // Use CST-8 for UTC+8 (China Standard Time / Taiwan Time)
-  // POSIX TZ: CST-8 means local time is 8 hours ahead of UTC.
-  setenv("TZ", "CST-8", 1);
+  // Use persistent TZ setting (defaults to CST-8 for UTC+8)
+  setenv("TZ", SETTINGS.timeZone.c_str(), 1);
   tzset();
   loadPersistedSnapshot();
   restoreRtcBackedTime();
@@ -184,6 +184,7 @@ bool TimeService::shouldAttemptSync() const {
 }
 
 bool TimeService::connectWithSavedCredentials() const {
+  WIFI_STORE.loadFromFile();
   const auto& credentials = WIFI_STORE.getCredentials();
   if (credentials.empty()) {
     LOG_DBG("TIME", "Skipping time sync: no saved WiFi credentials");
@@ -294,6 +295,59 @@ bool TimeService::syncTimeOverNtp() {
 
   LOG_DBG("TIME", "NTP sync timed out");
   return false;
+}
+
+void TimeService::syncTimeZoneFromIp() {
+  LOG_DBG("TIME", "Detecting time zone from IP...");
+  std::string json;
+  if (!HttpDownloader::fetchUrl("http://worldtimeapi.org/api/ip", json)) {
+    LOG_ERR("TIME", "Failed to fetch time zone from IP");
+    return;
+  }
+
+  JsonDocument doc;
+  auto error = deserializeJson(doc, json);
+  if (error) {
+    LOG_ERR("TIME", "Failed to parse time zone JSON: %s", error.c_str());
+    return;
+  }
+
+  const char* utcOffset = doc["utc_offset"] | ""; // e.g., "+08:00"
+  const char* abbr = doc["abbreviation"] | "UTC"; // e.g., "CST"
+  
+  if (utcOffset[0] == '\0') {
+    LOG_ERR("TIME", "Invalid UTC offset in response");
+    return;
+  }
+
+  // Convert "+08:00" to POSIX TZ format: <ABBR><Offset>
+  // POSIX offset is POSITIVE for WEST of Greenwich.
+  // So UTC+8 is CST-8, UTC-5 is EST5.
+  char posixTz[32] = {};
+  int hours = 0;
+  int minutes = 0;
+  char sign = utcOffset[0];
+  sscanf(utcOffset + 1, "%d:%d", &hours, &minutes);
+
+  // POSIX offset is flipped
+  int posixOffset = -hours;
+  if (sign == '-') posixOffset = hours;
+
+  if (minutes == 0) {
+    snprintf(posixTz, sizeof(posixTz), "%s%d", abbr, posixOffset);
+  } else {
+    snprintf(posixTz, sizeof(posixTz), "%s%d:%02d", abbr, posixOffset, minutes);
+  }
+
+  if (SETTINGS.timeZone != posixTz) {
+    LOG_INF("TIME", "New time zone detected: %s (was %s)", posixTz, SETTINGS.timeZone.c_str());
+    SETTINGS.timeZone = posixTz;
+    setenv("TZ", posixTz, 1);
+    tzset();
+    SETTINGS.saveToFile();
+  } else {
+    LOG_DBG("TIME", "Time zone unchanged: %s", posixTz);
+  }
 }
 
 void TimeService::loadPersistedSnapshot() {
@@ -446,6 +500,9 @@ bool TimeService::syncIfDue() {
   if (connected) {
     WiFi.setSleep(false);
     synced = syncTimeOverNtp();
+    if (synced) {
+      syncTimeZoneFromIp();
+    }
   }
 
   if (!alreadyConnected) {
@@ -462,6 +519,46 @@ bool TimeService::syncIfDue() {
   if (!synced) {
     LOG_DBG("TIME", "Time sync attempt finished without a valid clock");
   }
+  return synced;
+}
+
+bool TimeService::syncNow() {
+  LOG_INF("TIME", "Manual time sync requested");
+
+  const bool alreadyConnected = WiFi.status() == WL_CONNECTED;
+  bool connected = alreadyConnected;
+  if (!connected) {
+    connected = connectWithSavedCredentials();
+  }
+
+  bool synced = false;
+  if (connected) {
+    WiFi.setSleep(false);
+    LOG_INF("TIME", "WiFi connected, starting NTP...");
+    synced = syncTimeOverNtp();
+    if (synced) {
+      LOG_INF("TIME", "NTP success, fetching timezone...");
+      syncTimeZoneFromIp();
+    } else {
+      LOG_ERR("TIME", "NTP sync failed");
+    }
+  } else {
+    LOG_ERR("TIME", "WiFi connection failed or no saved credentials");
+  }
+
+  if (!alreadyConnected) {
+    disconnectWifi();
+  } else if (esp_sntp_enabled()) {
+    esp_sntp_stop();
+    WiFi.setSleep(true);
+  }
+
+  if (synced) {
+    persistIfValid();
+    lastSyncAttemptMs = millis();
+    syncedThisBoot = true;
+  }
+
   return synced;
 }
 

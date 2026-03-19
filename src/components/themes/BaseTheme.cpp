@@ -234,6 +234,16 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       } else if (labels[i] == std::string(HINT_OK)) {
         // Solid Square (8x8)
         renderer.fillRect(cx - 4, cy - 4, 8, 8, state);
+      } else if (labels[i] == std::string(HINT_UP)) {
+        // Up Triangle
+        const int xp[3] = {cx - 5, cx + 5, cx};
+        const int yp[3] = {cy + 4, cy + 4, cy - 6};
+        renderer.fillPolygon(xp, yp, 3, state);
+      } else if (labels[i] == std::string(HINT_DOWN)) {
+        // Down Triangle
+        const int xp[3] = {cx - 5, cx + 5, cx};
+        const int yp[3] = {cy - 4, cy - 4, cy + 6};
+        renderer.fillPolygon(xp, yp, 3, state);
       } else {
         // Regular text
         const int textWidth = renderer.getTextWidth(fontId, labels[i]);

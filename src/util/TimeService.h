@@ -25,6 +25,7 @@ class TimeService {
   bool connectWithSavedCredentials() const;
   static void disconnectWifi();
   bool syncTimeOverNtp();
+  void syncTimeZoneFromIp();
   time_t getBestCurrentEpoch() const;
   bool getBestLocalTime(struct tm* localTime) const;
   void adoptTimeSnapshot(time_t newAnchorEpoch, uint64_t newRtcUsAtAnchor, time_t newLastSuccessfulSyncEpoch);
@@ -41,6 +42,7 @@ class TimeService {
 
   void begin();
   bool syncIfDue();
+  bool syncNow();
   bool hasValidTime() const;
   time_t getCurrentEpoch() const;
   bool setManualTime(int year, int month, int day, int hour, int minute);

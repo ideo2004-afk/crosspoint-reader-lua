@@ -22,6 +22,7 @@ enum class SettingAction {
   ReadingStats,
   ButtonRemap,
   FontSelectReader,
+  TimeSync,
 };
 
 struct SettingInfo {
