@@ -167,7 +167,8 @@ local aiThinkStart = 0
 local postMenuIdx  = 0
 local inEscMenu    = false
 local escIdx       = 0
-local needsDraw    = true
+local showDiffSelection = true
+local needsDraw        = true
 
 local function restartGame()
     resetBoard()
@@ -285,11 +286,33 @@ local function renderBoard()
             end
         end
     end
+    
+    -- Startup difficulty selection
+    if showDiffSelection then
+        local mw, mh = 320, 260
+        local mx, my = math.floor((gui.width()-mw)/2), math.floor((gui.height()-mh)/2)
+        gui.fillRoundedRect(mx, my, mw, mh, 10, false)
+        gui.drawRoundedRect(mx, my, mw, mh, 2, 10)
+        gui.drawCenteredText(FONT_UI_12, my + 25, "Select Difficulty", true)
+        
+        local opts = {"Easy (L1)", "Medium (L2)", "Hard (L3)"}
+        for i, opt in ipairs(opts) do
+            local ry = my + 80 + (i-1)*50
+            local tx = mx + math.floor((mw - gui.getTextWidth(FONT_UI_12, opt))/2)
+            if aiDiff == i then
+                gui.fillRoundedRect(mx+20, ry-5, mw-40, 40, 8)
+                gui.drawText(FONT_UI_12, tx, ry+2, opt, false)
+            else
+                gui.drawText(FONT_UI_12, tx, ry+2, opt, true)
+            end
+        end
+        gui.drawButtonHints("<<", "o", "<", ">")
+    end
 
     -- Esc menu overlay (drawn on top of everything)
     if inEscMenu then
         renderEscMenu()
-    else
+    elseif not showDiffSelection then
         gui.drawButtonHints("<<", "o", "<", ">")
     end
 
@@ -342,6 +365,17 @@ local function handleEscInput()
         end
     elseif input.wasReleased("back") then
         inEscMenu = false; needsDraw = true
+    end
+end
+
+local function handleDiffInput()
+    if input.wasReleased("up") or input.wasReleased("left") then
+        aiDiff = (aiDiff > 1) and aiDiff - 1 or 3; needsDraw = true
+    elseif input.wasReleased("down") or input.wasReleased("right") then
+        aiDiff = (aiDiff < 3) and aiDiff + 1 or 1; needsDraw = true
+    elseif input.wasReleased("confirm") then
+        showDiffSelection = false
+        restartGame()
     end
 end
 
@@ -440,6 +474,8 @@ function draw()
     -- Input handling
     if inEscMenu then
         handleEscInput()
+    elseif showDiffSelection then
+        handleDiffInput()
     else
         handleGameInput()
     end

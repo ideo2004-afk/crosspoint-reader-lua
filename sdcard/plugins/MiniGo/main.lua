@@ -1,12 +1,12 @@
 -- Mini Go
--- DESCRIPTION: 7x7 and 9x9 Go game with AI.
+-- DESCRIPTION: Go game with AI.
 
 local EMPTY = 0
 local BLACK = 1
 local WHITE = 2
 
 local KOMI              = 7.5
-local AI_MAX_SIMS       = 300i
+local AI_MAX_SIMS       = 600
 local AI_ROLLOUT_DEPTH  = 4
 local AI_EXPLORATION_C  = 1.414
 
@@ -130,20 +130,23 @@ local escIdx = 0
 local postMenuIdx = 0
 local aiMumbleIdx = 1
 local playerMumbleIdx = 1
+local showHint = false
+local showDebug = false
 local needsDraw = true
 
 -- ── Engine Scratch Space (avoids per-call table allocation) ────────────────────
 
 -- Primary BFS scratch (used by gg)
-local _gv  = {}   -- visited flags
+local _gv  = {}   -- visited generation stamps
+local _gvG = 0    -- current gg generation
 local _gsp = {}   -- stack
 local _gs  = {}   -- stone flat-indices (1-based)
 local _gsc = 0    -- stone count
 local _gl  = 0    -- liberty count
 
 -- Secondary BFS scratch (used by countLibs inside wouldBeSuicide)
--- MUST NOT overlap with _gv/_gsp/_gs even when called inside gg loops
-local _lv  = {}
+local _lv  = {}   -- visited generation stamps
+local _lvG = 0    -- current countLibs generation
 local _ls  = {}
 
 -- Scratch buffer for rollout random moves
@@ -152,18 +155,22 @@ local _emp = {}
 -- Scratch simulation board (reused per MCTS sim to avoid 100 table allocs)
 local _simB = {}
 
+-- Scratch buffers for calcInfluence (reused to avoid GC pressure on large boards)
+local _inf = {}
+local _lc  = {}
+
 -- ── Core BFS: getGroup ─────────────────────────────────────────────────────────
 -- Writes results to _gs[1.._gsc], _gl.  DO NOT nest calls.
 -- countLibs (below) uses separate scratch so it's safe inside a gg loop.
 
 local function gg(startIdx, b)
     local sz = boardSize
-    local n  = sz * sz
     local color = b[startIdx]
     _gsc = 0; _gl = 0
     if color == EMPTY then return end
-    for i = 1, n do _gv[i] = false end
-    _gv[startIdx] = true
+    -- O(1) generation stamp reset — no O(N) loop needed
+    _gvG = _gvG + 1; local gen = _gvG
+    _gv[startIdx] = gen
     local top = 1; _gsp[1] = startIdx
     while top > 0 do
         local p = _gsp[top]; top = top - 1
@@ -172,28 +179,28 @@ local function gg(startIdx, b)
         local y = math.floor((p - 1) / sz)
         if x > 0 then
             local q = p - 1
-            if not _gv[q] then _gv[q] = true
+            if _gv[q] ~= gen then _gv[q] = gen
                 if b[q] == EMPTY then _gl = _gl + 1
                 elseif b[q] == color then top = top + 1; _gsp[top] = q end
             end
         end
         if x < sz - 1 then
             local q = p + 1
-            if not _gv[q] then _gv[q] = true
+            if _gv[q] ~= gen then _gv[q] = gen
                 if b[q] == EMPTY then _gl = _gl + 1
                 elseif b[q] == color then top = top + 1; _gsp[top] = q end
             end
         end
         if y > 0 then
             local q = p - sz
-            if not _gv[q] then _gv[q] = true
+            if _gv[q] ~= gen then _gv[q] = gen
                 if b[q] == EMPTY then _gl = _gl + 1
                 elseif b[q] == color then top = top + 1; _gsp[top] = q end
             end
         end
         if y < sz - 1 then
             local q = p + sz
-            if not _gv[q] then _gv[q] = true
+            if _gv[q] ~= gen then _gv[q] = gen
                 if b[q] == EMPTY then _gl = _gl + 1
                 elseif b[q] == color then top = top + 1; _gsp[top] = q end
             end
@@ -203,25 +210,26 @@ end
 
 -- Liberty count only — uses _lv/_ls so safe to call while inside a gg loop.
 local function countLibs(startIdx, b)
-    local sz = boardSize; local n = sz * sz
+    local sz = boardSize
     local color = b[startIdx]
     if color == EMPTY then return 999 end
-    for i = 1, n do _lv[i] = false end
-    local libs = 0; local top = 1; _ls[1] = startIdx; _lv[startIdx] = true
+    -- O(1) generation stamp reset
+    _lvG = _lvG + 1; local gen = _lvG
+    local libs = 0; local top = 1; _ls[1] = startIdx; _lv[startIdx] = gen
     while top > 0 do
         local p = _ls[top]; top = top - 1
         local x = (p - 1) % sz; local y = math.floor((p - 1) / sz)
         if x > 0 then local q=p-1
-            if not _lv[q] then _lv[q]=true
+            if _lv[q] ~= gen then _lv[q]=gen
                 if b[q]==EMPTY then libs=libs+1 elseif b[q]==color then top=top+1;_ls[top]=q end end end
         if x < sz-1 then local q=p+1
-            if not _lv[q] then _lv[q]=true
+            if _lv[q] ~= gen then _lv[q]=gen
                 if b[q]==EMPTY then libs=libs+1 elseif b[q]==color then top=top+1;_ls[top]=q end end end
         if y > 0 then local q=p-sz
-            if not _lv[q] then _lv[q]=true
+            if _lv[q] ~= gen then _lv[q]=gen
                 if b[q]==EMPTY then libs=libs+1 elseif b[q]==color then top=top+1;_ls[top]=q end end end
         if y < sz-1 then local q=p+sz
-            if not _lv[q] then _lv[q]=true
+            if _lv[q] ~= gen then _lv[q]=gen
                 if b[q]==EMPTY then libs=libs+1 elseif b[q]==color then top=top+1;_ls[top]=q end end end
     end
     return libs
@@ -247,15 +255,23 @@ end
 -- Suicide test: temporarily places stone, uses countLibs (separate scratch).
 -- Safe to call while iterating _gs from a previous gg call.
 local function wouldBeSuicide(x, y, color, b)
-    local sz = boardSize
-    local idx = y * sz + x + 1
-    b[idx] = color
+    local sz = boardSize; local idx = y * sz + x + 1
     local opp = (color == BLACK) and WHITE or BLACK
+    
+    -- Speed optimization: if any neighbor is empty, it's not suicide.
+    if x > 0 and b[idx-1] == EMPTY then return false end
+    if x < sz-1 and b[idx+1] == EMPTY then return false end
+    if y > 0 and b[idx-sz] == EMPTY then return false end
+    if y < sz-1 and b[idx+sz] == EMPTY then return false end
+
+    -- No empty neighbors. Temporarily place stone to check captures or self-libs.
+    b[idx] = color
     local captured = false
-    if x > 0       and b[idx-1] ==opp and countLibs(idx-1,  b)==0 then captured=true end
-    if not captured and x<sz-1 and b[idx+1]==opp and countLibs(idx+1,  b)==0 then captured=true end
-    if not captured and y>0    and b[idx-sz]==opp and countLibs(idx-sz, b)==0 then captured=true end
-    if not captured and y<sz-1 and b[idx+sz]==opp and countLibs(idx+sz, b)==0 then captured=true end
+    if x > 0       and b[idx-1] == opp and countLibs(idx-1, b) == 0 then captured = true end
+    if not captured and x < sz-1 and b[idx+1] == opp and countLibs(idx+1, b) == 0 then captured = true end
+    if not captured and y > 0    and b[idx-sz] == opp and countLibs(idx-sz, b) == 0 then captured = true end
+    if not captured and y < sz-1 and b[idx+sz] == opp and countLibs(idx+sz, b) == 0 then captured = true end
+    
     if captured then b[idx] = EMPTY; return false end
     local libs = countLibs(idx, b)
     b[idx] = EMPTY
@@ -310,16 +326,17 @@ local function makePlayerMove(x, y)
     consecutivePasses = 0
 end
 
-local function calculateScore(color)
+local function calculateScores()
     local sz = boardSize; local n = sz * sz
-    local score = 0
-    local visited = {}
-    for i = 1, n do visited[i] = false end
+    local bs, ws = 0, KOMI
+    local tMap = {}; for i=1,n do tMap[i]=EMPTY end
+    local visited = {}; for i=1,n do visited[i] = false end
+
     for i = 1, n do
         local c = board[i]
-        if c == color then
-            score = score + 1
-        elseif c == EMPTY and not visited[i] then
+        if c == BLACK then bs = bs + 1
+        elseif c == WHITE then ws = ws + 1
+        elseif not visited[i] then
             local stack = {i}; local head = 1; visited[i] = true
             local bT, wT, cnt = false, false, 0
             while head <= #stack do
@@ -334,17 +351,20 @@ local function calculateScore(color)
                 if y<sz-1 then local q=p+sz;local qc=board[q]
                     if qc==BLACK then bT=true elseif qc==WHITE then wT=true elseif not visited[q] then visited[q]=true;stack[#stack+1]=q end end
             end
-            if bT and not wT and color==BLACK then score=score+cnt end
-            if wT and not bT and color==WHITE then score=score+cnt end
+            if bT and not wT then 
+                bs = bs + cnt
+                for k=1,#stack do tMap[stack[k]] = BLACK end
+            elseif wT and not bT then 
+                ws = ws + cnt 
+                for k=1,#stack do tMap[stack[k]] = WHITE end
+            end
         end
     end
-    if color == WHITE then score = score + KOMI end
-    return score
+    return bs, ws, tMap
 end
 
 local function calcWinner()
-    local bs = calculateScore(BLACK)
-    local ws = calculateScore(WHITE)
+    local bs, ws = calculateScores()
     blackScoreCache, whiteScoreCache = bs, ws
     resultsCached = true
     if bs > ws then return (playerColor == BLACK) and "won" or "lost"
@@ -357,44 +377,45 @@ end
 
 local _dx4 = {0, 0, 1, -1}
 local _dy4 = {1, -1, 0, 0}
-local _dx8 = {0, 0, 1, -1, 1, 1, -1, -1}
-local _dy8 = {1, -1, 0, 0, 1, -1, 1, -1}
+-- Precomputed flattened mask for the nested 4-dir + 8-dir influence spread:
+local _inf_dx2 = { -1, 1, -1, 1, -1, 2, 1, -2, -1, 0, 2, 1, 1, 0, -2, 0, 2, -2, 0, -1 }
+local _inf_dy2 = { -1, 0, 2, 2, -2, -1, -1, 0, 0, 2, 1, 1, -2, -2, -1, 1, 0, 1, -1, 1 }
+local _inf_w2  = {  2, 2, 1, 1,  1,  1,  2,  1,  2, 1, 1, 2, 1, 1,  1, 2, 1, 1,  2, 2 }
 
 local function calcInfluence(b)
     local sz = boardSize; local n = sz * sz
-    local inf = {}; for i=1,n do inf[i]=0 end
-    local lc  = {}; for i=1,n do lc[i]=-1 end
+    -- Reuse pre-allocated scratch tables instead of creating new ones
+    for i=1,n do _inf[i]=0; _lc[i]=-1 end
 
     -- Pre-scan liberty counts for all groups (gg writes to _gs/_gsc/_gl)
     for i = 1, n do
-        if b[i] ~= EMPTY and lc[i] == -1 then
+        if b[i] ~= EMPTY and _lc[i] == -1 then
             gg(i, b); local libs = _gl
-            for k = 1, _gsc do lc[_gs[k]] = libs end
+            for k = 1, _gsc do _lc[_gs[k]] = libs end
         end
     end
 
     for i = 1, n do
         if b[i] ~= EMPTY then
-            local w = 2.5; local libs = lc[i]
+            local w = 2.5; local libs = _lc[i]
             if libs == 2 then w = 0.8 elseif libs == 1 then w = -1.5 end
             local val = (b[i] == BLACK) and w or -w
-            inf[i] = inf[i] + val
+            _inf[i] = _inf[i] + val
             local x = (i-1) % sz; local y = math.floor((i-1) / sz)
             local s2 = val > 0 and 2 or -2
             local s1 = val > 0 and 1 or -1
-            -- 4-directional first level (±2), then 8-directional second level (±1)
+            -- 4-directional first level (±2)
             for k = 1, 4 do
                 local nx = x + _dx4[k]; local ny = y + _dy4[k]
                 if nx >= 0 and nx < sz and ny >= 0 and ny < sz then
-                    local ni = ny * sz + nx + 1
-                    inf[ni] = inf[ni] + s2
-                    for k2 = 1, 8 do
-                        local nnx = nx + _dx8[k2]; local nny = ny + _dy8[k2]
-                        if nnx >= 0 and nnx < sz and nny >= 0 and nny < sz
-                           and (nnx ~= x or nny ~= y) then
-                            inf[nny * sz + nnx + 1] = inf[nny * sz + nnx + 1] + s1
-                        end
-                    end
+                    _inf[ny * sz + nx + 1] = _inf[ny * sz + nx + 1] + s2
+                end
+            end
+            -- Pre-calculated 20-point mask for the nested 8-directional second level
+            for k = 1, 20 do
+                local nx = x + _inf_dx2[k]; local ny = y + _inf_dy2[k]
+                if nx >= 0 and nx < sz and ny >= 0 and ny < sz then
+                    _inf[ny * sz + nx + 1] = _inf[ny * sz + nx + 1] + s1 * _inf_w2[k]
                 end
             end
         end
@@ -402,9 +423,9 @@ local function calcInfluence(b)
 
     local bs = 0; local ws = KOMI
     for i = 1, n do
-        if inf[i] > 1 then bs = bs + 1 elseif inf[i] < -1 then ws = ws + 1 end
+        if _inf[i] > 1 then bs = bs + 1 elseif _inf[i] < -1 then ws = ws + 1 end
     end
-    return bs - ws
+    return bs - ws, _inf
 end
 
 -- ── AI: Rollout Simulation ─────────────────────────────────────────────────────
@@ -453,7 +474,7 @@ local function simulate(b, toMove)
                     end
                 end
             end
-            -- Fisher-Yates partial shuffle
+            -- Fisher-Yates full shuffle
             for i = ec, 2, -1 do
                 local j = math.random(i)
                 _emp[i], _emp[j] = _emp[j], _emp[i]
@@ -483,23 +504,30 @@ end
 -- ── MCTS: Flat Tree (root + one level only, matching C++ design) ───────────────
 
 local mctsC  = {}   -- children array: {x,y,isPass,v,w,hs,hc}
+local mctsC_count = 0 -- number of active children
 local mctsRV = 0    -- root visits
 
 local function startMCTS()
-    mctsC = {}; mctsRV = 0
+    mctsRV = 0
     local sz = boardSize; local mid = math.floor(sz / 2)
+    local idx = 1
     for y = 0, sz-1 do
         for x = 0, sz-1 do
             if isValidMove(x, y, aiColor) then
-                local c = {x=x, y=y, isPass=false, v=0, w=0, hs=0, hc=false}
+                if not mctsC[idx] then mctsC[idx] = {} end
+                local c = mctsC[idx]
+                c.x, c.y, c.isPass, c.v, c.w, c.hs, c.hc = x, y, false, 0, 0, 0, false
                 if math.abs(x-mid)<=1 and math.abs(y-mid)<=1 then
                     c.v=5; c.w=2.5; mctsRV=mctsRV+5
                 end
-                mctsC[#mctsC+1] = c
+                idx = idx + 1
             end
         end
     end
-    mctsC[#mctsC+1] = {x=0, y=0, isPass=true, v=0, w=0, hs=0, hc=true}
+    if not mctsC[idx] then mctsC[idx] = {} end
+    local c = mctsC[idx]
+    c.x, c.y, c.isPass, c.v, c.w, c.hs, c.hc = 0, 0, true, 0, 0, 0, true
+    mctsC_count = idx
 end
 
 -- Compute heuristic score once per child (cached in c.hs / c.hc).
@@ -549,7 +577,8 @@ end
 local function selectChild(explore)
     local best = nil; local bestS = -1e18
     local logV = math.log(mctsRV > 0 and mctsRV or 1)
-    for _, c in ipairs(mctsC) do
+    for i = 1, mctsC_count do
+        local c = mctsC[i]
         local s
         if explore == 0 then
             s = c.v
@@ -668,7 +697,8 @@ local function renderBoard()
         gui.fillCircle(px, py, 5)
     end
     if boardSize == 7 then star(3,3)
-    elseif boardSize == 9 then star(2,2);star(6,2);star(4,4);star(2,6);star(6,6) end
+    elseif boardSize == 9 then star(2,2);star(6,2);star(4,4);star(2,6);star(6,6)
+    elseif boardSize == 11 then star(2,2);star(8,2);star(5,5);star(2,8);star(8,8) end
 
     -- Stones
     for y = 0, boardSize-1 do
@@ -690,28 +720,71 @@ local function renderBoard()
         end
     end
 
-    -- Cursor + influence
-    if status == "playing" and not inEscMenu and not showHandicapSelection and not showSizeSelection then
-        local cx = sx + cursorX*cs; local cy2 = sy + cursorY*cs
-        local r = math.floor(cs/4)
-        
-        -- Special cursor for black stones: Draw a small white stone inside
-        local stoneColor = board[cursorY * boardSize + cursorX + 1]
-        if stoneColor == BLACK then
-            local rSmall = math.floor(r * 0.8)
-            gui.fillCircle(cx, cy2, rSmall, false) -- Draw white
+    -- Territory Markers
+    local showMarks = (status ~= "playing") or (showHint and not inEscMenu and not showHandicapSelection and not showSizeSelection)
+    if showMarks then
+        local tMap
+        if status ~= "playing" then
+            _, _, tMap = calculateScores()
         else
-            gui.drawCircle(cx, cy2, r, 2)
+            _, tMap = calcInfluence(board)
         end
         
-        local inf = calcInfluence(board)
-        gui.drawCenteredText(FONT_SMALL, sy + bds + 25, string.format("Territory Bias: %+.1f", inf))
+        for y = 0, boardSize-1 do
+            for x = 0, boardSize-1 do
+                local i = y*boardSize + x + 1
+                if board[i] == EMPTY then
+                    local px, py = sx + x*cs, sy + y*cs
+                    local isBlack, isWhite = false, false
+                    if status ~= "playing" then
+                        isBlack = (tMap[i] == BLACK)
+                        isWhite = (tMap[i] == WHITE)
+                    else
+                        isBlack = (tMap[i] > 1)
+                        isWhite = (tMap[i] < -1)
+                    end
+
+                    if isBlack then
+                        gui.fillRect(px-6, py-6, 13, 13)
+                    elseif isWhite then
+                        gui.fillRect(px-6, py-6, 13, 13, false)
+                        gui.drawRect(px-6, py-6, 13, 13, true)
+                    end
+                end
+            end
+        end
+    end
+
+    -- Cursor + Influence Bias Text
+    if status == "playing" and not inEscMenu and not showHandicapSelection and not showSizeSelection then
+        local cx = sx + cursorX*cs; local cy2 = sy + cursorY*cs
+        local stoneR = math.floor(cs/2) - 2
+        local r = math.floor(stoneR * 0.7)
+        -- Universal cursor: 70% size gray filled circle
+        gui.fillCircle(cx, cy2, r, COLOR_LIGHT_GRAY)
+        
+        local diff = calcInfluence(board)
+        gui.drawCenteredText(FONT_SMALL, sy + bds + 25, string.format("Territory Bias: %+.1f", diff))
+    end
+
+    -- Debug Info (MCTS/Heuristic Values)
+    if showDebug and mctsC_count > 0 then
+        for i = 1, mctsC_count do
+            local c = mctsC[i]
+            if not c.isPass and c.v > 0 then
+                local dx, dy = sx + c.x*cs, sy + c.y*cs
+                local w_str = string.format("%.0f", (c.w/c.v)*100)
+                local h_str = string.format("%.0f", c.hs * 100)
+                gui.drawText(FONT_SMALL, dx-14, dy-12, w_str, true)
+                gui.drawText(FONT_SMALL, dx-14, dy+2, h_str, true)
+            end
+        end
     end
 
     -- Status text area
     if isAiThinking then
         gui.drawText(FONT_SMALL, 340, 80, "AI Thinking...", true)
-        drawMumble(FONT_UI_12, 640, aiMumbles[aiMumbleIdx], false)
+        drawMumble(FONT_UI_12, 640, aiMumbles[aiMumbleIdx], true)
     elseif status == "playing" and not showSizeSelection and not showHandicapSelection and not inEscMenu then
         if lastMovePass then gui.drawText(FONT_UI_12, 340, 50, "AI PASS!", true) end
         gui.drawText(FONT_SMALL, 340, 80, "Your Turn (White)", true)
@@ -723,9 +796,9 @@ local function renderBoard()
         local mw,mh=400,250; local mx=(sw-mw)/2; local sh=gui.height(); local myo=(sh-mh)/2
         gui.fillRoundedRect(mx,myo,mw,mh,15,false); gui.drawRoundedRect(mx,myo,mw,mh,3,15)
         gui.drawCenteredText(FONT_UI_12, myo+40, "Select Board Size", true)
-        local labels={"7 x 7","9 x 9"}
-        for i=0,1 do
-            local bx=mx+40+(i*180); local by=myo+110; local bw,bh2=140,70
+        local labels={"7x7","9x9","11x11"}
+        for i=0,2 do
+            local bx=mx+30+(i*115); local by=myo+110; local bw,bh2=100,70
             local lbl=labels[i+1]
             local tx=bx+math.floor((bw-gui.getTextWidth(FONT_UI_12,lbl))/2); local ty=by+25
             if sizeIdx==i then gui.fillRoundedRect(bx,by,bw,bh2,15); gui.drawText(FONT_UI_12,tx,ty,lbl,false)
@@ -736,7 +809,7 @@ local function renderBoard()
         local mw,mh=400,250; local mx=(sw-mw)/2; local sh=gui.height(); local myo=(sh-mh)/2
         gui.fillRoundedRect(mx,myo,mw,mh,15,false); gui.drawRoundedRect(mx,myo,mw,mh,3,15)
         gui.drawCenteredText(FONT_UI_12, myo+30, "AI Handicap", true)
-        local labels={"1","2","3","Chaos"}
+        local labels={"2","3","4","Chaos"}
         for i=0,3 do
             local bx=mx+16+(i*96); local by=myo+100; local bw,bh2=80,80
             local lbl=labels[i+1]
@@ -748,29 +821,37 @@ local function renderBoard()
     elseif inEscMenu then
         local mw,mh=340,400; local mx=(sw-mw)/2; local sh=gui.height(); local myo=(sh-mh)/2
         gui.fillRoundedRect(mx,myo,mw,mh,10,false); gui.drawRoundedRect(mx,myo,mw,mh,2,10)
-        gui.drawCenteredText(FONT_UI_12, myo+20, "Game Menu", true)
-        local opts={"Resume","New 7x7","New 9x9","Pass Turn","Exit Game"}
+        gui.drawCenteredText(FONT_UI_12, myo+12, "Game Menu", true)
+        local opts={"Resume","Hint: "..(showHint and "On" or "Off"),"Debug: "..(showDebug and "On" or "Off"),"New Game","Pass Turn","Exit Game"}
         for i,opt in ipairs(opts) do
-            local ry=myo+65+(i-1)*60
+            local ry=myo+55+(i-1)*56
             local tx=mx+10+math.floor((320-gui.getTextWidth(FONT_UI_12,opt))/2)
-            if escIdx==i-1 then gui.fillRoundedRect(mx+10,ry-5,320,50,8); gui.drawText(FONT_UI_12,tx,ry+12,opt,false)
+            if escIdx==i-1 then gui.fillRoundedRect(mx+10,ry-5,320,46,8); gui.drawText(FONT_UI_12,tx,ry+12,opt,false)
             else gui.drawText(FONT_UI_12,tx,ry+12,opt,true) end
         end
         gui.drawButtonHints("<<", "o", "<", ">")
     elseif status ~= "playing" then
-        local sh=gui.height(); local mw,mh=400,200; local mx=(sw-mw)/2; local myo=(sh-mh)/2
-        gui.fillRoundedRect(mx,myo,mw,mh,15,false); gui.drawRoundedRect(mx,myo,mw,mh,3,15)
-        local resStr=(status=="won") and "VICTORY!" or (status=="draw") and "DRAW." or "DEFEAT."
-        gui.drawCenteredText(FONT_UI_12, myo+15, resStr, true)
-        local sc=string.format("Black:%.1f  White:%.1f", blackScoreCache, whiteScoreCache)
-        gui.drawCenteredText(FONT_SMALL, myo+65, sc, true)
-        local btns={"New","Exit"}
-        for i=0,1 do
-            local bx=mx+50+(i*180); local by=myo+115; local bw,bh2=120,50
-            local lbl=btns[i+1]
-            local tx=bx+math.floor((bw-gui.getTextWidth(FONT_UI_12,lbl))/2); local ty=by+12
-            if postMenuIdx==i then gui.fillRoundedRect(bx,by,bw,bh2,10); gui.drawText(FONT_UI_12,tx,ty,lbl,false)
-            else gui.drawRoundedRect(bx,by,bw,bh2,2,10); gui.drawText(FONT_UI_12,tx,ty,lbl,true) end
+        local byo = sy + bds + 20
+        local resStr = (status == "won") and "VICTORY!" or (status == "draw") and "DRAW." or "DEFEAT."
+        gui.drawCenteredText(FONT_UI_12, byo, resStr, true)
+        local sc = string.format("Black:%.1f  White:%.1f", blackScoreCache, whiteScoreCache)
+        gui.drawCenteredText(FONT_SMALL, byo + 45, sc, true)
+        
+        local btns = {"New Game", "Exit"}
+        local bw, bh2 = 180, 55
+        for i = 0, 1 do
+            local bx = (i == 0) and (sw/2 - bw - 10) or (sw/2 + 10)
+            local by = byo + 85
+            local lbl = btns[i+1]
+            local tx = bx + math.floor((bw - gui.getTextWidth(FONT_UI_12, lbl)) / 2)
+            local ty = by + 12
+            if postMenuIdx == i then
+                gui.fillRoundedRect(bx, by, bw, bh2, 10)
+                gui.drawText(FONT_UI_12, tx, ty, lbl, false)
+            else
+                gui.drawRoundedRect(bx, by, bw, bh2, 2, 10)
+                gui.drawText(FONT_UI_12, tx, ty, lbl, true)
+            end
         end
         gui.drawButtonHints("<<", "o", "<", ">")
     else
@@ -785,26 +866,35 @@ end
 local function resetGame(size)
     boardSize = size
     local n = size * size
-    board = {}; for i=1,n do board[i]=EMPTY end
-    lastBoard = {}; for i=1,n do lastBoard[i]=EMPTY end
-    -- Pre-size scratch boards
-    for i=1,n do _simB[i]=EMPTY; _gv[i]=false; _lv[i]=false end
+    -- Zero-allocation: reuse the existing arrays to avoid GC pressure/OOM
+    for i=1,n do 
+        board[i] = EMPTY
+        lastBoard[i] = EMPTY
+        _simB[i] = EMPTY
+        _gv[i] = 0
+        _lv[i] = 0
+    end
     consecutivePasses = 0
     status = "playing"
     cursorX, cursorY = math.floor(size/2), math.floor(size/2)
     lastMoveX, lastMoveY = -1, -1
     lastMovePass = false
     isAiThinking = false; aiShowedThinking = false; mctsDone = 0
+    mctsC_count = 0 
     resultsCached = false
     needsDraw = true
     playerMumbleIdx = math.random(#playerMumbles)
+    -- Ensure ghosting from previous game numbers is cleared.
+    gui.refresh(REFRESH_HALF)
 end
 
 local function handleSizeInput()
-    if input.wasReleased("left") or input.wasReleased("right") then
-        sizeIdx = (sizeIdx == 0) and 1 or 0; needsDraw = true
+    if input.wasReleased("left") then
+        sizeIdx = (sizeIdx > 0) and sizeIdx - 1 or 2; needsDraw = true
+    elseif input.wasReleased("right") then
+        sizeIdx = (sizeIdx < 2) and sizeIdx + 1 or 0; needsDraw = true
     elseif input.wasReleased("confirm") then
-        local size = (sizeIdx == 0) and 7 or 9
+        local sizes = {7, 9, 11}; local size = sizes[sizeIdx + 1]
         resetGame(size); showSizeSelection = false; showHandicapSelection = true; needsDraw = true
     elseif input.wasReleased("back") then sys.exit() end
 end
@@ -818,25 +908,33 @@ local function handleHandicapInput()
         showHandicapSelection = false
         if handicapIdx == 3 then
             -- Chaos Mode
-            local avail = {}
-            for i = 1, boardSize*boardSize do avail[i] = i end
+            local avail = {}; local ac = boardSize * boardSize
+            for i = 1, ac do avail[i] = i end
             local function placeRandom(count, color)
                 for k = 1, count do
-                    if #avail == 0 then break end
-                    local r = math.random(#avail)
-                    local pos = avail[r]; avail[r] = avail[#avail]; avail[#avail] = nil
+                    if ac == 0 then break end
+                    local r = math.random(ac)
+                    local pos = avail[r]
+                    avail[r] = avail[ac]
+                    avail[ac] = nil
+                    ac = ac - 1
                     local x=(pos-1)%boardSize; local y=math.floor((pos-1)/boardSize)
                     board[pos] = color; lastMoveX,lastMoveY=x,y
                 end
             end
-            placeRandom((boardSize==9) and 8 or 5, BLACK)
+            local blackCount = 5
+            if boardSize == 9 then blackCount = 8
+            elseif boardSize == 11 then blackCount = 10 end
+            placeRandom(blackCount, BLACK)
             placeRandom(2, WHITE)
         else
-            local count = handicapIdx + 1
-            local p1 = 2; local p2 = (boardSize == 9) and 6 or 4
+            local count = handicapIdx + 2
+            local p1 = 2
+            local p2 = (boardSize == 11) and 8 or (boardSize == 9) and 6 or 4
             if count >= 1 then board[p2*boardSize+p2+1]=BLACK; lastMoveX,lastMoveY=p2,p2 end
             if count >= 2 then board[p1*boardSize+p1+1]=BLACK; lastMoveX,lastMoveY=p1,p1 end
             if count >= 3 then board[p1*boardSize+p2+1]=BLACK; lastMoveX,lastMoveY=p2,p1 end
+            if count >= 4 then board[p2*boardSize+p1+1]=BLACK; lastMoveX,lastMoveY=p1,p2 end
         end
         isAiThinking = false
         playerMumbleIdx = math.random(#playerMumbles)
@@ -848,18 +946,19 @@ end
 
 local function handleEscInput()
     if input.wasReleased("up") or input.wasReleased("left") then
-        escIdx = (escIdx > 0) and escIdx-1 or 4; needsDraw = true
+        escIdx = (escIdx > 0) and escIdx-1 or 5; needsDraw = true
     elseif input.wasReleased("down") or input.wasReleased("right") then
-        escIdx = (escIdx < 4) and escIdx+1 or 0; needsDraw = true
+        escIdx = (escIdx < 5) and escIdx+1 or 0; needsDraw = true
     elseif input.wasReleased("confirm") then
         if escIdx == 0 then inEscMenu = false
-        elseif escIdx == 1 then resetGame(7); inEscMenu=false; showHandicapSelection=true
-        elseif escIdx == 2 then resetGame(9); inEscMenu=false; showHandicapSelection=true
-        elseif escIdx == 3 then
+        elseif escIdx == 1 then showHint = not showHint
+        elseif escIdx == 2 then showDebug = not showDebug
+        elseif escIdx == 3 then showSizeSelection = true; inEscMenu=false
+        elseif escIdx == 4 then
             -- Player pass = end game immediately (matching C++ "per user request" design)
             inEscMenu = false
             status = calcWinner()
-        elseif escIdx == 4 then sys.exit() end
+        elseif escIdx == 5 then sys.exit() end
         needsDraw = true
     elseif input.wasReleased("back") then inEscMenu = false; needsDraw = true end
 end
@@ -925,6 +1024,7 @@ function draw()
 end
 
 function init()
+    math.randomseed(sys.uptime() or os.time() or 0)
     showSizeSelection = true; sizeIdx = 0
     resetGame(7)
     log("MiniGo init OK")
