@@ -143,7 +143,17 @@ bool CrossPointSettings::loadFromBinaryFile() {
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, statusBar, STATUS_BAR_MODE_COUNT);
     if (++settingsRead >= fileSettingsCount) break;
-    readAndValidate(inputFile, orientation, ORIENTATION_COUNT);
+    {
+      uint8_t tempValue;
+      serialization::readPod(inputFile, tempValue);
+      if (tempValue == 3) {
+        orientation = LANDSCAPE_CCW;
+      } else if (tempValue == 1 || tempValue == 2) {
+        orientation = PORTRAIT;
+      } else {
+        orientation = tempValue;
+      }
+    }
     if (++settingsRead >= fileSettingsCount) break;
     readAndValidate(inputFile, frontButtonLayout, FRONT_BUTTON_LAYOUT_COUNT);
     if (++settingsRead >= fileSettingsCount) break;
@@ -163,7 +173,11 @@ bool CrossPointSettings::loadFromBinaryFile() {
     if (++settingsRead >= fileSettingsCount) break;
     serialization::readPod(inputFile, screenMargin);
     if (++settingsRead >= fileSettingsCount) break;
-    readAndValidate(inputFile, sleepScreenCoverMode, SLEEP_SCREEN_COVER_MODE_COUNT);
+    {
+      uint8_t temp;
+      readAndValidate(inputFile, temp, SLEEP_SCREEN_COVER_MODE_COUNT);
+      sleepScreenCoverMode = FIT;
+    }
     if (++settingsRead >= fileSettingsCount) break;
     {
       std::string urlStr;

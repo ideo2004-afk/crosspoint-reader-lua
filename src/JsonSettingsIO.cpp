@@ -48,7 +48,6 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   JsonDocument doc;
 
   doc["sleepScreen"] = s.sleepScreen;
-  doc["sleepScreenCoverMode"] = s.sleepScreenCoverMode;
   doc["sleepScreenCoverFilter"] = s.sleepScreenCoverFilter;
   doc["statusBar"] = s.statusBar;
   doc["extraParagraphSpacing"] = s.extraParagraphSpacing;
@@ -96,15 +95,20 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   auto clamp = [](uint8_t val, uint8_t maxVal, uint8_t def) -> uint8_t { return val < maxVal ? val : def; };
 
   s.sleepScreen = clamp(doc["sleepScreen"] | (uint8_t)S::DARK, S::SLEEP_SCREEN_MODE_COUNT, S::DARK);
-  s.sleepScreenCoverMode =
-      clamp(doc["sleepScreenCoverMode"] | (uint8_t)S::FIT, S::SLEEP_SCREEN_COVER_MODE_COUNT, S::FIT);
+  s.sleepScreenCoverMode = (uint8_t)S::FIT;
   s.sleepScreenCoverFilter =
       clamp(doc["sleepScreenCoverFilter"] | (uint8_t)S::NO_FILTER, S::SLEEP_SCREEN_COVER_FILTER_COUNT, S::NO_FILTER);
   s.statusBar = clamp(doc["statusBar"] | (uint8_t)S::SIMPLE, S::STATUS_BAR_MODE_COUNT, S::SIMPLE);
   s.extraParagraphSpacing = doc["extraParagraphSpacing"] | (uint8_t)1;
   s.textAntiAliasing = doc["textAntiAliasing"] | (uint8_t)1;
   s.shortPwrBtn = clamp(doc["shortPwrBtn"] | (uint8_t)S::IGNORE, S::SHORT_PWRBTN_COUNT, S::IGNORE);
-  s.orientation = clamp(doc["orientation"] | (uint8_t)S::PORTRAIT, S::ORIENTATION_COUNT, S::PORTRAIT);
+  uint8_t rawOrientation = doc["orientation"] | (uint8_t)S::PORTRAIT;
+  if (rawOrientation == 3) {
+    rawOrientation = S::LANDSCAPE_CCW;
+  } else if (rawOrientation == 1 || rawOrientation == 2) {
+    rawOrientation = S::PORTRAIT;
+  }
+  s.orientation = clamp(rawOrientation, S::ORIENTATION_COUNT, S::PORTRAIT);
   s.sideButtonLayout =
       clamp(doc["sideButtonLayout"] | (uint8_t)S::PREV_NEXT, S::SIDE_BUTTON_LAYOUT_COUNT, S::PREV_NEXT);
   s.frontButtonBack =
