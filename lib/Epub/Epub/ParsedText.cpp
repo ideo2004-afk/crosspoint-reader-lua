@@ -146,7 +146,7 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
   // Calculate first line indent (only for left/justified text without extra paragraph spacing)
   const int firstLineIndent =
-      blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+      blockStyle.textIndent > 0 &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
           ? blockStyle.textIndent
           : 0;
@@ -257,17 +257,8 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 }
 
 void ParsedText::applyParagraphIndent() {
-  if (extraParagraphSpacing || words.empty()) {
-    return;
-  }
-
-  if (blockStyle.textIndentDefined) {
-    // CSS text-indent is explicitly set (even if 0) - don't use fallback EmSpace
-    // The actual indent positioning is handled in extractLine()
-  } else if (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left) {
-    // No CSS text-indent defined - use EmSpace fallback for visual indent
-    words.front().insert(0, "\xe2\x80\x83");
-  }
+  // Indentation is now handled via blockStyle.textIndent (pixel-based) in extractLine().
+  // The default 1.5em is set in BlockStyle::fromCssStyle() when no CSS is present.
 }
 
 // Builds break indices while opportunistically splitting the word that would overflow the current line.
@@ -277,7 +268,7 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
                                                             std::vector<bool>& continuesVec) {
   // Calculate first line indent (only for left/justified text without extra paragraph spacing)
   const int firstLineIndent =
-      blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+      blockStyle.textIndent > 0 &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
           ? blockStyle.textIndent
           : 0;
@@ -446,7 +437,7 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
   // Calculate first line indent (only for left/justified text without extra paragraph spacing)
   const bool isFirstLine = breakIndex == 0;
   const int firstLineIndent =
-      isFirstLine && blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+      isFirstLine && blockStyle.textIndent > 0 &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
           ? blockStyle.textIndent
           : 0;
