@@ -245,23 +245,19 @@ float CrossPointSettings::getReaderLineCompression() const {
     case BOOKERLY:
     default:
       switch (lineSpacing) {
-        case TIGHT:
-          return 0.95f;
         case NORMAL:
         default:
-          return 1.0f;
+          return 1.2f;
         case WIDE:
-          return 1.1f;
+          return 1.4f;
       }
     case NOTOSANS:
       switch (lineSpacing) {
-        case TIGHT:
-          return 0.90f;
         case NORMAL:
         default:
-          return 0.95f;
+          return 1.2f;
         case WIDE:
-          return 1.0f;
+          return 1.4f;
       }
 
   }

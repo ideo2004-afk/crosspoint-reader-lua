@@ -258,7 +258,7 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
 void ParsedText::applyParagraphIndent() {
   // Indentation is now handled via blockStyle.textIndent (pixel-based) in extractLine().
-  // The default 1.5em is set in BlockStyle::fromCssStyle() when no CSS is present.
+  // The default 1.0em is set in BlockStyle::fromCssStyle() when no CSS is present.
 }
 
 // Builds break indices while opportunistically splitting the word that would overflow the current line.

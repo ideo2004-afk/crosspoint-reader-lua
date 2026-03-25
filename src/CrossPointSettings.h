@@ -77,7 +77,11 @@ class CrossPointSettings {
   enum FONT_FAMILY { BOOKERLY = 0, NOTOSANS = 1, FONT_FAMILY_COUNT };
   // Font size options
   enum FONT_SIZE { SMALL = 0, MEDIUM = 1, LARGE = 2, FONT_SIZE_COUNT };
-  enum LINE_COMPRESSION { TIGHT = 0, NORMAL = 1, WIDE = 2, LINE_COMPRESSION_COUNT };
+  enum LINE_COMPRESSION {
+    NORMAL = 0,
+    WIDE = 1,
+    LINE_COMPRESSION_COUNT
+  };
   enum PARAGRAPH_ALIGNMENT {
     JUSTIFIED = 0,
     LEFT_ALIGN = 1,

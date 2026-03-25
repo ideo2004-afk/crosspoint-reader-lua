@@ -660,8 +660,13 @@ void EpubReaderActivity::render(Activity::RenderLock&& lock) {
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
   orientedMarginTop += SETTINGS.screenMargin + 30;
-  orientedMarginLeft += SETTINGS.screenMargin + 16;
-  orientedMarginRight += SETTINGS.screenMargin + 16;
+  if (SETTINGS.orientation == CrossPointSettings::LANDSCAPE_CCW) {
+    orientedMarginLeft += SETTINGS.screenMargin + 48;
+    orientedMarginRight += SETTINGS.screenMargin + 48;
+  } else {
+    orientedMarginLeft += SETTINGS.screenMargin + 16;
+    orientedMarginRight += SETTINGS.screenMargin + 16;
+  }
   orientedMarginBottom += SETTINGS.screenMargin + 40;
 
   const auto& metrics = UITheme::getInstance().getMetrics();

@@ -85,8 +85,8 @@ struct BlockStyle {
       blockStyle.textIndent = cssStyle.textIndent.toPixelsInt16(emSize, vw);
       blockStyle.textIndentDefined = true;
     } else {
-      // Default to 1.5em indentation if not specified (Reader's default preference)
-      blockStyle.textIndent = static_cast<int16_t>(emSize * 1.5f + 0.5f);
+      // Default to 1.0em indentation if not specified (Reader's default preference)
+      blockStyle.textIndent = static_cast<int16_t>(emSize * 1.0f + 0.5f);
       blockStyle.textIndentDefined = true;
     }
     blockStyle.textAlignDefined = cssStyle.hasTextAlign();

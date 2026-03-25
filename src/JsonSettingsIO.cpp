@@ -76,6 +76,7 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["darkMode"] = s.darkMode;
   doc["language"] = s.language;
   doc["timeZone"] = s.timeZone;
+  doc["v"] = (uint8_t)2; // Settings version for migration
 
   String json;
   serializeJson(doc, json);
@@ -126,7 +127,20 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
     rawFontSize = S::LARGE;
   }
   s.fontSize = clamp(rawFontSize, S::FONT_SIZE_COUNT, S::MEDIUM);
-  s.lineSpacing = clamp(doc["lineSpacing"] | (uint8_t)S::NORMAL, S::LINE_COMPRESSION_COUNT, S::NORMAL);
+  
+  uint8_t version = doc["v"] | (uint8_t)1;
+  uint8_t rawLineSpacing = doc["lineSpacing"] | (uint8_t)S::NORMAL;
+  if (version < 2) {
+    if (rawLineSpacing == 2) {
+      s.lineSpacing = S::WIDE;
+    } else {
+      s.lineSpacing = S::NORMAL;
+    }
+    if (needsResave) *needsResave = true;
+  } else {
+    s.lineSpacing = clamp(rawLineSpacing, S::LINE_COMPRESSION_COUNT, S::NORMAL);
+  }
+
   s.paragraphAlignment =
       clamp(doc["paragraphAlignment"] | (uint8_t)S::JUSTIFIED, S::PARAGRAPH_ALIGNMENT_COUNT, S::JUSTIFIED);
   s.sleepTimeout = clamp(doc["sleepTimeout"] | (uint8_t)S::SLEEP_10_MIN, S::SLEEP_TIMEOUT_COUNT, S::SLEEP_10_MIN);

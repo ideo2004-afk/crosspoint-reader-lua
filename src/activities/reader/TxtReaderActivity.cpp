@@ -270,8 +270,13 @@ void TxtReaderActivity::initializeReader() {
   renderer.getOrientedViewableTRBL(&orientedMarginTop, &orientedMarginRight, &orientedMarginBottom,
                                    &orientedMarginLeft);
   orientedMarginTop += cachedScreenMargin;
-  orientedMarginLeft += cachedScreenMargin;
-  orientedMarginRight += cachedScreenMargin;
+  if (SETTINGS.orientation == CrossPointSettings::LANDSCAPE_CCW) {
+    orientedMarginLeft += cachedScreenMargin + 48;
+    orientedMarginRight += cachedScreenMargin + 48;
+  } else {
+    orientedMarginLeft += cachedScreenMargin;
+    orientedMarginRight += cachedScreenMargin;
+  }
   orientedMarginBottom += cachedScreenMargin;
 
   const auto& metrics = UITheme::getInstance().getMetrics();
