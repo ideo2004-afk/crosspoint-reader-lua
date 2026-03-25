@@ -41,6 +41,11 @@ class XtcParser {
   uint16_t getHeight() const { return m_defaultHeight; }
   uint8_t getBitDepth() const { return m_bitDepth; }  // 1 = XTC/XTG, 2 = XTCH/XTH
 
+  // XTC+ High-res cover support
+  bool hasHighResCover() const { return m_header.hasThumbnails == 2; }
+  uint64_t getThumbOffset() const { return m_header.thumbOffset; }
+  uint32_t getCoverSize() const { return m_header.padding; }
+
   // Page information
   bool getPageInfo(uint32_t pageIndex, PageInfo& info) const;
 

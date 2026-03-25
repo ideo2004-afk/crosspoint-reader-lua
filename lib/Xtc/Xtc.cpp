@@ -11,6 +11,9 @@
 #line 11
 #include <Logging.h>
 
+#include "JpegToBmpConverter.h"
+#include "PngToBmpConverter.h"
+
 namespace {
 inline void write16(FsFile& out, const uint16_t value) {
   out.write(value & 0xFF);
@@ -148,9 +151,11 @@ bool Xtc::generateCoverBmp() const {
     return true;
   }
 
-  if (!loaded || !parser) {
-    LOG_ERR("XTC", "Cannot generate cover BMP, file not loaded");
-    return false;
+  if (parser->hasHighResCover()) {
+    if (generateCoverFromHighRes()) {
+      return true;
+    }
+    LOG_ERR("XTC", "Failed to generate high-res cover, falling back to page 0");
   }
 
   if (parser->getPageCount() == 0) {
@@ -342,9 +347,11 @@ bool Xtc::generateThumbBmp(int height) const {
     return true;
   }
 
-  if (!loaded || !parser) {
-    LOG_ERR("XTC", "Cannot generate thumb BMP, file not loaded");
-    return false;
+  if (parser->hasHighResCover()) {
+    if (generateThumbFromHighRes(height)) {
+      return true;
+    }
+    LOG_ERR("XTC", "Failed to generate high-res thumbnail, falling back to page 0");
   }
 
   if (parser->getPageCount() == 0) {
@@ -803,6 +810,106 @@ bool Xtc::generateThumbBmpStreaming(int height) const {
 
   LOG_INF("XTC", "Generated streaming thumb BMP (bbox): %s", getThumbBmpPath(height).c_str());
   return true;
+}
+
+bool Xtc::generateCoverFromHighRes() const {
+  const uint64_t offset = parser->getThumbOffset();
+  const uint32_t size = parser->getCoverSize();
+
+  if (offset == 0 || size == 0) return false;
+
+  LOG_DBG("XTC", "Generating high-res cover from XTC+ (offset: %llu, size: %u)", offset, size);
+
+  FsFile xtcFile;
+  if (!Storage.openFileForRead("XTC", filepath.c_str(), xtcFile)) {
+    return false;
+  }
+
+  if (!xtcFile.seek(offset)) {
+    xtcFile.close();
+    return false;
+  }
+
+  // Detect format via magic bytes
+  uint8_t magic[8];
+  xtcFile.read(magic, 8);
+  xtcFile.seek(offset); // Reset to start of image
+
+  setupCacheDir();
+  FsFile coverBmp;
+  if (!Storage.openFileForWrite("XTC", getCoverBmpPath(), coverBmp)) {
+    xtcFile.close();
+    return false;
+  }
+
+  bool success = false;
+  if (magic[0] == 0xFF && magic[1] == 0xD8) { // JPEG
+    success = JpegToBmpConverter::jpegFileToBmpStream(xtcFile, coverBmp, true);
+  } else if (magic[0] == 0x89 && magic[1] == 0x50) { // PNG
+    success = PngToBmpConverter::pngFileToBmpStream(xtcFile, coverBmp, true);
+  } else {
+    LOG_ERR("XTC", "Unknown high-res image format: 0x%02X%02X", magic[0], magic[1]);
+  }
+
+  coverBmp.close();
+  xtcFile.close();
+
+  if (!success) {
+    Storage.remove(getCoverBmpPath().c_str());
+  }
+
+  return success;
+}
+
+bool Xtc::generateThumbFromHighRes(int height) const {
+  const uint64_t offset = parser->getThumbOffset();
+  const uint32_t size = parser->getCoverSize();
+
+  if (offset == 0 || size == 0) return false;
+
+  LOG_DBG("XTC", "Generating high-res thumbnail from XTC+ (offset: %llu, size: %u)", offset, size);
+
+  FsFile xtcFile;
+  if (!Storage.openFileForRead("XTC", filepath.c_str(), xtcFile)) {
+    return false;
+  }
+
+  if (!xtcFile.seek(offset)) {
+    xtcFile.close();
+    return false;
+  }
+
+  // Detect format via magic bytes
+  uint8_t magic[8];
+  xtcFile.read(magic, 8);
+  xtcFile.seek(offset); // Reset to start of image
+
+  setupCacheDir();
+  FsFile thumbBmp;
+  if (!Storage.openFileForWrite("XTC", getThumbBmpPath(height), thumbBmp)) {
+    xtcFile.close();
+    return false;
+  }
+
+  const int targetWidth = static_cast<int>(height * 220.0f / 320.0f);
+  bool success = false;
+  
+  if (magic[0] == 0xFF && magic[1] == 0xD8) { // JPEG
+    success = JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(xtcFile, thumbBmp, targetWidth, height);
+  } else if (magic[0] == 0x89 && magic[1] == 0x50) { // PNG
+    success = PngToBmpConverter::pngFileTo1BitBmpStreamWithSize(xtcFile, thumbBmp, targetWidth, height);
+  } else {
+    LOG_ERR("XTC", "Unknown high-res image format: 0x%02X%02X", magic[0], magic[1]);
+  }
+
+  thumbBmp.close();
+  xtcFile.close();
+
+  if (!success) {
+    Storage.remove(getThumbBmpPath(height).c_str());
+  }
+
+  return success;
 }
 
 uint32_t Xtc::getPageCount() const {

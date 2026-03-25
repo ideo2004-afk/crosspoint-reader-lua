@@ -29,6 +29,10 @@ class Xtc {
   // Streaming fallback for large pages that exceed available heap
   bool generateThumbBmpStreaming(int height) const;
 
+  // XTC+ High-res cover support
+  bool generateCoverFromHighRes() const;
+  bool generateThumbFromHighRes(int height) const;
+
  public:
   explicit Xtc(std::string filepath, const std::string& cacheDir) : filepath(std::move(filepath)), loaded(false) {
     // Create cache key based on filepath (same as Epub)
