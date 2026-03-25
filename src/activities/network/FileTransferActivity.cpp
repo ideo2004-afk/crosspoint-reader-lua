@@ -262,9 +262,9 @@ void FileTransferActivity::render(Activity::RenderLock&&) {
                         connectedSSID.c_str());
       renderServerRunning();
     } else {
-      const auto height = renderer.getLineHeight(UI_10_FONT_ID);
+      const auto height = renderer.getLineHeight(UI_12_FONT_ID);
       const auto top = (pageHeight - height) / 2;
-      renderer.drawCenteredText(UI_10_FONT_ID, top, tr(STR_STARTING_HOTSPOT));
+      renderer.drawCenteredText(UI_12_FONT_ID, top, tr(STR_STARTING_HOTSPOT));
     }
     
     const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, "", "", "");
@@ -279,20 +279,20 @@ void FileTransferActivity::renderServerRunning() const {
   const auto pageWidth = renderer.getScreenWidth();
 
   int startY = metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing * 2;
-  int height10 = renderer.getLineHeight(UI_10_FONT_ID);
+  int height10 = renderer.getLineHeight(UI_12_FONT_ID);
 
   if (isApMode) {
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, startY, tr(STR_CONNECT_WIFI_HINT), true, EpdFontFamily::BOLD);
+    renderer.drawText(UI_12_FONT_ID, metrics.contentSidePadding, startY, tr(STR_CONNECT_WIFI_HINT), true, EpdFontFamily::BOLD);
     startY += height10 + metrics.verticalSpacing * 2;
 
     const std::string wifiConfig = std::string("WIFI:S:") + connectedSSID + ";;";
     drawQRCode(renderer, metrics.contentSidePadding, startY, wifiConfig);
 
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing, startY + 80, connectedSSID.c_str());
+    renderer.drawText(UI_12_FONT_ID, metrics.contentSidePadding + QR_CODE_WIDTH + metrics.verticalSpacing, startY + 80, connectedSSID.c_str());
 
     startY += QR_CODE_HEIGHT + 2 * metrics.verticalSpacing;
 
-    renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
+    renderer.drawText(UI_12_FONT_ID, metrics.contentSidePadding, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
     startY += height10 + metrics.verticalSpacing * 2;
 
     std::string hostnameUrl = std::string("http://") + AP_HOSTNAME + ".local/";
@@ -305,9 +305,9 @@ void FileTransferActivity::renderServerRunning() const {
   } else {
     startY += metrics.verticalSpacing * 2;
 
-    renderer.drawCenteredText(UI_10_FONT_ID, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, startY, tr(STR_OPEN_URL_HINT), true, EpdFontFamily::BOLD);
     startY += height10;
-    renderer.drawCenteredText(UI_10_FONT_ID, startY, tr(STR_SCAN_QR_HINT), true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, startY, tr(STR_SCAN_QR_HINT), true, EpdFontFamily::BOLD);
     startY += height10 + metrics.verticalSpacing * 2;
 
     std::string webInfo = "http://" + connectedIP + "/";

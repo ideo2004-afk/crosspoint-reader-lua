@@ -94,9 +94,11 @@ EpdFont ui10RegularFont(&ubuntu_10_regular);
 EpdFont ui10BoldFont(&ubuntu_10_bold);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&ubuntu_12_regular);
-EpdFont ui12BoldFont(&ubuntu_12_bold);
-EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
+EpdFont ui12RegularFont(&notosans_12_regular);
+EpdFont ui12BoldFont(&notosans_12_bold);
+EpdFont ui12ItalicFont(&notosans_12_italic);
+EpdFont ui12BoldItalicFont(&notosans_12_bolditalic);
+EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont, &ui12ItalicFont, &ui12BoldItalicFont);
 
 // measurement of power button press duration calibration value
 unsigned long t1 = 0;
