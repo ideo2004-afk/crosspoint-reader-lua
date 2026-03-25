@@ -720,7 +720,7 @@ void LuaManager::registerBindings() {
     lua_pushinteger(L, BOOKERLY_14_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_14");
     lua_pushinteger(L, BOOKERLY_12_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_12");
     lua_pushinteger(L, BOOKERLY_16_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_16");
-    lua_pushinteger(L, BOOKERLY_18_FONT_ID); lua_setglobal(L, "FONT_BOOKERLY_18");
+
 
     // Font style constants
     lua_pushinteger(L, (int)EpdFontFamily::REGULAR); lua_setglobal(L, "STYLE_REGULAR");
@@ -728,7 +728,6 @@ void LuaManager::registerBindings() {
     lua_pushinteger(L, NOTOSANS_12_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_12");
     lua_pushinteger(L, NOTOSANS_14_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_14");
     lua_pushinteger(L, NOTOSANS_16_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_16");
-    lua_pushinteger(L, NOTOSANS_18_FONT_ID); lua_setglobal(L, "FONT_NOTOSANS_18");
     lua_pushinteger(L, UI_10_FONT_ID);       lua_setglobal(L, "FONT_UI_10");
     lua_pushinteger(L, UI_12_FONT_ID);       lua_setglobal(L, "FONT_UI_12");
     lua_pushinteger(L, SMALL_FONT_ID);       lua_setglobal(L, "FONT_SMALL");

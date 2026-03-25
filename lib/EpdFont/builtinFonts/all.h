@@ -12,10 +12,7 @@
 #include <builtinFonts/bookerly_16_bolditalic.h>
 #include <builtinFonts/bookerly_16_italic.h>
 #include <builtinFonts/bookerly_16_regular.h>
-#include <builtinFonts/bookerly_18_bold.h>
-#include <builtinFonts/bookerly_18_bolditalic.h>
-#include <builtinFonts/bookerly_18_italic.h>
-#include <builtinFonts/bookerly_18_regular.h>
+
 #include <builtinFonts/notosans_8_regular.h>
 #include <builtinFonts/notosans_12_bold.h>
 #include <builtinFonts/notosans_12_bolditalic.h>
@@ -29,13 +26,8 @@
 #include <builtinFonts/notosans_16_bolditalic.h>
 #include <builtinFonts/notosans_16_italic.h>
 #include <builtinFonts/notosans_16_regular.h>
-#include <builtinFonts/notosans_18_bold.h>
-#include <builtinFonts/notosans_18_bolditalic.h>
-#include <builtinFonts/notosans_18_italic.h>
-#include <builtinFonts/notosans_18_regular.h>
 
 #include <builtinFonts/ubuntu_10_bold.h>
 #include <builtinFonts/ubuntu_10_regular.h>
 #include <builtinFonts/ubuntu_12_bold.h>
 #include <builtinFonts/ubuntu_12_regular.h>
-

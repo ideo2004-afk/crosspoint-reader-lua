@@ -93,7 +93,7 @@ void ReadingStatsActivity::render(Activity::RenderLock&&) {
   
   uint32_t todaySecs = READING_STATS.getTodaySeconds();
   std::string todayStr = formatMinutes(todaySecs);
-  renderer.drawText(BOOKERLY_18_FONT_ID, todayRect.x + 15, todayRect.y + 35, todayStr.c_str(), true, EpdFontFamily::BOLD);
+  renderer.drawText(BOOKERLY_16_FONT_ID, todayRect.x + 15, todayRect.y + 35, todayStr.c_str(), true, EpdFontFamily::BOLD);
 
   // 2. Streak & Active Days (Small Panels)
   int summaryY = todayRect.y + todayRect.height + 10;
