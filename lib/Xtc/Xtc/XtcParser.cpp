@@ -218,7 +218,7 @@ XtcError XtcParser::readChapters() {
     return XtcError::OK;
   }
 
-  uint64_t chapterOffset = 0;
+  uint32_t chapterOffset = 0;
   if (!m_file.seek(0x30)) {
     return XtcError::READ_ERROR;
   }

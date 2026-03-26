@@ -1,0 +1,30 @@
+{
+  "device": "custom",
+  "width": 480,
+  "height": 800,
+  "rotation": 0,
+  "font": {
+    "path": "fonts/GenRyuMin TW TTF Medium.ttf",
+    "size": 32,
+    "weight": 500
+  },
+  "margins": {
+    "left": 16,
+    "top": 36,
+    "right": 16,
+    "bottom": 48
+  },
+  "lineHeight": 120,
+  "textAlign": "justify",
+  "hyphenation": {
+    "enabled": true,
+    "language": "zh-tw"
+  },
+  "portraitCover": true,
+  "output": {
+    "format": "xtc",
+    "dithering": true,
+    "ditherStrength": 1.0,
+    "negative": false
+  }
+}

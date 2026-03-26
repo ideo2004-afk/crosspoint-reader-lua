@@ -1,0 +1,31 @@
+{
+  "device": "custom",
+  "width": 800,
+  "height": 480,
+  "rotation": 90,
+  "font": {
+    "path": "fonts/H-MingLan-Regular-v2d-Simp2Trad.ttf",
+    "size": 32,
+    "weight": 500
+  },
+  "margins": {
+    "left": 48,
+    "top": 16,
+    "right": 48,
+    "bottom": 12
+  },
+  "lineHeight": 123,
+  "paragraphSpacing": 0,
+  "textAlign": "justify",
+  "hyphenation": {
+    "enabled": true,
+    "language": "zh-tw"
+  },
+  "portraitCover": true,
+  "output": {
+    "format": "xtc",
+    "dithering": true,
+    "ditherStrength": 1.0,
+    "negative": false
+  }
+}
