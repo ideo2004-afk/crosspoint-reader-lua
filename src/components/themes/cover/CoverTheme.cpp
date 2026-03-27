@@ -173,6 +173,12 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
         for (int i = 1; i < 4 && i < count; ++i) {
             int sx = horizontalPadding + (i - 1) * (smallW + spacing);
             drawBookCover(renderer, recentBooks[i], sx, smallY, smallW, smallH, false, false);
+            
+            // Draw Reading Progress Percentage (Small/Gray)
+            char progBuf[8];
+            snprintf(progBuf, sizeof(progBuf), "%d%%", recentBooks[i].progressPercent);
+            int textW = renderer.getTextWidth(SMALL_FONT_ID, progBuf);
+            renderer.drawText(SMALL_FONT_ID, sx + (smallW - textW) / 2, smallY + smallH + 6, progBuf, DarkGray);
         }
 
         coverRendered = true;
