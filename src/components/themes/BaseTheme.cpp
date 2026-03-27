@@ -39,7 +39,6 @@ namespace {
 constexpr int batteryPercentSpacing = 4;
 constexpr int homeMenuMargin = 20;
 constexpr int homeMarginTop = 30;
-constexpr int subtitleY = 738;
 constexpr int mainMenuIconSize = 32;
 constexpr int cornerRadius = 6;
 constexpr int hPaddingInSelection = 8;
@@ -402,18 +401,24 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
 
   if (title) {
     int padding = rect.width - batteryX + metrics.batteryWidth;
-    auto truncatedTitle = renderer.truncatedText(NOTOSANS_12_FONT_ID, title,
+    auto truncatedTitle = renderer.truncatedText(UI_12_FONT_ID, title,
                                                  rect.width - padding * 2 - metrics.contentSidePadding * 2,
                                                  EpdFontFamily::BOLD);
-    renderer.drawCenteredText(NOTOSANS_12_FONT_ID, rect.y + 5, truncatedTitle.c_str(), true, EpdFontFamily::BOLD);
+    // Left-aligned title like FlowTheme
+    renderer.drawText(UI_12_FONT_ID, rect.x + metrics.contentSidePadding,
+                      rect.y + metrics.batteryBarHeight + 3, truncatedTitle.c_str(), true, EpdFontFamily::BOLD);
+    // 3px thick underline like FlowTheme
+    renderer.drawLine(rect.x, rect.y + rect.height - 3, rect.x + rect.width - 1, rect.y + rect.height - 3, 3, true);
   }
 
   if (subtitle) {
     auto truncatedSubtitle = renderer.truncatedText(
         SMALL_FONT_ID, subtitle, rect.width - metrics.contentSidePadding * 2, EpdFontFamily::REGULAR);
     int truncatedSubtitleWidth = renderer.getTextWidth(SMALL_FONT_ID, truncatedSubtitle.c_str());
+    // Fixed subtitle positioning (no longer at 738)
+    int subY = rect.y + 5;
     renderer.drawText(SMALL_FONT_ID,
-                      rect.x + rect.width - metrics.contentSidePadding - truncatedSubtitleWidth, subtitleY,
+                      rect.x + rect.width - metrics.contentSidePadding - truncatedSubtitleWidth, subY,
                       truncatedSubtitle.c_str(), true);
   }
 }
