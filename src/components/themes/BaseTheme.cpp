@@ -364,7 +364,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
       // Draw subtitle
       std::string subtitleText = rowSubtitle(i);
       auto subtitle = renderer.truncatedText(UI_10_FONT_ID, subtitleText.c_str(), textWidth);
-      renderer.drawText(UI_10_FONT_ID, rect.x + metrics.contentSidePadding, itemY + 32, subtitle.c_str(),
+      renderer.drawText(UI_10_FONT_ID, rect.x + metrics.contentSidePadding, itemY + 40, subtitle.c_str(),
                         !isSelected);
     }
 
