@@ -227,13 +227,21 @@ void HomeActivity::loop() {
 
   // 2. Front Buttons (Button 3 & 4 / Left & Right) - Strictly for Menu Selection
   if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
-    focusZone = Zone::MENU;
-    menuSelectorIndex = (menuSelectorIndex + menuCount - 1) % menuCount;
+    if (focusZone == Zone::BOOKS) {
+      focusZone = Zone::MENU;
+      menuSelectorIndex = 3; // Start at Settings
+    } else {
+      menuSelectorIndex = (menuSelectorIndex + menuCount - 1) % menuCount;
+    }
     requestUpdate();
   }
   if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
-    focusZone = Zone::MENU;
-    menuSelectorIndex = (menuSelectorIndex + 1) % menuCount;
+    if (focusZone == Zone::BOOKS) {
+      focusZone = Zone::MENU;
+      menuSelectorIndex = 0; // Start at Library
+    } else {
+      menuSelectorIndex = (menuSelectorIndex + 1) % menuCount;
+    }
     requestUpdate();
   }
 
