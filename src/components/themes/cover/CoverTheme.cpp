@@ -14,6 +14,7 @@
 #include "fontIds.h"
 #include "CrossPointSettings.h"
 #include "components/icons/cover.h"
+#include "util/TimeService.h"
 
 namespace {
 constexpr int mainCoverHeight = 320;
@@ -96,6 +97,12 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
                                     const char* btn4, uint8_t highlightMask) const {
   const bool hasRecentBooks = !recentBooks.empty();
   const int pageWidth = renderer.getScreenWidth();
+
+  // Draw Header (Date & Battery) - Every frame for CoverTheme
+  char dateStr[32] = {};
+  const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "";
+  // rect.y is the top padding. Header should occupy the top area [0, rect.y]
+  drawHeader(renderer, Rect{0, 0, pageWidth, rect.y}, "", dateText);
 
   if (hasRecentBooks) {
     const int count = recentBooks.size();

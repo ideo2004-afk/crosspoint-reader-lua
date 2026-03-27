@@ -275,10 +275,6 @@ void HomeActivity::render(Activity::RenderLock&&) {
   renderer.clearScreen();
   bool bufferRestored = coverBufferStored && restoreCoverBuffer();
 
-  char dateStr[32] = {};
-  const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "";
-  GUI.drawHeader(renderer, Rect{0, 0, pageWidth, metrics.homeTopPadding}, "", dateText);
-
   // Calculate compatible index for drawing (FlowTheme, etc.)
   int compatibleSelectorIndex = (focusZone == Zone::BOOKS) ? bookSelectorIndex : (1000 + bookSelectorIndex);
 
