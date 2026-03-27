@@ -345,7 +345,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
 
     // Draw name
     auto itemName = rowTitle(i);
-    auto font = UI_12_FONT_ID;
+    auto font = NOTOSANS_14_FONT_ID;
     auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24, EpdFontFamily::REGULAR);
     
     int iconPadding = 0;
