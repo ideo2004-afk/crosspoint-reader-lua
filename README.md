@@ -113,6 +113,22 @@ See the [EPUB to XTC Conversion Guide](../README.md#epub-轉檔-xtc-指南) in t
 
 ---
 
+## 🛠️ Companion Tools
+
+This project includes specialized tools to optimize content for the XTEINK X4:
+
+### 1. CJK Font Converter
+Located in `tools/crosspoint-reader-lua/CJK-font-converter`.
+- **Function**: Converts TTF/OTF fonts into high-performance 1-bit or 2-bit `.bin` formats.
+- **Support**: Specifically optimized for vertical reading and different anti-aliasing levels.
+
+### 2. EPUB to XTC Converter
+Located in `tools/crosspoint-reader-lua/epub-to-xtc-converter`.
+- **Function**: A full-featured CLI tool for converting standard EPUB files into the device-friendly XTC format.
+- **Features**: Supports image dithering, layout optimization, and multi-language settings (Vertical, Horizontal, etc.).
+
+---
+
 ## 💾 Installation & Development
 
 ### Web Flash
@@ -141,6 +157,19 @@ Huge thanks to:
 
 ## 🕒 Update History
 
+- **2026-03-27 (v2.5.0-Lee)**:
+  - 更新系統版本號為 `v2.5.0-Lee`。
+  - **EpubReader 浮動選單優化**：
+    - 移除「螢幕截圖」功能。
+    - 新增「閱讀字體」切換（Bookerly / Noto Sans）。
+    - 新增「外部字體」選擇（支援跨目錄字體選取）。
+    - 更改字體後自動觸發重新排版（Indexing）與緩存更新。
+    - 優化選單佈局，調整高度以適應新項目。
+  - **UI/UX 增強**：
+    - 為 XTC 與 EPUB 章節選擇頁面新增標準按鈕導航提示，提升一致性。
+  - **轉檔工具優化**：
+    - 重構 `convert_x4.sh`，支援從任何工作目錄啟動，並具備智慧型路徑解析。
+  - `CJK Font Converter` 與 `EPUB to XTC Converter` 正式整合至工具箱。
 - **2026-03-13**:
   - `Recents` page optimization: Reduced maximum books from 36 to 18 to save memory.
   - `Flow Theme` optimization: Reduced carousel book count from 10 to 7 to improve stability.

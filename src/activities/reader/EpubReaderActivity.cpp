@@ -17,6 +17,7 @@
 #include "fontIds.h"
 #include "ReadingStatsStore.h"
 #include "util/ScreenshotUtil.h"
+#include "activities/settings/FontSelectActivity.h"
 #include <algorithm>
 
 namespace {
@@ -207,7 +208,7 @@ void EpubReaderActivity::loop() {
       return;
     }
 
-    const int optionCount = 7; // Resume, TOC, Go to, Dark Mode, Orientation, Screenshot, Exit
+    const int optionCount = 8; // Resume, TOC, Go to, Dark Mode, Font Size, Ext Font, Orientation, Exit
     if (mappedInput.wasReleasedRaw(HalGPIO::BTN_UP)) {
       menuSelectedIndex = (menuSelectedIndex > 0) ? menuSelectedIndex - 1 : optionCount - 1;
       requestUpdate();
@@ -238,9 +239,21 @@ void EpubReaderActivity::loop() {
           SETTINGS.darkMode = !SETTINGS.darkMode;
           SETTINGS.saveToFile();
           break;
-        case 4: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::ROTATE_SCREEN); break;
-        case 5: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT); break;
-        case 6:
+        case 4: // Font Family
+          SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
+          SETTINGS.saveToFile();
+          section.reset();
+          break;
+        case 5: // External Font
+          enterNewActivity(new FontSelectActivity(renderer, mappedInput, FontSelectActivity::SelectMode::Reader, [this] {
+            section.reset();
+            exitActivity();
+            requestUpdate();
+          }));
+          inMenu = false;
+          return;
+        case 6: onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::ROTATE_SCREEN); break;
+        case 7:
           mappedInput.consumeButtonRaw(HalGPIO::BTN_CONFIRM);
           onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::GO_HOME);
           return;
@@ -809,7 +822,7 @@ void EpubReaderActivity::renderMenu() const {
   }
 
   const int mw = 320;
-  const int mh = 380;
+  const int mh = 430;
   const int mx = (sw - mw) / 2;
   const int my = (sh - mh) / 2;
 
@@ -818,9 +831,11 @@ void EpubReaderActivity::renderMenu() const {
   renderer.drawRoundedRect(mx, my, mw, mh, 2, 10, textColor);
 
   const char* options[] = {tr(STR_RESUME), tr(STR_TOC), tr(STR_GO_TO),
-                           darkMode ? tr(STR_DAY_MODE) : tr(STR_DARK_MODE), tr(STR_ORIENTATION), tr(STR_SCREENSHOT_BUTTON), tr(STR_EXIT)};
+                           darkMode ? tr(STR_DAY_MODE) : tr(STR_DARK_MODE), 
+                           tr(STR_FONT_FAMILY), tr(STR_EXTERNAL_FONT),
+                           tr(STR_ORIENTATION), tr(STR_EXIT)};
 
-  for (int i = 0; i < 7; i++) {
+  for (int i = 0; i < 8; i++) {
     int ry = my + 15 + (i * 50);
     if (menuSelectedIndex == i) {
       renderer.fillRoundedRect(mx + 10, ry - 5, mw - 20, 40, 8, textColor ? Color::Black : Color::White);

@@ -1,7 +1,0 @@
-{
-  "stocks": [
-    {"symbol": "2330.TW", "name": "TSMC"},
-    {"symbol": "INTC",    "name": "Intel"},
-    {"symbol": "TSLA",    "name": "Tesla"}
-  ]
-}
