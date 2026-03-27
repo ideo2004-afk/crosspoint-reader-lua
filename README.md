@@ -166,10 +166,12 @@ Huge thanks to:
     - 更改字體後自動觸發重新排版（Indexing）與緩存更新。
     - 優化選單佈局，調整高度以適應新項目。
   - **UI/UX 增強**：
+    - 全球性地將所有清單頁面（如書庫、閱讀統計）的右側滾動條替換為更優雅的 **點狀分頁指示器**（8x8 px 方塊）。
     - 為 XTC 與 EPUB 章節選擇頁面新增標準按鈕導航提示，提升一致性。
   - **轉檔工具優化**：
     - 重構 `convert_x4.sh`，支援從任何工作目錄啟動，並具備智慧型路徑解析。
-  - `CJK Font Converter` 與 `EPUB to XTC Converter` 正式整合至工具箱。
+  - **專案瘦身**：
+    - 移除冗餘的大型字體檔案與編譯輸出，大幅優化 GitHub 儲存庫體積。
 - **2026-03-13**:
   - `Recents` page optimization: Reduced maximum books from 36 to 18 to save memory.
   - `Flow Theme` optimization: Reduced carousel book count from 10 to 7 to improve stability.
