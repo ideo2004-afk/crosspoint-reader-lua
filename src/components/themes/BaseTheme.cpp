@@ -346,7 +346,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     // Draw name
     auto itemName = rowTitle(i);
     auto font = UI_12_FONT_ID;
-    auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24, EpdFontFamily::BOLD);
+    auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24, EpdFontFamily::REGULAR);
     
     int iconPadding = 0;
     if (rowIcon != nullptr) {
@@ -358,7 +358,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
       }
     }
     
-    renderer.drawText(font, rect.x + metrics.contentSidePadding + iconPadding, itemY + 2, item.c_str(), !isSelected, EpdFontFamily::BOLD);
+    renderer.drawText(font, rect.x + metrics.contentSidePadding + iconPadding, itemY + 2, item.c_str(), !isSelected, EpdFontFamily::REGULAR);
 
     if (rowSubtitle != nullptr) {
       // Draw subtitle
@@ -403,10 +403,10 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     int padding = rect.width - batteryX + metrics.batteryWidth;
     auto truncatedTitle = renderer.truncatedText(UI_12_FONT_ID, title,
                                                  rect.width - padding * 2 - metrics.contentSidePadding * 2,
-                                                 EpdFontFamily::REGULAR);
-    // Left-aligned title like FlowTheme (using Standard weight instead of Bold)
+                                                 EpdFontFamily::BOLD);
+    // Left-aligned title like FlowTheme (using Bold weight)
     renderer.drawText(UI_12_FONT_ID, rect.x + metrics.contentSidePadding,
-                      rect.y + metrics.batteryBarHeight + 3, truncatedTitle.c_str(), true, EpdFontFamily::REGULAR);
+                      rect.y + metrics.batteryBarHeight + 3, truncatedTitle.c_str(), true, EpdFontFamily::BOLD);
     // 3px thick underline like FlowTheme
     renderer.drawLine(rect.x, rect.y + rect.height - 3, rect.x + rect.width - 1, rect.y + rect.height - 3, 3, true);
   }
