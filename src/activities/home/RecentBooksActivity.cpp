@@ -321,7 +321,7 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
 
     // Page indicator (dots)
     if (totalPages > 1) {
-      const int dotSize = 6;
+      const int dotSize = 8;
       const int dotSpacing = 8;
       const int totalDotWidth = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
       const int startX = (pageWidth - totalDotWidth) / 2;
