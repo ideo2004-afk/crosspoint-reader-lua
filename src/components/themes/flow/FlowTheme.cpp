@@ -118,6 +118,15 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
                                    const char* btn4, uint8_t highlightMask) const {
   const bool hasRecentBooks = !recentBooks.empty();
   const int pageWidth = renderer.getScreenWidth();
+
+  // Draw Battery Icon for FlowTheme home screen
+  const bool showBatteryPercentage =
+      SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
+  const int batteryX = pageWidth - 12 - FlowMetrics::values.batteryWidth;
+  drawBatteryRight(renderer,
+                   Rect{batteryX, 5, FlowMetrics::values.batteryWidth, FlowMetrics::values.batteryHeight},
+                   showBatteryPercentage);
+
   const int centerY = rect.y + 40; // Moved up slightly from 45 to 40 to ensure menu clearance
   const int centerX = pageWidth / 2;
   if (hasRecentBooks) {
