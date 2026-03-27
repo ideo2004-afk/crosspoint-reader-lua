@@ -312,31 +312,22 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
   int rowHeight = (rowSubtitle != nullptr) ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight;
   int pageItems = rect.height / rowHeight;
 
-  const int totalPages = (itemCount + pageItems - 1) / pageItems;
+  const int totalPages = (pageItems > 0) ? (itemCount + pageItems - 1) / pageItems : 1;
   if (totalPages > 1) {
-    constexpr int indicatorWidth = 20;
-    constexpr int arrowSize = 6;
-    constexpr int margin = 15;  // Offset from right edge
+    const int dotSize = 8;
+    const int dotSpacing = 8;
+    const int totalDotWidth = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
+    const int startX = rect.x + (rect.width - totalDotWidth) / 2;
+    const int dotY = rect.y + rect.height + 4; // Draw slightly below the list rectangle
 
-    const int centerX = rect.x + rect.width - indicatorWidth / 2 - margin;
-    const int indicatorTop = rect.y;
-    const int indicatorBottom = rect.y + rect.height;
-
-    // Draw vertical scroll line (Extended to full height, arrows removed per user request)
-    const int lineTop = indicatorTop + 5;
-    const int lineBottom = indicatorBottom - 5;
-    const int lineHeight = lineBottom - lineTop;
-    const int barWidth = metrics.scrollBarWidth;
-    
-    // Track (thin line)
-    renderer.drawLine(centerX, lineTop, centerX, lineBottom, 1, Color::Black);
-    
-    // Thumb (thicker bar)
-    if (totalPages > 1) {
-      const int thumbHeight = std::max(20, lineHeight / totalPages);
-      const int currentPage = selectedIndex / pageItems;
-      const int thumbY = lineTop + (lineHeight - thumbHeight) * currentPage / (totalPages - 1);
-      renderer.fillRect(centerX - barWidth / 2, thumbY, barWidth, thumbHeight, true);
+    const int currentPage = selectedIndex / pageItems;
+    for (int p = 0; p < totalPages; p++) {
+      int x = startX + p * (dotSize + dotSpacing);
+      if (p == currentPage) {
+        renderer.fillRect(x, dotY, dotSize, dotSize, true);
+      } else {
+        renderer.drawRect(x, dotY, dotSize, dotSize, true);
+      }
     }
   }
 
