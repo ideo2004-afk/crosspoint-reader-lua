@@ -98,9 +98,9 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
   const int pageWidth = renderer.getScreenWidth();
 
   // Draw Header (Battery & Date) - Every frame for CoverTheme
-  // We pass nullptr for title/subtitle so BaseTheme doesn't draw redundant/buggy elements.
-  // BaseTheme::drawHeader draws date in top-left internally if SETTINGS.statusBarClock is on.
-  drawHeader(renderer, Rect{0, 0, pageWidth, rect.y}, nullptr, nullptr);
+  // We use topPadding (5) as y to match sub-pages like Library/Settings.
+  const auto& themeMetrics = UITheme::getInstance().getMetrics();
+  drawHeader(renderer, Rect{0, themeMetrics.topPadding, pageWidth, rect.y}, nullptr, nullptr);
 
   if (hasRecentBooks) {
     const int count = recentBooks.size();
