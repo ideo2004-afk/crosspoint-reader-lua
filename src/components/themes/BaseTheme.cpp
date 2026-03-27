@@ -393,7 +393,7 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
                    Rect{batteryX, rect.y + 13, metrics.batteryWidth, metrics.batteryHeight},
                    showBatteryPercentage);
 
-  if (SETTINGS.statusBarClock) {
+  if (SETTINGS.statusBarClock && SETTINGS.uiTheme != CrossPointSettings::FLOW) {
     char dateStr[12] = {};
     const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "-- --- ----";
     renderer.drawText(SMALL_FONT_ID, rect.x + metrics.contentSidePadding, rect.y + 13, dateText);
