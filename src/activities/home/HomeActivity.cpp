@@ -252,12 +252,8 @@ void HomeActivity::loop() {
     return;
   }
 
-  // 4. Back Button (Button 1) - Library Shortcut (Disabled for CoverTheme as per user request)
+  // Back Button (Button 1) - Inactive on Home screen as per user request
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-    if (SETTINGS.uiTheme != CrossPointSettings::UI_THEME::COVER_THEME) {
-        freeCoverBuffer();
-        onMyLibraryOpen();
-    }
     return;
   }
 }
