@@ -319,13 +319,22 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
       }
     }
 
-    // Page indicator  e.g. "2 / 4"
+    // Page indicator (dots)
     if (totalPages > 1) {
-      char pageStr[12];
-      snprintf(pageStr, sizeof(pageStr), "%d / %d", currentPage + 1, totalPages);
-      const int tw = renderer.getTextWidth(SMALL_FONT_ID, pageStr);
-      const int ty = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 16;
-      renderer.drawText(SMALL_FONT_ID, (pageWidth - tw) / 2, ty, pageStr);
+      const int dotSize = 6;
+      const int dotSpacing = 8;
+      const int totalDotWidth = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
+      const int startX = (pageWidth - totalDotWidth) / 2;
+      const int dotY = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 12;
+
+      for (int p = 0; p < totalPages; p++) {
+        int x = startX + p * (dotSize + dotSpacing);
+        if (p == currentPage) {
+          renderer.fillRect(x, dotY, dotSize, dotSize, true);
+        } else {
+          renderer.drawRect(x, dotY, dotSize, dotSize, true);
+        }
+      }
     }
   }
 
