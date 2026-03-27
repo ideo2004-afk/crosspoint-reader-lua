@@ -382,7 +382,7 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   const auto& metrics = UITheme::getInstance().getMetrics();
   // Hide last battery draw
   constexpr int maxBatteryWidth = 80;
-  renderer.fillRect(rect.x + rect.width - maxBatteryWidth, rect.y + 5, maxBatteryWidth,
+  renderer.fillRect(rect.x + rect.width - maxBatteryWidth, rect.y + 13, maxBatteryWidth,
                     metrics.batteryHeight + 10, false);
 
   const bool showBatteryPercentage =
@@ -390,13 +390,13 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   // Position icon at right edge, drawBatteryRight will place text to the left
   const int batteryX = rect.x + rect.width - 12 - metrics.batteryWidth;
   drawBatteryRight(renderer,
-                   Rect{batteryX, rect.y + 5, metrics.batteryWidth, metrics.batteryHeight},
+                   Rect{batteryX, rect.y + 13, metrics.batteryWidth, metrics.batteryHeight},
                    showBatteryPercentage);
 
   if (SETTINGS.statusBarClock) {
     char dateStr[12] = {};
     const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "-- --- ----";
-    renderer.drawText(SMALL_FONT_ID, rect.x + metrics.contentSidePadding, rect.y + 5, dateText);
+    renderer.drawText(SMALL_FONT_ID, rect.x + metrics.contentSidePadding, rect.y + 13, dateText);
   }
 
   if (title) {
@@ -415,8 +415,8 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     auto truncatedSubtitle = renderer.truncatedText(
         SMALL_FONT_ID, subtitle, rect.width - metrics.contentSidePadding * 2, EpdFontFamily::REGULAR);
     int truncatedSubtitleWidth = renderer.getTextWidth(SMALL_FONT_ID, truncatedSubtitle.c_str());
-    // Fixed subtitle positioning (no longer at 738)
-    int subY = rect.y + 5;
+    // Fixed subtitle positioning (no longer at 738, shifted down +8px from original +5px)
+    int subY = rect.y + 13;
     renderer.drawText(SMALL_FONT_ID,
                       rect.x + rect.width - metrics.contentSidePadding - truncatedSubtitleWidth, subY,
                       truncatedSubtitle.c_str(), true);
