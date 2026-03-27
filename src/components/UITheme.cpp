@@ -9,6 +9,7 @@
 #include "RecentBooksStore.h"
 #include "components/themes/BaseTheme.h"
 #include "components/themes/flow/FlowTheme.h"
+#include "components/themes/cover/CoverTheme.h"
 #include "util/StringUtils.h"
 
 namespace {
@@ -39,6 +40,11 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Flow theme (default)");
       currentTheme = std::make_unique<FlowTheme>();
       currentMetrics = &FlowMetrics::values;
+      break;
+    case CrossPointSettings::UI_THEME::COVER_THEME:
+      LOG_DBG("UI", "Using Cover theme");
+      currentTheme = std::make_unique<CoverTheme>();
+      currentMetrics = &CoverMetrics::values;
       break;
   }
 }

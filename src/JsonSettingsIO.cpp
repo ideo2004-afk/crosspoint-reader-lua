@@ -152,7 +152,7 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.longPressChapterSkip = doc["longPressChapterSkip"] | (uint8_t)1;
   s.statusBarClock = doc["statusBarClock"] | (uint8_t)0;
   s.hyphenationEnabled = doc["hyphenationEnabled"] | (uint8_t)0;
-  s.uiTheme = doc["uiTheme"] | (uint8_t)S::LYRA;
+  s.uiTheme = doc["uiTheme"] | (uint8_t)S::CLASSIC;
   s.fadingFix = doc["fadingFix"] | (uint8_t)0;
   s.embeddedStyle = doc["embeddedStyle"] | (uint8_t)1;
   s.darkMode = doc["darkMode"] | (uint8_t)0;
@@ -223,6 +223,7 @@ bool JsonSettingsIO::saveRecentBooks(const RecentBooksStore& store, const char* 
     obj["author"] = book.author;
     obj["coverBmpPath"] = book.coverBmpPath;
     obj["fileSize"] = book.fileSize;
+    obj["progress"] = book.progressPercent;
   }
 
   FsFile file;
@@ -252,6 +253,7 @@ bool JsonSettingsIO::loadRecentBooks(RecentBooksStore& store, const char* json) 
     book.author = obj["author"] | std::string("");
     book.coverBmpPath = obj["coverBmpPath"] | std::string("");
     book.fileSize = obj["fileSize"] | (uint32_t)0;
+    book.progressPercent = obj["progress"] | (uint8_t)0;
     store.recentBooks.push_back(book);
   }
 

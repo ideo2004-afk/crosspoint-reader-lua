@@ -128,7 +128,8 @@ void HomeActivity::onEnter() {
   firstRenderDone = false;
   recentsLoaded   = false;
   recentsLoading  = false;
-  abortLoading    = false;
+  coverRendered = false;
+  coverBufferStored = false;
 
   const auto& metrics = UITheme::getInstance().getMetrics();
   loadRecentBooks(metrics.homeRecentBooksCount);
@@ -197,119 +198,67 @@ void HomeActivity::loop() {
     return;
   }
 
-  const int bookCount = recentBooks.size();
+  const int bookCount = static_cast<int>(recentBooks.size());
   const int menuCount = 4;
 
-  auto getNextBookIdx = [](int cur, int total) {
-    if (total <= 1) return 0;
-    return (cur + 1) % total;
-  };
-  
-  auto getPrevBookIdx = [](int cur, int total) {
-    if (total <= 1) return 0;
-    return (cur + total - 1) % total;
-  };
+  // Power button short press = Confirm (when configured as PAGE_TURN)
+  const bool powerConfirm = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
+                             mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
 
-  // Per user request:
-  // [ 2 1 3 ] -> Right -> [ 1 3 4 ]
-  // [ B2 B1 B3 ] -> Left -> [ B4 B2 B1 ]
-
-  // Side buttons (usually physical 4 and 5) - Strictly for book covers
+  // 1. Side Buttons (Physical 4 & 5 / BTN_UP & BTN_DOWN) - Strictly for Book Selection
   if (mappedInput.wasPressedRaw(HalGPIO::BTN_UP) || mappedInput.wasPressedRaw(4)) {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
-      bookSelectorIndex = getNextBookIdx(bookSelectorIndex, bookCount);
+      bookSelectorIndex = (bookSelectorIndex + 1) % bookCount;
       coverBufferStored = false;
-      coverRendered = false;  // Force full re-render from SD for new selection
+      coverRendered = false; // Force re-render for new selection
       requestUpdate();
     }
   }
   if (mappedInput.wasPressedRaw(HalGPIO::BTN_DOWN) || mappedInput.wasPressedRaw(5)) {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
-      bookSelectorIndex = getPrevBookIdx(bookSelectorIndex, bookCount);
+      bookSelectorIndex = (bookSelectorIndex + bookCount - 1) % bookCount;
       coverBufferStored = false;
-      coverRendered = false;  // Force full re-render from SD for new selection
+      coverRendered = false; // Force re-render for new selection
       requestUpdate();
     }
   }
 
-  // Power button short press = Confirm (when configured as PAGE_TURN)
-  const bool powerConfirm = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
-                             mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
+  // 2. Front Buttons (Button 3 & 4 / Left & Right) - Strictly for Menu Selection
+  if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
+    focusZone = Zone::MENU;
+    menuSelectorIndex = (menuSelectorIndex + menuCount - 1) % menuCount;
+    requestUpdate();
+  }
+  if (mappedInput.wasReleased(MappedInputManager::Button::Right)) {
+    focusZone = Zone::MENU;
+    menuSelectorIndex = (menuSelectorIndex + 1) % menuCount;
+    requestUpdate();
+  }
 
-  // Front buttons (Logical 1-to-1 mapping)
-
-  // Button 2 (Confirm) - Selection
+  // 3. Confirm Button (Button 2)
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) || powerConfirm) {
-    int idx = 0;
-    const int myLibraryIdx = idx++;
-    const int recentsIdx = idx++;
-    const int pluginsIdx = idx++;
-    const int settingsIdx = idx++;
-
     if (focusZone == Zone::BOOKS && !recentBooks.empty()) {
-      freeCoverBuffer(); // Proactively free memory before transition
+      freeCoverBuffer();
       onSelectBook(recentBooks[bookSelectorIndex].path);
     } else if (focusZone == Zone::MENU) {
-      if (menuSelectorIndex == myLibraryIdx) {
-        freeCoverBuffer();
-        onMyLibraryOpen();
-      } else if (menuSelectorIndex == recentsIdx) {
-        freeCoverBuffer();
-        onRecentsOpen();
-      } else if (menuSelectorIndex == pluginsIdx) {
-        freeCoverBuffer();
-        onPluginsOpen();
-      } else if (menuSelectorIndex == settingsIdx) {
-        freeCoverBuffer();
-        onSettingsOpen();
-      }
+      freeCoverBuffer();
+      if (menuSelectorIndex == 0) onMyLibraryOpen();
+      else if (menuSelectorIndex == 1) onRecentsOpen();
+      else if (menuSelectorIndex == 2) onPluginsOpen();
+      else if (menuSelectorIndex == 3) onSettingsOpen();
     }
     return;
   }
 
-  // Button 3 (Up) - Vertical movement
-  if (mappedInput.wasPressed(MappedInputManager::Button::Left)) {
-    if (focusZone == Zone::MENU) {
-      if (menuSelectorIndex > 0) {
-        menuSelectorIndex--;
-      } else {
-        // Move focus up to books zone
-        focusZone = Zone::BOOKS;
-      }
-      requestUpdate();
-    } else if (focusZone == Zone::BOOKS) {
-      // Loop to bottom of menu
-      focusZone = Zone::MENU;
-      menuSelectorIndex = menuCount - 1;
-      requestUpdate();
-    }
-  }
-
-  // Button 4 (Down) - Vertical movement
-  if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
-    if (focusZone == Zone::BOOKS) {
-      // Move focus down to menu zone
-      focusZone = Zone::MENU;
-      menuSelectorIndex = 0;
-      requestUpdate();
-    } else if (focusZone == Zone::MENU) {
-      if (menuSelectorIndex < menuCount - 1) {
-        menuSelectorIndex++;
-        requestUpdate();
-      } else {
-        // Loop back to books
-        focusZone = Zone::BOOKS;
-        requestUpdate();
-      }
-    }
-  }
-
-  // Button 1 (Back) - Default Home behavior
+  // 4. Back Button (Button 1) - Library Shortcut (Disabled for CoverTheme as per user request)
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
-    // On home, Back usually doesn't do much unless it exits popups.
-    // For now, no-op or specific home action.
+    if (SETTINGS.uiTheme != CrossPointSettings::UI_THEME::COVER_THEME) {
+        freeCoverBuffer();
+        onMyLibraryOpen();
+    }
+    return;
   }
 }
 
@@ -321,16 +270,8 @@ void HomeActivity::render(Activity::RenderLock&&) {
   renderer.clearScreen();
   bool bufferRestored = coverBufferStored && restoreCoverBuffer();
 
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.homeTopPadding}, nullptr);
-
-  // Calculate a compatible selectorIndex for legacy themes
-  // For FlowTheme, we pass (1000 + bookSelectorIndex) when focus is on menu to retain state
-  int compatibleSelectorIndex = -1;
-  if (focusZone == Zone::BOOKS) {
-    compatibleSelectorIndex = bookSelectorIndex;
-  } else {
-    compatibleSelectorIndex = 1000 + bookSelectorIndex;
-  }
+  // Calculate compatible index for drawing (FlowTheme, etc.)
+  int compatibleSelectorIndex = (focusZone == Zone::BOOKS) ? bookSelectorIndex : (1000 + bookSelectorIndex);
 
   const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, BaseTheme::HINT_OK, BaseTheme::HINT_PREV, BaseTheme::HINT_NEXT);
   GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
@@ -359,6 +300,9 @@ void HomeActivity::render(Activity::RenderLock&&) {
     requestUpdate();
   } else if (!recentsLoaded && !recentsLoading) {
     recentsLoading = true;
-    loadRecentCovers(metrics.homeCoverHeight); // 294 or 314 for Flow
+    loadRecentCovers(metrics.homeCoverHeight);
+    if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::COVER_THEME) {
+      loadRecentCovers(181); // Ensure small covers are also loaded/cached
+    }
   }
 }

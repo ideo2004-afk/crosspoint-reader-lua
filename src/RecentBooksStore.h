@@ -8,6 +8,7 @@ struct RecentBook {
   std::string author;
   std::string coverBmpPath;
   uint32_t fileSize = 0;
+  uint8_t progressPercent = 0;
 
   bool operator==(const RecentBook& other) const { return path == other.path; }
 };
@@ -38,6 +39,7 @@ class RecentBooksStore {
   void updateBook(const std::string& path, const std::string& title, const std::string& author,
                   const std::string& coverBmpPath, uint32_t fileSize);
   void updatePath(const std::string& oldPath, const std::string& newPath);
+  void updateBookProgress(const std::string& path, uint8_t progressPercent);
 
   // Get the list of recent books (most recent first)
   const std::vector<RecentBook>& getBooks() const { return recentBooks; }

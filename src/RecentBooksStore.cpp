@@ -32,7 +32,7 @@ void RecentBooksStore::addBook(const std::string& path, const std::string& title
   }
 
   // Add to front
-  recentBooks.insert(recentBooks.begin(), {path, title, author, coverBmpPath, fileSize});
+  recentBooks.insert(recentBooks.begin(), {path, title, author, coverBmpPath, fileSize, 0});
 
   // Trim to max size
   if (recentBooks.size() > MAX_RECENT_BOOKS) {
@@ -52,6 +52,7 @@ void RecentBooksStore::updateBook(const std::string& path, const std::string& ti
     book.author = author;
     book.coverBmpPath = coverBmpPath;
     book.fileSize = fileSize;
+    // We don't update progressPercent here as it's updated separately via reader onExit
     saveToFile();
   }
 }
@@ -83,19 +84,19 @@ RecentBook RecentBooksStore::getDataFromBook(std::string path) const {
   if (StringUtils::checkFileExtension(lastBookFileName, ".epub")) {
     Epub epub(path, "/.crosspoint");
     epub.load(false, true);
-    return RecentBook{path, epub.getTitle(), epub.getAuthor(), epub.getThumbBmpPath(), fileSize};
+    return RecentBook{path, epub.getTitle(), epub.getAuthor(), epub.getThumbBmpPath(), fileSize, 0};
   } else if (StringUtils::checkFileExtension(lastBookFileName, ".xtch") ||
              StringUtils::checkFileExtension(lastBookFileName, ".xtc")) {
     // Handle XTC file
     Xtc xtc(path, "/.crosspoint");
     if (xtc.load()) {
-      return RecentBook{path, xtc.getTitle(), xtc.getAuthor(), xtc.getThumbBmpPath(), fileSize};
+      return RecentBook{path, xtc.getTitle(), xtc.getAuthor(), xtc.getThumbBmpPath(), fileSize, 0};
     }
   } else if (StringUtils::checkFileExtension(lastBookFileName, ".txt") ||
              StringUtils::checkFileExtension(lastBookFileName, ".md")) {
-    return RecentBook{path, lastBookFileName, "", "", fileSize};
+    return RecentBook{path, lastBookFileName, "", "", fileSize, 0};
   }
-  return RecentBook{path, "", "", "", fileSize};
+  return RecentBook{path, "", "", "", fileSize, 0};
 }
 
 void RecentBooksStore::updatePath(const std::string& oldPath, const std::string& newPath) {
@@ -112,6 +113,15 @@ void RecentBooksStore::updatePath(const std::string& oldPath, const std::string&
       book.path = newPath;
       break;
     }
+  }
+}
+
+void RecentBooksStore::updateBookProgress(const std::string& path, uint8_t progressPercent) {
+  auto it =
+      std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
+  if (it != recentBooks.end()) {
+    it->progressPercent = progressPercent;
+    saveToFile();
   }
 }
 

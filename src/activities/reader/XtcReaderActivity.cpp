@@ -79,6 +79,13 @@ void XtcReaderActivity::onExit() {
     uint32_t elapsedSeconds = (millis() - sessionStartMillis) / 1000;
     READING_STATS.addReadingTime(xtc->getPath(), xtc->getTitle(), elapsedSeconds);
     READING_STATS.saveToFile();
+
+    if (xtc->getPageCount() > 0) {
+      uint8_t percent = static_cast<uint8_t>(currentPage * 100 / xtc->getPageCount());
+      if (percent > 100) percent = 100;
+      RECENT_BOOKS.updateBookProgress(xtc->getPath(), percent);
+    }
+
     sessionStartMillis = 0;
   }
 

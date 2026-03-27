@@ -115,6 +115,14 @@ void EpubReaderActivity::onExit() {
     uint32_t elapsedSeconds = (millis() - sessionStartMillis) / 1000;
     READING_STATS.addReadingTime(epub->getPath(), epub->getTitle(), elapsedSeconds);
     READING_STATS.saveToFile();
+
+    if (section && section->pageCount > 0) {
+      float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
+      float totalProgress = epub->calculateProgress(currentSpineIndex, chapterProgress);
+      uint8_t percent = static_cast<uint8_t>(totalProgress * 100.0f + 0.5f);
+      RECENT_BOOKS.updateBookProgress(epub->getPath(), percent);
+    }
+    
     sessionStartMillis = 0;
   }
 
