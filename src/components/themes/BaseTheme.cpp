@@ -345,8 +345,8 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
 
     // Draw name
     auto itemName = rowTitle(i);
-    auto font = NOTOSANS_12_FONT_ID;
-    auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24);
+    auto font = UI_12_FONT_ID;
+    auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24, EpdFontFamily::BOLD);
     
     int iconPadding = 0;
     if (rowIcon != nullptr) {
@@ -358,13 +358,13 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
       }
     }
     
-    renderer.drawText(font, rect.x + metrics.contentSidePadding + iconPadding, itemY + 2, item.c_str(), !isSelected);
+    renderer.drawText(font, rect.x + metrics.contentSidePadding + iconPadding, itemY + 2, item.c_str(), !isSelected, EpdFontFamily::BOLD);
 
     if (rowSubtitle != nullptr) {
       // Draw subtitle
       std::string subtitleText = rowSubtitle(i);
-      auto subtitle = renderer.truncatedText(NOTOSANS_12_FONT_ID, subtitleText.c_str(), textWidth);
-      renderer.drawText(NOTOSANS_12_FONT_ID, rect.x + metrics.contentSidePadding, itemY + 32, subtitle.c_str(),
+      auto subtitle = renderer.truncatedText(UI_10_FONT_ID, subtitleText.c_str(), textWidth);
+      renderer.drawText(UI_10_FONT_ID, rect.x + metrics.contentSidePadding, itemY + 32, subtitle.c_str(),
                         !isSelected);
     }
 
