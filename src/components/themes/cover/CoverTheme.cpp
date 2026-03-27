@@ -132,7 +132,7 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
         // Title for Main Book
         std::string title = recentBooks[0].title;
         renderer.drawText(UI_12_FONT_ID, infoX, infoY, renderer.truncatedText(UI_12_FONT_ID, title.c_str(), pageWidth - infoX - 20).c_str(), Black, EpdFontFamily::BOLD);
-        infoY += 35;
+        infoY += 43; // Increased from 35 by 8px as requested
         
         // Author
         std::string author = recentBooks[0].author;
