@@ -12,6 +12,7 @@
 #include "LibraryStore.h"
 #include "util/StringUtils.h"
 #include "Epub.h"
+#include "Xtc.h"
 #include "Bitmap.h"
 
 namespace {
@@ -366,6 +367,11 @@ void MyLibraryActivity::renderGallery() {
             Epub epub(fullPath, "/.crosspoint");
             if (epub.load(true, true)) {
               epub.generateThumbBmp(180);
+            }
+          } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
+            Xtc xtc(fullPath, "/.crosspoint");
+            if (xtc.load()) {
+              xtc.generateThumbBmp(180);
             }
           }
         }
