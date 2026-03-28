@@ -9,15 +9,21 @@
 
 class MyLibraryActivity final : public Activity {
  private:
-  enum class MenuState { None, Delete, Confirm };
+  enum class MenuState { None, ContextMenu, ConfirmDelete };
+  enum class ViewMode { Grid, List };
 
   ButtonNavigator buttonNavigator;
 
   size_t selectorIndex = 0;
   bool skipNextButtonCheck = false;
 
+  ViewMode viewMode = ViewMode::Grid;
   MenuState menuState = MenuState::None;
-  int menuSelectedIndex = 0;  // 0=Delete, 1=Cancel / 0=Yes, 1=No
+  int menuSelectedIndex = 0;  // Index in the current menu
+
+  // Long-press handling for Confirm button (Mode Toggle)
+  uint32_t confirmPressedStartTime = 0;
+  bool longPressHandled = false;
 
   // Files state
   std::string basepath = "/";
@@ -32,8 +38,10 @@ class MyLibraryActivity final : public Activity {
   size_t findEntry(const std::string& name) const;
 
   void deleteSelectedFile();
-  void renderDeleteMenu() const;
-  void renderConfirmDialog() const;
+  void renderList() const;
+  void renderGallery();
+  void renderContextMenu() const;
+  void renderConfirmDelete() const;
 
  public:
   explicit MyLibraryActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
