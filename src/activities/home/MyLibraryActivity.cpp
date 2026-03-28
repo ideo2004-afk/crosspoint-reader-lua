@@ -340,7 +340,8 @@ void MyLibraryActivity::renderGallery() {
     bool isDir = name.back() == '/';
 
     if (isDir) {
-      // Folder: outline box + centered icon + folder name
+      // Folder: outline box + shelf line + top dither + centered icon + folder name
+      renderer.fillRectDither(x + 1, y + 1, coverWidth - 2, 21, Color::LightGray);
       renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
       renderer.drawLine(x + 2, y + 22, x + coverWidth - 2, y + 22, 1, true);
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
