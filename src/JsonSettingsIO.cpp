@@ -348,12 +348,7 @@ bool JsonSettingsIO::saveLibrary(const LibraryStore& libStore, const char* path)
 
     JsonDocument doc;
     doc["path"] = book.path;
-    doc["title"] = book.title;
-    doc["author"] = book.author;
     doc["sDir"] = book.storageDir;
-    doc["fileSize"] = book.fileSize;
-    doc["sThumb"] = book.hasSmallThumb;
-    doc["lThumb"] = book.hasLargeThumb;
     serializeJson(doc, file);
   }
   file.print("]}");
@@ -374,12 +369,7 @@ bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, Stream& jsonStream) {
   for (JsonObject obj : arr) {
     LibraryBook book;
     book.path = obj["path"] | std::string("");
-    book.title = obj["title"] | std::string("");
-    book.author = obj["author"] | std::string("");
     book.storageDir = obj["sDir"] | std::string("");
-    book.fileSize = obj["fileSize"] | (uint32_t)0;
-    book.hasSmallThumb = obj["sThumb"] | false;
-    book.hasLargeThumb = obj["lThumb"] | false;
     libStore.books.push_back(book);
   }
 

@@ -33,36 +33,72 @@ bool LibraryStore::exists(const std::string& path) const {
     return false;
 }
 
-void LibraryStore::scan(std::function<void(const std::string&, int)> onProgress) {
-    LOG_INF("LIB", "Scanning library in /books...");
-    cleanupMissing(); // Remove deleted files first
-
-    // Reconcile existing books (for migration or missing folders)
-    int processed = 0;
-    int total = static_cast<int>(books.size());
-    for (auto& book : books) {
-        delay(1); // Yield to prevent watchdog
-        if (onProgress && processed % 5 == 0) {
-            onProgress("Migrating Index...", (processed * 100) / (total > 0 ? total : 1));
-        }
-        if (book.storageDir.empty()) {
-            std::string type = "txt";
-            if (StringUtils::checkFileExtension(book.path, ".epub")) type = "epub";
-            else if (StringUtils::checkFileExtension(book.path, ".xtc") || StringUtils::checkFileExtension(book.path, ".xtch")) type = "xtc";
-            book.storageDir = type + "_" + std::to_string(std::hash<std::string>{}(book.path));
-        }
-        std::string fullCachePath = "/.crosspoint/" + book.storageDir;
-        if (!Storage.exists(fullCachePath.c_str())) {
-            Storage.mkdir(fullCachePath.c_str());
-        }
-        processed++;
+void LibraryStore::scanFolder(const std::string& folderPath) {
+    LOG_INF("LIB", "Lazy scanning folder: %s", folderPath.c_str());
+    
+    auto root = Storage.open(folderPath.c_str());
+    if (!root || !root.isDirectory()) {
+        if (root) root.close();
+        return;
     }
 
-    if (onProgress) onProgress("Scanning /books...", 100);
-    scanRecursive("/books");
-    saveToFile();
-    scanned = true;  // Mark as scanned so next entry skips the heavy work
-    LOG_INF("LIB", "Scan complete. %d books indexed.", getCount());
+    bool changed = false;
+    char name[256];
+    for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
+        delay(1); // Yield to prevent watchdog
+        file.getName(name, sizeof(name));
+        
+        // Skip hidden files and special directories
+        if (name[0] == '.' || strcmp(name, "System Volume Information") == 0) {
+            file.close();
+            continue;
+        }
+
+        if (!file.isDirectory()) {
+            std::string fullPath = folderPath;
+            if (fullPath.back() != '/') fullPath += "/";
+            fullPath += name;
+
+            if (StringUtils::checkFileExtension(fullPath, ".epub") || 
+                StringUtils::checkFileExtension(fullPath, ".xtc") || 
+                StringUtils::checkFileExtension(fullPath, ".xtch") ||
+                StringUtils::checkFileExtension(fullPath, ".txt") ||
+                StringUtils::checkFileExtension(fullPath, ".md")) {
+                
+                if (!exists(fullPath)) {
+                    addEntry(fullPath);
+                    changed = true;
+                }
+            }
+        }
+        file.close();
+    }
+    root.close();
+
+    if (changed) {
+        saveToFile();
+    }
+}
+
+void LibraryStore::addEntry(const std::string& path) {
+    LibraryBook book;
+    book.path = path;
+    
+    // Determine storage directory (must match Epub/Xtc hashing logic)
+    std::string type = "txt";
+    if (StringUtils::checkFileExtension(path, ".epub")) type = "epub";
+    else if (StringUtils::checkFileExtension(path, ".xtc") || StringUtils::checkFileExtension(path, ".xtch")) type = "xtc";
+    
+    book.storageDir = type + "_" + std::to_string(std::hash<std::string>{}(path));
+    
+    // Ensure cache directory exists
+    std::string fullCachePath = "/.crosspoint/" + book.storageDir;
+    if (!Storage.exists(fullCachePath.c_str())) {
+        Storage.mkdir(fullCachePath.c_str());
+    }
+
+    LOG_DBG("LIB", "Indexed new book: %s -> %s", path.c_str(), book.storageDir.c_str());
+    books.push_back(book);
 }
 
 void LibraryStore::ensureCacheDirectories() const {
@@ -75,128 +111,4 @@ void LibraryStore::ensureCacheDirectories() const {
             }
         }
     }
-}
-
-void LibraryStore::scanRecursive(const std::string& path) {
-    auto root = Storage.open(path.c_str());
-    if (!root || !root.isDirectory()) {
-        if (root) root.close();
-        return;
-    }
-
-    char name[256];
-    for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
-        delay(1); // Yield to prevent watchdog
-        file.getName(name, sizeof(name));
-        
-        // Skip hidden files and special directories
-        if (name[0] == '.' || strcmp(name, "System Volume Information") == 0) {
-            file.close();
-            continue;
-        }
-
-        std::string fullPath = path;
-        if (fullPath.back() != '/') fullPath += "/";
-        fullPath += name;
-
-        if (file.isDirectory()) {
-            file.close();
-            scanRecursive(fullPath);
-        } else {
-            file.close(); // Close before processing to save file handles
-            
-            if (exists(fullPath)) continue;
-
-            if (StringUtils::checkFileExtension(fullPath, ".epub") || 
-                StringUtils::checkFileExtension(fullPath, ".xtc") || 
-                StringUtils::checkFileExtension(fullPath, ".xtch") ||
-                StringUtils::checkFileExtension(fullPath, ".txt") ||
-                StringUtils::checkFileExtension(fullPath, ".md")) {
-                
-                LOG_DBG("LIB", "Found new book: %s", fullPath.c_str());
-                books.push_back(extractMetadata(fullPath));
-            }
-        }
-    }
-    root.close();
-}
-
-void LibraryStore::cleanupMissing() {
-    int removed = 0;
-    for (auto it = books.begin(); it != books.end(); ) {
-        delay(1); // Yield to prevent watchdog
-        bool exists = Storage.exists(it->path.c_str());
-        bool inBooks = (it->path.find("/books/") == 0);
-        
-        if (!exists || !inBooks) {
-            LOG_INF("LIB", "Removing missing or invalid book: %s", it->path.c_str());
-            // Cleanup cache directory if it exists
-            if (!it->storageDir.empty()) {
-                std::string fullCachePath = "/.crosspoint/" + it->storageDir;
-                LOG_INF("LIB", "Cleaning up cache dir: %s", fullCachePath.c_str());
-                Storage.removeDir(fullCachePath.c_str());
-            }
-            it = books.erase(it);
-            removed++;
-        } else {
-            ++it;
-        }
-    }
-    if (removed > 0) {
-        LOG_INF("LIB", "Cleanup: removed %d entries", removed);
-    }
-}
-
-LibraryBook LibraryStore::extractMetadata(const std::string& path) const {
-    LibraryBook book;
-    book.path = path;
-    
-    FsFile f;
-    if (Storage.openFileForRead("LIB", path, f)) {
-        book.fileSize = f.size();
-        f.close();
-    }
-
-    // Determine storage directory (must match Epub/Xtc hashing logic)
-    std::string type = "txt";
-    if (StringUtils::checkFileExtension(path, ".epub")) type = "epub";
-    else if (StringUtils::checkFileExtension(path, ".xtc") || StringUtils::checkFileExtension(path, ".xtch")) type = "xtc";
-    
-    book.storageDir = type + "_" + std::to_string(std::hash<std::string>{}(path));
-    
-    // Ensure cache directory exists
-    std::string fullCachePath = "/.crosspoint/" + book.storageDir;
-    Storage.mkdir(fullCachePath.c_str());
-
-    if (StringUtils::checkFileExtension(path, ".epub")) {
-        Epub epub(path, "/.crosspoint");
-        // Load metadata only, skip CSS
-        if (epub.load(true, true)) {
-            book.title = epub.getTitle();
-            book.author = epub.getAuthor();
-        }
-    } else if (StringUtils::checkFileExtension(path, ".xtc") || 
-               StringUtils::checkFileExtension(path, ".xtch")) {
-        Xtc xtc(path, "/.crosspoint");
-        if (xtc.load()) {
-            book.title = xtc.getTitle();
-            book.author = xtc.getAuthor();
-        }
-    } else {
-        // TXT / MD: Use filename as title
-        const auto lastSlash = path.find_last_of('/');
-        const auto lastDot = path.find_last_of('.');
-        if (lastSlash != std::string::npos && lastDot != std::string::npos && lastDot > lastSlash) {
-            book.title = path.substr(lastSlash + 1, lastDot - lastSlash - 1);
-        } else {
-            book.title = path;
-        }
-    }
-
-    if (book.title.empty()) {
-        const auto lastSlash = path.find_last_of('/');
-        book.title = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
-    }
-
-    return book;
 }

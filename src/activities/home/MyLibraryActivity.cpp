@@ -101,22 +101,11 @@ void MyLibraryActivity::loadFiles() {
   }
   root.close();
   sortFileList(files);
+  LIBRARY_STORE.scanFolder(basepath);
 }
 
 void MyLibraryActivity::onEnter() {
   Activity::onEnter();
-
-  if (!LIBRARY_STORE.isScanned()) {
-    // First time: show progress popup while scanning
-    LIBRARY_STORE.scan([this](const std::string& msg, int progress) {
-      Rect popupRect = GUI.drawPopup(renderer, msg.c_str());
-      GUI.fillPopupProgress(renderer, popupRect, progress);
-      renderer.displayBuffer();
-    });
-  } else {
-    // Already scanned this session: quick silent resync, no popup
-    LIBRARY_STORE.scan();
-  }
 
   loadFiles();
   selectorIndex = 0;

@@ -116,9 +116,6 @@ void ClearCacheActivity::clearCache() {
 
   LOG_DBG("CLEAR_CACHE", "Cache cleared: %d removed, %d failed", clearedCount, failedCount);
 
-  // Reset scan flag so next Library entry will trigger a fresh scan with popup
-  LIBRARY_STORE.resetScanned();
-
   state = SUCCESS;
   requestUpdate();
 }
