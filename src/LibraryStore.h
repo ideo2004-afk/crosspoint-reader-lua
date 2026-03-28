@@ -20,7 +20,6 @@ bool loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 class LibraryStore {
     static LibraryStore instance;
     std::vector<LibraryBook> books;
-    bool scanned = false;  // True after first scan completes
 
     friend bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 

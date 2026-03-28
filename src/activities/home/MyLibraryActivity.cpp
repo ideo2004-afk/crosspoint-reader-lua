@@ -252,7 +252,7 @@ void MyLibraryActivity::deleteSelectedFile() {
   std::string fullPath = prefix + files[selectorIndex];
 
   Storage.remove(fullPath.c_str());
-  LIBRARY_STORE.scan(); // Update index after deletion
+  LIBRARY_STORE.scanFolder(basepath); // Update index after deletion
   RECENT_BOOKS.cleanupMissingBooks();
 
   loadFiles();
