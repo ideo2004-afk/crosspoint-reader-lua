@@ -37,6 +37,16 @@ class RecentBooksActivity final : public Activity {
   void renderDeleteMenu() const;
   void renderConfirmDialog() const;
 
+  // Render Caching (v3.4.3)
+  struct ItemRenderCache {
+    std::string thumbPath;
+    bool hasThumb = false;
+  };
+  std::vector<ItemRenderCache> pageCache;
+  int cachedPageStart = -1;
+  void invalidateCache() { cachedPageStart = -1; }
+  void updatePageCache(int pageStart, int count, int coverHeight);
+
  public:
   explicit RecentBooksActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                                const std::function<void()>& onGoHome,

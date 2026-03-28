@@ -33,6 +33,7 @@ void RecentBooksActivity::loadRecentBooks() {
     if ((int)recentBooks.size() >= maxBooks) break;
     recentBooks.push_back(book);
   }
+  invalidateCache();
 }
 
 void RecentBooksActivity::loadPageCovers(int pageStart, int coverHeight) {
@@ -115,12 +116,9 @@ void RecentBooksActivity::loadPageCovers(int pageStart, int coverHeight) {
 
 void RecentBooksActivity::onEnter() {
   Activity::onEnter();
-
-  // Load data
   loadRecentBooks();
-
   selectorIndex = 0;
-  lastLoadedPageStart = -1;
+  invalidateCache();
   skipNextButtonCheck = true;
   requestUpdate();
 }
@@ -276,6 +274,24 @@ void RecentBooksActivity::loop() {
   });
 }
 
+void RecentBooksActivity::updatePageCache(int pageStart, int count, int coverHeight) {
+  if (cachedPageStart == pageStart && (int)pageCache.size() == count) return;
+
+  pageCache.clear();
+  pageCache.reserve(count);
+  for (int i = 0; i < count; ++i) {
+    const int bookIdx = pageStart + i;
+    const auto& book = recentBooks[bookIdx];
+    ItemRenderCache item;
+    if (!book.coverBmpPath.empty()) {
+      item.thumbPath = UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
+      item.hasThumb = Storage.exists(item.thumbPath.c_str());
+    }
+    pageCache.push_back(std::move(item));
+  }
+  cachedPageStart = pageStart;
+}
+
 void RecentBooksActivity::render(Activity::RenderLock&&) {
   renderer.clearScreen();
 
@@ -307,7 +323,10 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
   if (recentBooks.empty()) {
     renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, contentTop + 20, tr(STR_NO_RECENT_BOOKS));
   } else {
+    updatePageCache(pageStart, pageCount, coverHeight);
+
     for (int i = 0; i < pageCount; ++i) {
+      const auto& cacheItem = pageCache[i];
       const int bookIdx = pageStart + i;
       const int col = i % columns;
       const int row = i / columns;
@@ -315,30 +334,25 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
       const int x = startXOffset + col * (coverWidth + metrics.verticalSpacing);
       const int y = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
 
-      Rect coverRect(x, y, coverWidth, coverHeight);
-
       // Draw cover image or fallback icon
-      if (!recentBooks[bookIdx].coverBmpPath.empty()) {
-        std::string coverPath = UITheme::getCoverThumbPath(recentBooks[bookIdx].coverBmpPath, coverHeight);
-        if (Storage.exists(coverPath.c_str())) {
-          FsFile file;
-          if (Storage.openFileForRead("HOME", coverPath, file)) {
-            Bitmap bmp(file);
-            if (bmp.parseHeaders() == BmpReaderError::Ok) {
-              renderer.setInvertEnabled(false);
-              renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
-                                  bmp.getWidth(), bmp.getHeight());
-              renderer.setInvertEnabled(renderer.isDarkMode());
-              renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-            }
-            file.close();
+      bool drawn = false;
+      if (cacheItem.hasThumb) {
+        FsFile file;
+        if (Storage.openFileForRead("HOME", cacheItem.thumbPath, file)) {
+          Bitmap bmp(file);
+          if (bmp.parseHeaders() == BmpReaderError::Ok) {
+            renderer.setInvertEnabled(false);
+            renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
+                                bmp.getWidth(), bmp.getHeight());
+            renderer.setInvertEnabled(renderer.isDarkMode());
+            renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+            drawn = true;
           }
-        } else {
-          renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-          renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
-          renderer.drawIcon(BookIcon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
+          file.close();
         }
-      } else {
+      }
+
+      if (!drawn) {
         renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
         renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
         renderer.drawIcon(BookIcon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);

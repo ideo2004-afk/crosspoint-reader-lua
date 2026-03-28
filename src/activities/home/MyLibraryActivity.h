@@ -43,6 +43,19 @@ class MyLibraryActivity final : public Activity {
   void renderContextMenu() const;
   void renderConfirmDelete() const;
 
+  // Render Caching (v3.4.3)
+  struct ItemRenderCache {
+    std::string path;
+    bool isDir = false;
+    std::vector<std::string> wrappedName;
+    bool hasThumb = false;
+    std::string thumbPath;
+  };
+  std::vector<ItemRenderCache> pageCache;
+  int cachedPageStart = -1;
+  void invalidateCache() { cachedPageStart = -1; }
+  void updatePageCache(int pageStart, int count);
+
  public:
   explicit MyLibraryActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                              const std::function<void()>& onGoHome,

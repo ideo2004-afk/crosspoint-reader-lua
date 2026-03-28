@@ -105,6 +105,7 @@ void MyLibraryActivity::loadFiles() {
   root.close();
   sortFileList(files);
   LIBRARY_STORE.scanFolder(basepath);
+  invalidateCache();
 }
 
 void MyLibraryActivity::onEnter() {
@@ -112,6 +113,7 @@ void MyLibraryActivity::onEnter() {
 
   loadFiles();
   selectorIndex = 0;
+  invalidateCache();
   skipNextButtonCheck = true;
   requestUpdate();
 }
@@ -306,14 +308,61 @@ void MyLibraryActivity::renderList() const {
       [this](int index) { return UITheme::getFileIcon(files[index]); });
 }
 
+void MyLibraryActivity::updatePageCache(int pageStart, int count) {
+  if (cachedPageStart == pageStart && (int)pageCache.size() == count) return;
+
+  pageCache.clear();
+  pageCache.reserve(count);
+
+  for (int i = 0; i < count; ++i) {
+    int index = pageStart + i;
+    const std::string& name = files[index];
+    ItemRenderCache item;
+    item.path = name;
+    item.isDir = name.back() == '/';
+
+    if (item.isDir) {
+      // Word-wrap once and cache
+      std::string dirName = name.substr(0, name.length() - 1);
+      const int maxLineW = 123 - 6; // coverWidth - 6
+      std::string remaining = dirName;
+      while (!remaining.empty() && (int)item.wrappedName.size() < 4) {
+        int len = (int)remaining.size();
+        while (len > 0 && renderer.getTextWidth(NOTOSANS_12_FONT_ID, remaining.substr(0, len).c_str()) > maxLineW) {
+          len--;
+        }
+        if (len < (int)remaining.size()) {
+          int breakAt = remaining.rfind(' ', len);
+          if (breakAt == (int)std::string::npos || breakAt == 0) breakAt = len;
+          item.wrappedName.push_back(remaining.substr(0, breakAt));
+          remaining = remaining.substr(breakAt);
+          if (!remaining.empty() && remaining[0] == ' ') remaining = remaining.substr(1);
+        } else {
+          item.wrappedName.push_back(remaining);
+          remaining.clear();
+        }
+      }
+    } else {
+      // Check thumbnail existence once and cache
+      std::string prefix = basepath;
+      if (prefix.back() != '/') prefix += "/";
+      std::string fullPath = prefix + name;
+      std::string sDir = LibraryStore::getStorageDirForPath(fullPath);
+      item.thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
+      item.hasThumb = Storage.exists(item.thumbPath.c_str());
+    }
+    pageCache.push_back(std::move(item));
+  }
+  cachedPageStart = pageStart;
+}
+
 void MyLibraryActivity::renderGallery() {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
   const auto& metrics = UITheme::getInstance().getMetrics();
 
-  // ---- Layout constants identical to RecentBooksActivity ----
   const int columns      = 3;
-  const int itemsPerPage = 9; // 3x3
+  const int itemsPerPage = 9;
   const int contentTop   = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
   const int gridTopOffset = 20;
   const int coverHeight  = 180;
@@ -328,7 +377,10 @@ void MyLibraryActivity::renderGallery() {
   const int pageStart   = currentPage * itemsPerPage;
   const int pageCount   = std::min(itemsPerPage, totalItems - pageStart);
 
+  updatePageCache(pageStart, pageCount);
+
   for (int i = 0; i < pageCount; ++i) {
+    const auto& item = pageCache[i];
     int index = pageStart + i;
     int col   = i % columns;
     int row   = i / columns;
@@ -336,92 +388,32 @@ void MyLibraryActivity::renderGallery() {
     int y     = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
     bool selected = (selectorIndex == index);
 
-    const std::string& name = files[index];
-    bool isDir = name.back() == '/';
-
-    if (isDir) {
-      // Folder: 'Stacked Papers' look (3 offset rounded rects)
+    if (item.isDir) {
+      // Folder: 'Stacked Papers' look
       const int stackOffset = 3;
-      // Layer 3 (Back)
       renderer.drawRoundedRect(x + stackOffset * 2, y, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
-      // Layer 2 (Middle)
       renderer.drawRoundedRect(x + stackOffset, y + stackOffset, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
-      
-      // Layer 1 (Front - Opaque masking)
       renderer.fillRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 4, Color::White);
       renderer.drawRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
       
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
       if (icon) renderer.drawIcon(icon, x + (coverWidth - 6 - 48) / 2, y + 110, 48, 48);
 
-      // Word-wrap folder name with NOTOSANS_12_FONT_ID
-      std::string dirName = name.substr(0, name.length() - 1);
-      const int maxLineW = coverWidth - 6;
-      const int lineH = 24; // 1.5em of 12pt
-      const int maxLines = 4; // Allow 4 lines if moved up
-
-      std::vector<std::string> lines;
-      std::string remaining = dirName;
-      while (!remaining.empty() && (int)lines.size() < maxLines) {
-        int len = (int)remaining.size();
-        while (len > 0 && renderer.getTextWidth(NOTOSANS_12_FONT_ID, remaining.substr(0, len).c_str()) > maxLineW) {
-          len--;
-        }
-        if (len < (int)remaining.size()) {
-          int breakAt = remaining.rfind(' ', len);
-          if (breakAt == (int)std::string::npos || breakAt == 0) breakAt = len;
-          lines.push_back(remaining.substr(0, breakAt));
-          remaining = remaining.substr(breakAt);
-          if (!remaining.empty() && remaining[0] == ' ') remaining = remaining.substr(1);
-        } else {
-          lines.push_back(remaining);
-          remaining.clear();
-        }
-      }
-
-      // Vertical centering: user requested 10px higher than previous 56px position (56-10=46).
-      int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
-      int startOffset = 46 + (70 - totalTextH) / 2; // Moved from 56 to 46
+      const int lineH = 24;
+      int totalTextH = item.wrappedName.empty() ? 0 : (int)((item.wrappedName.size() - 1) * lineH + 12);
+      int startOffset = 46 + (70 - totalTextH) / 2;
       int curLineY = (y + 6) + startOffset;
 
-      for (const auto& line : lines) {
+      for (const auto& line : item.wrappedName) {
         int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
         renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - 6 - tw) / 2, curLineY, line.c_str());
         curLineY += lineH;
       }
     } else {
-      // Book: try 180px thumbnail, fallback to book icon
-      std::string prefix = basepath;
-      if (prefix.back() != '/') prefix += "/";
-      std::string fullPath = prefix + name;
-
-      std::string sDir = LibraryStore::getStorageDirForPath(fullPath);
-      std::string thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
-      std::string failedPath = thumbPath + ".failed";
-
-      if (!Storage.exists(thumbPath.c_str()) && !Storage.exists(failedPath.c_str())) {
-        // Show Loading popup before generating
-        GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
-        bool success = false;
-        if (StringUtils::checkFileExtension(fullPath, ".epub")) {
-          Epub epub(fullPath, "/.crosspoint");
-          if (epub.load(true, true)) success = epub.generateThumbBmp(180);
-        } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
-          Xtc xtc(fullPath, "/.crosspoint");
-          if (xtc.load()) success = xtc.generateThumbBmp(180);
-        }
-        
-        // If still no thumb, mark as failed to avoid loop
-        if (!success || !Storage.exists(thumbPath.c_str())) {
-          Storage.writeFile(failedPath.c_str(), "failed");
-        }
-        requestUpdate();
-      }
-
-      bool hasThumb = false;
-      if (Storage.exists(thumbPath.c_str())) {
+      bool drawnThumb = false;
+      if (item.hasThumb) {
         FsFile file;
-        if (Storage.openFileForRead("HOME", thumbPath, file)) {
+        if (Storage.openFileForRead("HOME", item.thumbPath, file)) {
           Bitmap bmp(file);
           if (bmp.parseHeaders() == BmpReaderError::Ok) {
             renderer.setInvertEnabled(false);
@@ -429,14 +421,36 @@ void MyLibraryActivity::renderGallery() {
                                      y + (coverHeight - bmp.getHeight()) / 2,
                                      bmp.getWidth(), bmp.getHeight());
             renderer.setInvertEnabled(renderer.isDarkMode());
-            hasThumb = true;
+            drawnThumb = true;
             renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
           }
           file.close();
         }
       }
 
-      if (!hasThumb) {
+      if (!drawnThumb) {
+        // Fallback or demand-generation trigger
+        std::string failedPath = item.thumbPath + ".failed";
+        if (!item.hasThumb && !Storage.exists(failedPath.c_str())) {
+          GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+          // Reuse fullPath calculation if needed, but for responsiveness, we skip heavy checks here.
+          // Actually, we must check if we should generate.
+          std::string prefix = basepath; if (prefix.back() != '/') prefix += "/";
+          std::string fullPath = prefix + item.path;
+          bool success = false;
+          if (StringUtils::checkFileExtension(fullPath, ".epub")) {
+            Epub epub(fullPath, "/.crosspoint");
+            if (epub.load(true, true)) success = epub.generateThumbBmp(180);
+          } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
+            Xtc xtc(fullPath, "/.crosspoint");
+            if (xtc.load()) success = xtc.generateThumbBmp(180);
+          }
+          if (!success) Storage.writeFile(failedPath.c_str(), "failed");
+          invalidateCache();
+          requestUpdate();
+          return; // Exit loop, redraw with new cache
+        }
+
         renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
         renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
         const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 32);
@@ -444,11 +458,12 @@ void MyLibraryActivity::renderGallery() {
       }
     }
 
-    // Selection box — 2px rounded rect, same as CoverTheme
     if (selected) {
       renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
     }
   }
+}
+}
 
   // Page indicator — 8x8 square dots, identical to Recents
   if (totalPages > 1) {
