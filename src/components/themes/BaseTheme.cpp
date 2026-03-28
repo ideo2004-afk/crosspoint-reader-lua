@@ -854,12 +854,12 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
 
 Rect BaseTheme::drawPopup(const GfxRenderer& renderer, const char* message) const {
   constexpr int margin = 15;
-  constexpr int y = 60;
   const int textWidth = renderer.getTextWidth(NOTOSANS_12_FONT_ID, message, EpdFontFamily::BOLD);
   const int textHeight = renderer.getLineHeight(NOTOSANS_12_FONT_ID);
   const int w = textWidth + margin * 2;
   const int h = textHeight + margin * 2;
   const int x = (renderer.getScreenWidth() - w) / 2;
+  const int y = (renderer.getScreenHeight() - h) / 2;
 
   renderer.fillRect(x - 2, y - 2, w + 4, h + 4, true);  // frame thickness 2
   renderer.fillRect(x, y, w, h, false);
