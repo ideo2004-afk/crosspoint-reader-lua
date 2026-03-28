@@ -316,9 +316,11 @@ void MyLibraryActivity::renderGallery() {
   const int itemsPerPage = 9; // 3x3
   const int contentTop   = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
   const int gridTopOffset = 20;
-  const int coverWidth   = (pageWidth - (metrics.contentSidePadding * 2) - (metrics.verticalSpacing * (columns - 1))) / columns;
   const int coverHeight  = 180;
+  const int coverWidth   = 123;
   const int rowSpacing   = metrics.verticalSpacing + 15;
+  const int totalGridWidth = (columns * coverWidth) + ((columns - 1) * metrics.verticalSpacing);
+  const int startXOffset = (pageWidth - totalGridWidth) / 2;
 
   const int totalItems  = static_cast<int>(files.size());
   const int totalPages  = (totalItems + itemsPerPage - 1) / itemsPerPage;
@@ -330,7 +332,7 @@ void MyLibraryActivity::renderGallery() {
     int index = pageStart + i;
     int col   = i % columns;
     int row   = i / columns;
-    int x     = metrics.contentSidePadding + col * (coverWidth + metrics.verticalSpacing);
+    int x     = startXOffset + col * (coverWidth + metrics.verticalSpacing);
     int y     = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
     bool selected = (selectorIndex == index);
 
@@ -340,7 +342,7 @@ void MyLibraryActivity::renderGallery() {
     if (isDir) {
       // Folder: outline box + centered icon + folder name
       renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-      renderer.drawLine(x + 2, y + 16, x + coverWidth - 2, y + 16, 1, true);
+      renderer.drawLine(x + 2, y + 22, x + coverWidth - 2, y + 22, 1, true);
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
       if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + 110, 48, 48);
 
@@ -369,9 +371,9 @@ void MyLibraryActivity::renderGallery() {
         }
       }
 
-      // Vertical centering: user requested 20px lower than previous "top half" position (30+20=50).
+      // Vertical centering: user requested 6px lower than previous position (50+6=56).
       int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
-      int startOffset = 50 + (70 - totalTextH) / 2; // Moved from 30 to 50
+      int startOffset = 56 + (70 - totalTextH) / 2; // Moved from 50 to 56
       int curLineY = y + startOffset;
 
       for (const auto& line : lines) {

@@ -289,10 +289,12 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
   const int gridTopOffset = 20;
   
   // Calculate grid layout sizes
-  const int columns = 3;
-  const int coverWidth = (pageWidth - (metrics.contentSidePadding * 2) - (metrics.verticalSpacing * (columns - 1))) / columns;
+  const int columns     = 3;
   const int coverHeight = 180; // Unified height for thumbnails
+  const int coverWidth  = 123; // User requested fixed width
   const int rowSpacing  = metrics.verticalSpacing + 15;
+  const int totalGridWidth = (columns * coverWidth) + ((columns - 1) * metrics.verticalSpacing);
+  const int startXOffset   = (pageWidth - totalGridWidth) / 2;
 
   // Pagination
   const int totalBooks  = static_cast<int>(recentBooks.size());
@@ -310,7 +312,7 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
       const int col = i % columns;
       const int row = i / columns;
 
-      const int x = metrics.contentSidePadding + col * (coverWidth + metrics.verticalSpacing);
+      const int x = startXOffset + col * (coverWidth + metrics.verticalSpacing);
       const int y = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
 
       Rect coverRect(x, y, coverWidth, coverHeight);
