@@ -343,10 +343,42 @@ void MyLibraryActivity::renderGallery() {
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
       if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + (coverHeight / 2 - 32), 48, 48);
 
+      // Word-wrap folder name with NOTOSANS_12_FONT_ID
       std::string dirName = name.substr(0, name.length() - 1);
-      std::string truncName = renderer.truncatedText(SMALL_FONT_ID, dirName.c_str(), coverWidth - 8);
-      int tw = renderer.getTextWidth(SMALL_FONT_ID, truncName.c_str());
-      renderer.drawText(SMALL_FONT_ID, x + (coverWidth - tw) / 2, y + coverHeight / 2 + 22, truncName.c_str());
+      const int maxLineW = coverWidth - 8;
+      const int lineH = 18; // 1.5em of 12pt
+      const int maxLines = 3;
+
+      std::vector<std::string> lines;
+      std::string remaining = dirName;
+      while (!remaining.empty() && (int)lines.size() < maxLines) {
+        int len = (int)remaining.size();
+        while (len > 0 && renderer.getTextWidth(NOTOSANS_12_FONT_ID, remaining.substr(0, len).c_str()) > maxLineW) {
+          len--;
+        }
+        if (len < (int)remaining.size()) {
+          int breakAt = remaining.rfind(' ', len);
+          if (breakAt == (int)std::string::npos || breakAt == 0) breakAt = len;
+          lines.push_back(remaining.substr(0, breakAt));
+          remaining = remaining.substr(breakAt);
+          if (!remaining.empty() && remaining[0] == ' ') remaining = remaining.substr(1);
+        } else {
+          lines.push_back(remaining);
+          remaining.clear();
+        }
+      }
+
+      // Vertical centering: icon bottom is at 106, cover bottom is at 180.
+      // Remaining space is 74px.
+      int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
+      int startOffset = 106 + (74 - totalTextH) / 2;
+      int curLineY = y + startOffset;
+
+      for (const auto& line : lines) {
+        int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
+        renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - tw) / 2, curLineY, line.c_str());
+        curLineY += lineH;
+      }
     } else {
       // Book: try 180px thumbnail, fallback to book icon
       std::string prefix = basepath;
@@ -357,7 +389,8 @@ void MyLibraryActivity::renderGallery() {
       std::string thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
 
       if (!Storage.exists(thumbPath.c_str())) {
-        // Lazy Generate 180px Thumbnail
+        // Show Loading popup before generating
+        GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
         if (StringUtils::checkFileExtension(fullPath, ".epub")) {
           Epub epub(fullPath, "/.crosspoint");
           if (epub.load(true, true)) epub.generateThumbBmp(180);
@@ -365,6 +398,7 @@ void MyLibraryActivity::renderGallery() {
           Xtc xtc(fullPath, "/.crosspoint");
           if (xtc.load()) xtc.generateThumbBmp(180);
         }
+        requestUpdate();
       }
 
       bool hasThumb = false;
