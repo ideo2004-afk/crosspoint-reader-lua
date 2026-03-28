@@ -83,13 +83,7 @@ void LibraryStore::scanFolder(const std::string& folderPath) {
 void LibraryStore::addEntry(const std::string& path) {
     LibraryBook book;
     book.path = path;
-    
-    // Determine storage directory (must match Epub/Xtc hashing logic)
-    std::string type = "txt";
-    if (StringUtils::checkFileExtension(path, ".epub")) type = "epub";
-    else if (StringUtils::checkFileExtension(path, ".xtc") || StringUtils::checkFileExtension(path, ".xtch")) type = "xtc";
-    
-    book.storageDir = type + "_" + std::to_string(std::hash<std::string>{}(path));
+    book.storageDir = getStorageDirForPath(path);
     
     // Ensure cache directory exists
     std::string fullCachePath = "/.crosspoint/" + book.storageDir;
@@ -99,6 +93,13 @@ void LibraryStore::addEntry(const std::string& path) {
 
     LOG_DBG("LIB", "Indexed new book: %s -> %s", path.c_str(), book.storageDir.c_str());
     books.push_back(book);
+}
+
+std::string LibraryStore::getStorageDirForPath(const std::string& path) {
+    std::string type = "txt";
+    if (StringUtils::checkFileExtension(path, ".epub")) type = "epub";
+    else if (StringUtils::checkFileExtension(path, ".xtc") || StringUtils::checkFileExtension(path, ".xtch")) type = "xtc";
+    return type + "_" + std::to_string(std::hash<std::string>{}(path));
 }
 
 void LibraryStore::ensureCacheDirectories() const {

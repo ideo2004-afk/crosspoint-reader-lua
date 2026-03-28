@@ -354,14 +354,8 @@ void MyLibraryActivity::renderGallery() {
       if (prefix.back() != '/') prefix += "/";
       std::string fullPath = prefix + name;
       
-      // Determine storage directory from LibraryStore
-      std::string sDir;
-      for (const auto& book : LIBRARY_STORE.getBooks()) {
-        if (book.path == fullPath) {
-          sDir = book.storageDir;
-          break;
-        }
-      }
+      // Determine storage directory deterministically
+      std::string sDir = LibraryStore::getStorageDirForPath(fullPath);
 
       bool hasThumb = false;
       if (!sDir.empty()) {
@@ -392,13 +386,6 @@ void MyLibraryActivity::renderGallery() {
         const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 48);
         if (icon) renderer.drawIcon(icon, x + (coverW - 48) / 2, y + (coverH - 48) / 2, 48, 48, Color::LightGray);
       }
-
-      // Filename below cover (Small)
-      auto pos = name.rfind('.');
-      std::string shortName = (pos != std::string::npos) ? name.substr(0, pos) : name;
-      std::string truncName = renderer.truncatedText(SMALL_FONT_ID, shortName.c_str(), coverW + 10);
-      int tw = renderer.getTextWidth(SMALL_FONT_ID, truncName.c_str());
-      renderer.drawText(SMALL_FONT_ID, x + (coverW - tw) / 2, y + coverH + 8, truncName.c_str(), selected ? Color::Black : Color::DarkGray);
     }
   }
 

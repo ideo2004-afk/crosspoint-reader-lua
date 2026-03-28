@@ -42,6 +42,9 @@ public:
     // Recreate missing cache directories for all known books (fast, no full scan)
     void ensureCacheDirectories() const;
 
+    // Get the deterministic storage directory for a given path
+    static std::string getStorageDirForPath(const std::string& path);
+
 private:
     void addEntry(const std::string& path);
 };
