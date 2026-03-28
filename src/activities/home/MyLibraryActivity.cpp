@@ -361,10 +361,12 @@ void MyLibraryActivity::renderGallery() {
       if (!sDir.empty()) {
         std::string thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
         if (!Storage.exists(thumbPath.c_str())) {
-          // Lazy Generate 180px Thumbnail
+          // Lazy Generate 180px Thumbnail - must load first to find cover
           if (StringUtils::checkFileExtension(fullPath, ".epub")) {
             Epub epub(fullPath, "/.crosspoint");
-            epub.generateThumbBmp(180);
+            if (epub.load(true, true)) {
+              epub.generateThumbBmp(180);
+            }
           }
         }
 
