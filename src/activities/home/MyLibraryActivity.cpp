@@ -340,12 +340,17 @@ void MyLibraryActivity::renderGallery() {
     bool isDir = name.back() == '/';
 
     if (isDir) {
-      // Folder: outline box + shelf line + top dither + centered icon + folder name
-      renderer.fillRectDither(x + 1, y + 1, coverWidth - 2, 21, Color::LightGray);
-      renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-      renderer.drawLine(x + 2, y + 22, x + coverWidth - 2, y + 22, 1, true);
+      // Folder: 'Stacked Papers' look (3 offset rounded rects)
+      const int stackOffset = 3;
+      // Layer 3 (Back)
+      renderer.drawRoundedRect(x + stackOffset * 2, y, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
+      // Layer 2 (Middle)
+      renderer.drawRoundedRect(x + stackOffset, y + stackOffset, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
+      // Layer 1 (Front - with white background to hide back layers)
+      renderer.drawRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
+      
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
-      if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + 110, 48, 48);
+      if (icon) renderer.drawIcon(icon, x + (coverWidth - 6 - 48) / 2, y + 110, 48, 48);
 
       // Word-wrap folder name with NOTOSANS_12_FONT_ID
       std::string dirName = name.substr(0, name.length() - 1);
@@ -375,11 +380,11 @@ void MyLibraryActivity::renderGallery() {
       // Vertical centering: user requested 6px lower than previous position (50+6=56).
       int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
       int startOffset = 56 + (70 - totalTextH) / 2; // Moved from 50 to 56
-      int curLineY = y + startOffset;
+      int curLineY = (y + 6) + startOffset;
 
       for (const auto& line : lines) {
         int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
-        renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - tw) / 2, curLineY, line.c_str());
+        renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - 6 - tw) / 2, curLineY, line.c_str());
         curLineY += lineH;
       }
     } else {
