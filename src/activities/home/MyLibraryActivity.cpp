@@ -341,13 +341,13 @@ void MyLibraryActivity::renderGallery() {
       // Folder: outline box + centered icon + folder name
       renderer.drawRect(x, y, coverWidth, coverHeight, true);
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
-      if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + (coverHeight / 2 - 32), 48, 48);
+      if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + 110, 48, 48);
 
       // Word-wrap folder name with NOTOSANS_12_FONT_ID
       std::string dirName = name.substr(0, name.length() - 1);
       const int maxLineW = coverWidth - 8;
       const int lineH = 18; // 1.5em of 12pt
-      const int maxLines = 3;
+      const int maxLines = 4; // Allow 4 lines if moved up
 
       std::vector<std::string> lines;
       std::string remaining = dirName;
@@ -368,10 +368,11 @@ void MyLibraryActivity::renderGallery() {
         }
       }
 
-      // Vertical centering: icon bottom is at 106, cover bottom is at 180.
-      // Remaining space is 74px.
+      // Vertical centering: user requested 80px higher than previous vertically-centered-below-icon position.
+      // Previous center was (106 to 180 range). 
+      // New target is the top half: let's use a fixed offset near the top.
       int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
-      int startOffset = 106 + (74 - totalTextH) / 2;
+      int startOffset = 30 + (70 - totalTextH) / 2; // In the top half (0 to 100)
       int curLineY = y + startOffset;
 
       for (const auto& line : lines) {
@@ -387,16 +388,23 @@ void MyLibraryActivity::renderGallery() {
 
       std::string sDir = LibraryStore::getStorageDirForPath(fullPath);
       std::string thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
+      std::string failedPath = thumbPath + ".failed";
 
-      if (!Storage.exists(thumbPath.c_str())) {
+      if (!Storage.exists(thumbPath.c_str()) && !Storage.exists(failedPath.c_str())) {
         // Show Loading popup before generating
         GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+        bool success = false;
         if (StringUtils::checkFileExtension(fullPath, ".epub")) {
           Epub epub(fullPath, "/.crosspoint");
-          if (epub.load(true, true)) epub.generateThumbBmp(180);
+          if (epub.load(true, true)) success = epub.generateThumbBmp(180);
         } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
           Xtc xtc(fullPath, "/.crosspoint");
-          if (xtc.load()) xtc.generateThumbBmp(180);
+          if (xtc.load()) success = xtc.generateThumbBmp(180);
+        }
+        
+        // If still no thumb, mark as failed to avoid loop
+        if (!success || !Storage.exists(thumbPath.c_str())) {
+          Storage.writeFile(failedPath.c_str(), "failed");
         }
         requestUpdate();
       }
