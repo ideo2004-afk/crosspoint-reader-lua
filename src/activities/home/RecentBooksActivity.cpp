@@ -35,57 +35,81 @@ void RecentBooksActivity::loadRecentBooks() {
   }
 }
 
-void RecentBooksActivity::loadRecentCovers(int coverHeight) {
+void RecentBooksActivity::loadPageCovers(int pageStart, int coverHeight) {
+  if (recentsLoading) return;
   recentsLoading = true;
+
+  const int pageEnd = std::min(pageStart + BOOKS_PER_PAGE, static_cast<int>(recentBooks.size()));
+  
+  // First, check if we even need to show a popup. 
+  // If all thumbnails on this page exist, we don't need to block.
+  bool needsGeneration = false;
+  for (int i = pageStart; i < pageEnd; ++i) {
+    if (recentBooks[i].coverBmpPath.empty()) continue;
+    std::string thumbPath = UITheme::getCoverThumbPath(recentBooks[i].coverBmpPath, coverHeight);
+    if (!Storage.exists(thumbPath.c_str())) {
+      needsGeneration = true;
+      break;
+    }
+  }
+
+  if (!needsGeneration) {
+    lastLoadedPageStart = pageStart;
+    recentsLoading = false;
+    return;
+  }
+
   bool showingLoading = false;
   Rect popupRect;
+  int processedCount = 0;
+  const int totalToProcess = pageEnd - pageStart;
 
-  int progress = 0;
-  for (RecentBook& book : recentBooks) {
-    if (!book.coverBmpPath.empty()) {
-      std::string coverPath = UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
-      if (!Storage.exists(coverPath.c_str())) {
+  for (int i = pageStart; i < pageEnd; ++i) {
+    RecentBook& book = recentBooks[i];
+    
+    // Always check if thumbnail exists, if not, try background generation
+    std::string coverPath = book.coverBmpPath.empty() ? "" : UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
+    if (coverPath.empty() || !Storage.exists(coverPath.c_str())) {
         if (StringUtils::checkFileExtension(book.path, ".epub")) {
-          // If epub, try to load the metadata for title/author and cover
           Epub epub(book.path, "/.crosspoint");
-          epub.load(false, true); // Skip loading css since we only need metadata here
-
-          if (!showingLoading) {
-            showingLoading = true;
-            popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+          // load(true, true) ensures metadata is re-indexed from ZIP if cache is missing
+          if (epub.load(true, true)) {
+            if (!showingLoading) {
+              showingLoading = true;
+              popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+            }
+            GUI.fillPopupProgress(renderer, popupRect, 10 + processedCount * (90 / totalToProcess));
+            
+            bool success = epub.generateThumbBmp(coverHeight);
+            if (!success && !Storage.exists(book.path.c_str())) {
+              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
+              book.coverBmpPath = "";
+            }
+            requestUpdate();
           }
-          GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
-          
-          bool success = epub.generateThumbBmp(coverHeight);
-          if (!success) {
-            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
-            book.coverBmpPath = "";
-          }
-          requestUpdate();
         } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
                    StringUtils::checkFileExtension(book.path, ".xtc")) {
-          // Handle XTC file
           Xtc xtc(book.path, "/.crosspoint");
           if (xtc.load()) {
             if (!showingLoading) {
               showingLoading = true;
               popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
             }
-            GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
+            GUI.fillPopupProgress(renderer, popupRect, 10 + processedCount * (90 / totalToProcess));
             bool success = xtc.generateThumbBmp(coverHeight);
-            if (!success) {
+            if (!success && !Storage.exists(book.path.c_str())) {
               RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
               book.coverBmpPath = "";
             }
             requestUpdate();
           }
         }
-      }
     }
-    progress++;
+    processedCount++;
+    vTaskDelay(1); // Yield for each item on page
   }
 
-  recentsLoaded = true;
+  lastLoadedPageStart = pageStart;
   recentsLoading = false;
 }
 
@@ -96,6 +120,7 @@ void RecentBooksActivity::onEnter() {
   loadRecentBooks();
 
   selectorIndex = 0;
+  lastLoadedPageStart = -1;
   skipNextButtonCheck = true;
   requestUpdate();
 }
@@ -116,7 +141,7 @@ void RecentBooksActivity::deleteSelectedBook() {
     selectorIndex = static_cast<int>(recentBooks.size()) - 1;
   }
   menuState = MenuState::None;
-  recentsLoaded = false;
+  lastLoadedPageStart = -1;
   requestUpdate();
 }
 
@@ -345,11 +370,7 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
 
   renderer.displayBuffer();
 
-  if (!firstRenderDone) {
-    firstRenderDone = true;
-    requestUpdate();
-  } else if (!recentsLoaded && !recentsLoading) {
-    recentsLoading = true;
-    loadRecentCovers(coverHeight);
+  if (lastLoadedPageStart != pageStart) {
+    loadPageCovers(pageStart, coverHeight);
   }
 }

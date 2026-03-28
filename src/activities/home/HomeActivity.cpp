@@ -14,6 +14,7 @@
 
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "LibraryStore.h"
 #include "MappedInputManager.h"
 #include "PathRepairManager.h"
 #include "RecentBooksStore.h"
@@ -56,64 +57,57 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
   bool showingLoading = false;
   Rect popupRect;
 
+  // Ensure cache directories exist before trying to write thumbnails.
+  // After ClearCacheActivity runs, directories may have been deleted.
+  LIBRARY_STORE.ensureCacheDirectories();
+
   int progress = 0;
   for (RecentBook& book : recentBooks) {
     if (abortLoading) break;
-    if (!book.coverBmpPath.empty()) {
-      std::string coverPath = UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
-      if (!Storage.exists(coverPath.c_str())) {
-        // If epub, try to load the metadata for title/author and cover
-        if (StringUtils::checkFileExtension(book.path, ".epub")) {
-          Epub epub(book.path, "/.crosspoint");
-          // Skip loading css since we only need metadata here
-          epub.load(false, true);
 
-          // Try to generate thumbnail image for Continue Reading card
+    std::string coverPath = book.coverBmpPath.empty() ? "" : UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
+    bool needGeneration = coverPath.empty() || !Storage.exists(coverPath.c_str());
+
+    if (needGeneration) {
+      if (StringUtils::checkFileExtension(book.path, ".epub")) {
+        Epub epub(book.path, "/.crosspoint");
+        if (epub.load(true, true)) {
           if (!showingLoading) {
             showingLoading = true;
             popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
           }
           GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
-          bool success = epub.generateThumbBmp(coverHeight);
-          if (!success) {
-            // Only clear coverBmpPath if the book file itself is gone.
-            // For transient failures (memory, read error) keep the path
-            // so generation can succeed on the next fresh launch.
-            if (!Storage.exists(book.path.c_str())) {
-              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
-              book.coverBmpPath = "";
-            }
+          bool ok = epub.generateThumbBmp(coverHeight);
+          if (!ok && !Storage.exists(book.path.c_str())) {
+            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
+            book.coverBmpPath = "";
           }
           coverRendered = false;
+          coverBufferStored = false;  // Discard stale buffer so next render draws fresh
           requestUpdate();
-        } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
-                   StringUtils::checkFileExtension(book.path, ".xtc")) {
-          // Handle XTC file
-          Xtc xtc(book.path, "/.crosspoint");
-          if (xtc.load()) {
-            // Try to generate thumbnail image for Continue Reading card
-            if (!showingLoading) {
-              showingLoading = true;
-              popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
-            }
-            GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
-            bool success = xtc.generateThumbBmp(coverHeight);
-            if (!success) {
-              // Only clear coverBmpPath if the book file itself is gone.
-              // Large XTC files may fail due to heap fragmentation after
-              // reading — keep the path so generation retries on next launch.
-              if (!Storage.exists(book.path.c_str())) {
-                RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
-                book.coverBmpPath = "";
-              }
-            }
-            coverRendered = false;
-            requestUpdate();
+        }
+      } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
+                 StringUtils::checkFileExtension(book.path, ".xtc")) {
+        Xtc xtc(book.path, "/.crosspoint");
+        if (xtc.load()) {
+          if (!showingLoading) {
+            showingLoading = true;
+            popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
           }
+          GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
+          bool ok = xtc.generateThumbBmp(coverHeight);
+          if (!ok && !Storage.exists(book.path.c_str())) {
+            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "", book.fileSize);
+            book.coverBmpPath = "";
+          }
+          coverRendered = false;
+          coverBufferStored = false;  // Discard stale buffer so next render draws fresh
+          requestUpdate();
         }
       }
     }
     progress++;
+    vTaskDelay(1);
   }
 
   recentsLoaded = true;
@@ -306,8 +300,5 @@ void HomeActivity::render(Activity::RenderLock&&) {
   } else if (!recentsLoaded && !recentsLoading) {
     recentsLoading = true;
     loadRecentCovers(metrics.homeCoverHeight);
-    if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::COVER_THEME) {
-      loadRecentCovers(180); // Ensure small covers are also loaded/cached
-    }
   }
 }

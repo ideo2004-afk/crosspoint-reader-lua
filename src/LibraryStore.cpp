@@ -33,13 +33,18 @@ bool LibraryStore::exists(const std::string& path) const {
     return false;
 }
 
-void LibraryStore::scan() {
+void LibraryStore::scan(std::function<void(const std::string&, int)> onProgress) {
     LOG_INF("LIB", "Scanning library in /books...");
     cleanupMissing(); // Remove deleted files first
 
     // Reconcile existing books (for migration or missing folders)
+    int processed = 0;
+    int total = static_cast<int>(books.size());
     for (auto& book : books) {
         delay(1); // Yield to prevent watchdog
+        if (onProgress && processed % 5 == 0) {
+            onProgress("Migrating Index...", (processed * 100) / (total > 0 ? total : 1));
+        }
         if (book.storageDir.empty()) {
             std::string type = "txt";
             if (StringUtils::checkFileExtension(book.path, ".epub")) type = "epub";
@@ -50,11 +55,26 @@ void LibraryStore::scan() {
         if (!Storage.exists(fullCachePath.c_str())) {
             Storage.mkdir(fullCachePath.c_str());
         }
+        processed++;
     }
 
+    if (onProgress) onProgress("Scanning /books...", 100);
     scanRecursive("/books");
     saveToFile();
+    scanned = true;  // Mark as scanned so next entry skips the heavy work
     LOG_INF("LIB", "Scan complete. %d books indexed.", getCount());
+}
+
+void LibraryStore::ensureCacheDirectories() const {
+    for (const auto& book : books) {
+        if (!book.storageDir.empty()) {
+            std::string fullCachePath = "/.crosspoint/" + book.storageDir;
+            if (!Storage.exists(fullCachePath.c_str())) {
+                Storage.mkdir(fullCachePath.c_str());
+                LOG_DBG("LIB", "Recreated cache dir: %s", fullCachePath.c_str());
+            }
+        }
+    }
 }
 
 void LibraryStore::scanRecursive(const std::string& path) {

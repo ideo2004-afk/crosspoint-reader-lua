@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <functional>
 
 class LibraryStore;
 class Stream;
@@ -24,6 +25,7 @@ bool loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 class LibraryStore {
     static LibraryStore instance;
     std::vector<LibraryBook> books;
+    bool scanned = false;  // True after first scan completes
 
     friend bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 
@@ -36,7 +38,7 @@ public:
     bool saveToFile() const;
 
     // Recursively scan /books folder and update the list
-    void scan();
+    void scan(std::function<void(const std::string&, int)> onProgress = nullptr);
 
     // Remove books that no longer exist on disk
     void cleanupMissing();
@@ -46,6 +48,15 @@ public:
 
     // Check if a book is already in the library
     bool exists(const std::string& path) const;
+
+    // Returns true if scan() has completed at least once this session
+    bool isScanned() const { return scanned; }
+
+    // Reset scan state (e.g. after cache clear)
+    void resetScanned() { scanned = false; }
+
+    // Recreate missing cache directories for all known books (fast, no full scan)
+    void ensureCacheDirectories() const;
 
 private:
     void scanRecursive(const std::string& path);

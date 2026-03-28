@@ -24,15 +24,14 @@ class RecentBooksActivity final : public Activity {
 
   bool skipNextButtonCheck = false;
   bool recentsLoading = false;
-  bool recentsLoaded = false;
-  bool firstRenderDone = false;
+  int lastLoadedPageStart = -1;
 
   MenuState menuState = MenuState::None;
   int menuSelectedIndex = 0;  // 0=Delete, 1=Cancel / 0=Yes, 1=No
 
   // Data loading
   void loadRecentBooks();
-  void loadRecentCovers(int coverHeight);
+  void loadPageCovers(int pageStart, int coverHeight);
 
   void deleteSelectedBook();
   void renderDeleteMenu() const;
