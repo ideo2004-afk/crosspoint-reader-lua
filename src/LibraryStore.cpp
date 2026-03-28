@@ -36,6 +36,22 @@ bool LibraryStore::exists(const std::string& path) const {
 void LibraryStore::scan() {
     LOG_INF("LIB", "Scanning library in /books...");
     cleanupMissing(); // Remove deleted files first
+
+    // Reconcile existing books (for migration or missing folders)
+    for (auto& book : books) {
+        delay(1); // Yield to prevent watchdog
+        if (book.storageDir.empty()) {
+            std::string type = "txt";
+            if (StringUtils::checkFileExtension(book.path, ".epub")) type = "epub";
+            else if (StringUtils::checkFileExtension(book.path, ".xtc") || StringUtils::checkFileExtension(book.path, ".xtch")) type = "xtc";
+            book.storageDir = type + "_" + std::to_string(std::hash<std::string>{}(book.path));
+        }
+        std::string fullCachePath = "/.crosspoint/" + book.storageDir;
+        if (!Storage.exists(fullCachePath.c_str())) {
+            Storage.mkdir(fullCachePath.c_str());
+        }
+    }
+
     scanRecursive("/books");
     saveToFile();
     LOG_INF("LIB", "Scan complete. %d books indexed.", getCount());
@@ -94,6 +110,12 @@ void LibraryStore::cleanupMissing() {
         
         if (!exists || !inBooks) {
             LOG_INF("LIB", "Removing missing or invalid book: %s", it->path.c_str());
+            // Cleanup cache directory if it exists
+            if (!it->storageDir.empty()) {
+                std::string fullCachePath = "/.crosspoint/" + it->storageDir;
+                LOG_INF("LIB", "Cleaning up cache dir: %s", fullCachePath.c_str());
+                Storage.removeDir(fullCachePath.c_str());
+            }
             it = books.erase(it);
             removed++;
         } else {
@@ -114,6 +136,17 @@ LibraryBook LibraryStore::extractMetadata(const std::string& path) const {
         book.fileSize = f.size();
         f.close();
     }
+
+    // Determine storage directory (must match Epub/Xtc hashing logic)
+    std::string type = "txt";
+    if (StringUtils::checkFileExtension(path, ".epub")) type = "epub";
+    else if (StringUtils::checkFileExtension(path, ".xtc") || StringUtils::checkFileExtension(path, ".xtch")) type = "xtc";
+    
+    book.storageDir = type + "_" + std::to_string(std::hash<std::string>{}(path));
+    
+    // Ensure cache directory exists
+    std::string fullCachePath = "/.crosspoint/" + book.storageDir;
+    Storage.mkdir(fullCachePath.c_str());
 
     if (StringUtils::checkFileExtension(path, ".epub")) {
         Epub epub(path, "/.crosspoint");

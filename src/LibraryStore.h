@@ -9,6 +9,7 @@ struct LibraryBook {
     std::string path;
     std::string title;
     std::string author;
+    std::string storageDir; // e.g. "epub_12345678"
     uint32_t fileSize = 0;
     bool hasSmallThumb = false;
     bool hasLargeThumb = false;

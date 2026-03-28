@@ -9,6 +9,7 @@
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "LibraryStore.h"
 #include "util/StringUtils.h"
 
 namespace {
@@ -105,6 +106,7 @@ void MyLibraryActivity::loadFiles() {
 void MyLibraryActivity::onEnter() {
   Activity::onEnter();
 
+  LIBRARY_STORE.scan(); // Sync index with SD card
   loadFiles();
   selectorIndex = 0;
   skipNextButtonCheck = true;
@@ -250,6 +252,7 @@ void MyLibraryActivity::deleteSelectedFile() {
   std::string fullPath = prefix + files[selectorIndex];
 
   Storage.remove(fullPath.c_str());
+  LIBRARY_STORE.scan(); // Update index after deletion
   RECENT_BOOKS.cleanupMissingBooks();
 
   loadFiles();
