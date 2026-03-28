@@ -12,6 +12,7 @@
 #include "ReadingStatsStore.h"
 #include "RecentBooksStore.h"
 #include "WifiCredentialStore.h"
+#include "LibraryStore.h"
 
 // ---- CrossPointState ----
 
@@ -328,5 +329,54 @@ bool JsonSettingsIO::loadReadingStats(ReadingStatsStore& store, const char* json
   }
 
   LOG_DBG("RSS", "Reading stats loaded from file (%zu entries)", store.books.size());
+  return true;
+}
+
+// ---- LibraryStore ----
+
+bool JsonSettingsIO::saveLibrary(const LibraryStore& libStore, const char* path) {
+  JsonDocument doc;
+  JsonArray arr = doc["books"].to<JsonArray>();
+  for (const auto& book : libStore.getBooks()) {
+    JsonObject obj = arr.add<JsonObject>();
+    obj["path"] = book.path;
+    obj["title"] = book.title;
+    obj["author"] = book.author;
+    obj["fileSize"] = book.fileSize;
+    obj["sThumb"] = book.hasSmallThumb;
+    obj["lThumb"] = book.hasLargeThumb;
+  }
+
+  FsFile file;
+  if (Storage.openFileForWrite("LIB", path, file)) {
+    serializeJson(doc, file);
+    file.close();
+    return true;
+  }
+  return false;
+}
+
+bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, const char* json) {
+  JsonDocument doc;
+  auto error = deserializeJson(doc, json);
+  if (error) {
+    LOG_ERR("LIB", "JSON parse error: %s", error.c_str());
+    return false;
+  }
+
+  libStore.books.clear();
+  JsonArray arr = doc["books"].as<JsonArray>();
+  for (JsonObject obj : arr) {
+    LibraryBook book;
+    book.path = obj["path"] | std::string("");
+    book.title = obj["title"] | std::string("");
+    book.author = obj["author"] | std::string("");
+    book.fileSize = obj["fileSize"] | (uint32_t)0;
+    book.hasSmallThumb = obj["sThumb"] | false;
+    book.hasLargeThumb = obj["lThumb"] | false;
+    libStore.books.push_back(book);
+  }
+
+  LOG_DBG("LIB", "Library loaded from file (%d entries)", libStore.getCount());
   return true;
 }

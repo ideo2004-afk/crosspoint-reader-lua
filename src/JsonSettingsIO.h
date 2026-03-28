@@ -5,6 +5,7 @@ class CrossPointState;
 class WifiCredentialStore;
 class RecentBooksStore;
 class ReadingStatsStore;
+class LibraryStore;
 
 namespace JsonSettingsIO {
 
@@ -27,5 +28,9 @@ bool loadRecentBooks(RecentBooksStore& store, const char* json);
 // ReadingStatsStore
 bool saveReadingStats(const ReadingStatsStore& store, const char* path);
 bool loadReadingStats(ReadingStatsStore& store, const char* json);
+
+// LibraryStore
+bool saveLibrary(const LibraryStore& libStore, const char* path);
+bool loadLibrary(LibraryStore& libStore, const char* json);
 
 }  // namespace JsonSettingsIO

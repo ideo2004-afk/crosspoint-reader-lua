@@ -25,6 +25,7 @@
 #include "activities/home/HomeActivity.h"
 #include "activities/home/MyLibraryActivity.h"
 #include "activities/home/RecentBooksActivity.h"
+#include "LibraryStore.h"
 #include "activities/reader/ReaderActivity.h"
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
@@ -241,6 +242,7 @@ void setup() {
   exitActivity();
   enterNewActivity(new BootActivity(renderer, mappedInputManager));
   APP_STATE.loadFromFile(); RECENT_BOOKS.loadFromFile(); READING_STATS.loadFromFile();
+  LIBRARY_STORE.loadFromFile(); LIBRARY_STORE.scan();
   if (APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader || mappedInputManager.isPressed(MappedInputManager::Button::Back) || APP_STATE.readerActivityLoadCount > 0) {
     onGoHome();
   } else {
