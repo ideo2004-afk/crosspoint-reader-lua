@@ -346,7 +346,9 @@ void MyLibraryActivity::renderGallery() {
       renderer.drawRoundedRect(x + stackOffset * 2, y, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
       // Layer 2 (Middle)
       renderer.drawRoundedRect(x + stackOffset, y + stackOffset, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
-      // Layer 1 (Front - with white background to hide back layers)
+      
+      // Layer 1 (Front - Opaque masking)
+      renderer.fillRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 4, Color::White);
       renderer.drawRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
       
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
@@ -354,8 +356,8 @@ void MyLibraryActivity::renderGallery() {
 
       // Word-wrap folder name with NOTOSANS_12_FONT_ID
       std::string dirName = name.substr(0, name.length() - 1);
-      const int maxLineW = coverWidth - 8;
-      const int lineH = 18; // 1.5em of 12pt
+      const int maxLineW = coverWidth - 6;
+      const int lineH = 24; // 1.5em of 12pt
       const int maxLines = 4; // Allow 4 lines if moved up
 
       std::vector<std::string> lines;
@@ -377,9 +379,9 @@ void MyLibraryActivity::renderGallery() {
         }
       }
 
-      // Vertical centering: user requested 6px lower than previous position (50+6=56).
+      // Vertical centering: user requested 10px higher than previous 56px position (56-10=46).
       int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
-      int startOffset = 56 + (70 - totalTextH) / 2; // Moved from 50 to 56
+      int startOffset = 46 + (70 - totalTextH) / 2; // Moved from 56 to 46
       int curLineY = (y + 6) + startOffset;
 
       for (const auto& line : lines) {
