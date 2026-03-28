@@ -462,8 +462,6 @@ void MyLibraryActivity::renderGallery() {
       renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
     }
   }
-}
-}
 
   // Page indicator — 8x8 square dots, identical to Recents
   if (totalPages > 1) {
