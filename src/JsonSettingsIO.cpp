@@ -335,30 +335,34 @@ bool JsonSettingsIO::loadReadingStats(ReadingStatsStore& store, const char* json
 // ---- LibraryStore ----
 
 bool JsonSettingsIO::saveLibrary(const LibraryStore& libStore, const char* path) {
-  JsonDocument doc;
-  JsonArray arr = doc["books"].to<JsonArray>();
-  for (const auto& book : libStore.getBooks()) {
-    JsonObject obj = arr.add<JsonObject>();
-    obj["path"] = book.path;
-    obj["title"] = book.title;
-    obj["author"] = book.author;
-    obj["fileSize"] = book.fileSize;
-    obj["sThumb"] = book.hasSmallThumb;
-    obj["lThumb"] = book.hasLargeThumb;
+  FsFile file;
+  if (!Storage.openFileForWrite("LIB", path, file)) {
+    return false;
   }
 
-  FsFile file;
-  if (Storage.openFileForWrite("LIB", path, file)) {
+  file.print("{\"books\":[");
+  bool first = true;
+  for (const auto& book : libStore.getBooks()) {
+    if (!first) file.print(",");
+    first = false;
+
+    JsonDocument doc;
+    doc["path"] = book.path;
+    doc["title"] = book.title;
+    doc["author"] = book.author;
+    doc["fileSize"] = book.fileSize;
+    doc["sThumb"] = book.hasSmallThumb;
+    doc["lThumb"] = book.hasLargeThumb;
     serializeJson(doc, file);
-    file.close();
-    return true;
   }
-  return false;
+  file.print("]}");
+  file.close();
+  return true;
 }
 
-bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, const char* json) {
+bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, Stream& jsonStream) {
   JsonDocument doc;
-  auto error = deserializeJson(doc, json);
+  auto error = deserializeJson(doc, jsonStream);
   if (error) {
     LOG_ERR("LIB", "JSON parse error: %s", error.c_str());
     return false;

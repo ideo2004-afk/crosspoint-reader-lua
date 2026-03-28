@@ -12,12 +12,14 @@ LibraryStore LibraryStore::instance;
 constexpr char LIBRARY_FILE_JSON[] = "/.crosspoint/library.json";
 
 bool LibraryStore::loadFromFile() {
-    String json = Storage.readFile(LIBRARY_FILE_JSON);
-    if (json.length() == 0) {
+    FsFile file;
+    if (!Storage.openFileForRead("LIB", LIBRARY_FILE_JSON, file)) {
         LOG_INF("LIB", "No library.json found, starting fresh");
         return false;
     }
-    return JsonSettingsIO::loadLibrary(*this, json.c_str());
+    bool success = JsonSettingsIO::loadLibrary(*this, file);
+    file.close();
+    return success;
 }
 
 bool LibraryStore::saveToFile() const {
@@ -48,6 +50,7 @@ void LibraryStore::scanRecursive(const std::string& path) {
 
     char name[256];
     for (auto file = root.openNextFile(); file; file = root.openNextFile()) {
+        delay(1); // Yield to prevent watchdog
         file.getName(name, sizeof(name));
         
         // Skip hidden files and special directories
@@ -85,6 +88,7 @@ void LibraryStore::scanRecursive(const std::string& path) {
 void LibraryStore::cleanupMissing() {
     int removed = 0;
     for (auto it = books.begin(); it != books.end(); ) {
+        delay(1); // Yield to prevent watchdog
         bool exists = Storage.exists(it->path.c_str());
         bool inBooks = (it->path.find("/books/") == 0);
         

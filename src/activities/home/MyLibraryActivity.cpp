@@ -163,10 +163,10 @@ void MyLibraryActivity::loop() {
     return;
   }
 
-  // Long press BACK (1s+) goes to root folder
+  // Long press BACK (1s+) goes to books root
   if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= GO_HOME_MS &&
-      basepath != "/") {
-    basepath = "/";
+      basepath != "/books") {
+    basepath = "/books";
     loadFiles();
     selectorIndex = 0;
     return;
@@ -203,11 +203,11 @@ void MyLibraryActivity::loop() {
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     // Short press: go up one directory, or go home if at root
     if (mappedInput.getHeldTime() < GO_HOME_MS) {
-      if (basepath != "/") {
+      if (basepath != "/books") {
         const std::string oldPath = basepath;
 
         basepath.replace(basepath.find_last_of('/'), std::string::npos, "");
-        if (basepath.empty()) basepath = "/";
+        if (basepath == "/books" || basepath.empty()) basepath = "/books";
         loadFiles();
 
         const auto pos = oldPath.find_last_of('/');
@@ -314,7 +314,7 @@ void MyLibraryActivity::render(Activity::RenderLock&&) {
   const auto pageHeight = renderer.getScreenHeight();
   const auto& metrics = UITheme::getInstance().getMetrics();
 
-  std::string folderName = (basepath == "/") ? tr(STR_SD_CARD) : basepath.substr(basepath.rfind('/') + 1);
+  std::string folderName = (basepath == "/books") ? tr(STR_SD_CARD) : basepath.substr(basepath.rfind('/') + 1);
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, folderName.c_str());
 
   const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;

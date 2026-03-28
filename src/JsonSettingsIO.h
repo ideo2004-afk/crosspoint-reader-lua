@@ -1,4 +1,5 @@
 #pragma once
+#include <Stream.h>
 
 class CrossPointSettings;
 class CrossPointState;
@@ -31,6 +32,6 @@ bool loadReadingStats(ReadingStatsStore& store, const char* json);
 
 // LibraryStore
 bool saveLibrary(const LibraryStore& libStore, const char* path);
-bool loadLibrary(LibraryStore& libStore, const char* json);
+bool loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 
 }  // namespace JsonSettingsIO

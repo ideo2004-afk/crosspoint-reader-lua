@@ -39,9 +39,9 @@ class MyLibraryActivity final : public Activity {
   explicit MyLibraryActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
                              const std::function<void()>& onGoHome,
                              const std::function<void(const std::string& path)>& onSelectBook,
-                             std::string initialPath = "/")
+                             std::string initialPath = "/books")
       : Activity("MyLibrary", renderer, mappedInput),
-        basepath(initialPath.empty() ? "/" : std::move(initialPath)),
+        basepath(initialPath.empty() ? "/books" : std::move(initialPath)),
         onSelectBook(onSelectBook),
         onGoHome(onGoHome) {}
   void onEnter() override;

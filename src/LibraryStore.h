@@ -3,6 +3,7 @@
 #include <vector>
 
 class LibraryStore;
+class Stream;
 
 struct LibraryBook {
     std::string path;
@@ -16,14 +17,14 @@ struct LibraryBook {
 };
 
 namespace JsonSettingsIO {
-bool loadLibrary(LibraryStore& libStore, const char* json);
+bool loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 }
 
 class LibraryStore {
     static LibraryStore instance;
     std::vector<LibraryBook> books;
 
-    friend bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, const char* json);
+    friend bool JsonSettingsIO::loadLibrary(LibraryStore& libStore, Stream& jsonStream);
 
 public:
     ~LibraryStore() = default;
