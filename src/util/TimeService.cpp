@@ -420,22 +420,29 @@ void TimeService::restoreRtcBackedTime() {
     return;
   }
 
-  if (isTimeValid(anchorEpoch) && rtcUsAtAnchor > 0 && currentRtcUs >= rtcUsAtAnchor) {
-    const uint64_t elapsedUs = currentRtcUs - rtcUsAtAnchor;
-    const time_t reconstructedEpoch =
-        static_cast<time_t>(anchorEpoch + static_cast<int64_t>(elapsedUs / 1000000ULL));
+  if (isTimeValid(anchorEpoch) && rtcUsAtAnchor > 0) {
+    time_t reconstructedEpoch;
+    if (currentRtcUs >= rtcUsAtAnchor) {
+      const uint64_t elapsedUs = currentRtcUs - rtcUsAtAnchor;
+      reconstructedEpoch = static_cast<time_t>(anchorEpoch + static_cast<int64_t>(elapsedUs / 1000000ULL));
+      LOG_DBG("TIME", "Restored time from persisted snapshot (anchor=%lld, current_rtc_us=%llu, anchor_rtc_us=%llu)",
+              static_cast<long long>(anchorEpoch), static_cast<unsigned long long>(currentRtcUs),
+              static_cast<unsigned long long>(rtcUsAtAnchor));
+    } else {
+      // Counter reset detected (e.g. after flash or cold boot); fallback to last known time.
+      reconstructedEpoch = anchorEpoch;
+      LOG_INF("TIME", "Hardware reset detected; fall back to last known time (anchor=%lld, current_rtc_us=%llu, saved_anchor_us=%llu)",
+              static_cast<long long>(anchorEpoch), static_cast<unsigned long long>(currentRtcUs),
+              static_cast<unsigned long long>(rtcUsAtAnchor));
+    }
 
     adoptTimeSnapshot(reconstructedEpoch, currentRtcUs, lastSuccessfulSyncEpoch);
 
     if (isTimeValid(reconstructedEpoch) &&
         (!isTimeValid(now) || llabs(static_cast<long long>(now - reconstructedEpoch)) > 2)) {
-      timeval tv = {.tv_sec = reconstructedEpoch, .tv_usec = static_cast<suseconds_t>(elapsedUs % 1000000ULL)};
+      timeval tv = {.tv_sec = reconstructedEpoch, .tv_usec = static_cast<suseconds_t>(currentRtcUs % 1000000ULL)};
       settimeofday(&tv, nullptr);
     }
-
-    LOG_DBG("TIME", "Restored time from persisted snapshot (anchor=%lld, current_rtc_us=%llu, anchor_rtc_us=%llu)",
-            static_cast<long long>(anchorEpoch), static_cast<unsigned long long>(currentRtcUs),
-            static_cast<unsigned long long>(rtcUsAtAnchor));
     return;
   }
 
