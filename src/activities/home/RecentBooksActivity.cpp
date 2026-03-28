@@ -327,19 +327,24 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
               renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
                                   bmp.getWidth(), bmp.getHeight());
               renderer.setInvertEnabled(renderer.isDarkMode());
+              renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
             }
             file.close();
           }
         } else {
+          renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+          renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
           renderer.drawIcon(BookIcon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
         }
       } else {
+        renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+        renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
         renderer.drawIcon(BookIcon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
       }
 
-      // Selection box
+      // Selection box — 2px rounded rect, same as CoverTheme
       if (bookIdx == selectorIndex) {
-        renderer.drawRect(coverRect.x - 4, coverRect.y - 4, coverRect.width + 8, coverRect.height + 8, true);
+        renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
       }
     }
 

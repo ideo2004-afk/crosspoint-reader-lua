@@ -339,7 +339,8 @@ void MyLibraryActivity::renderGallery() {
 
     if (isDir) {
       // Folder: outline box + centered icon + folder name
-      renderer.drawRect(x, y, coverWidth, coverHeight, true);
+      renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+      renderer.drawLine(x + 2, y + 16, x + coverWidth - 2, y + 16, 1, true);
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
       if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + 110, 48, 48);
 
@@ -368,11 +369,9 @@ void MyLibraryActivity::renderGallery() {
         }
       }
 
-      // Vertical centering: user requested 80px higher than previous vertically-centered-below-icon position.
-      // Previous center was (106 to 180 range). 
-      // New target is the top half: let's use a fixed offset near the top.
+      // Vertical centering: user requested 20px lower than previous "top half" position (30+20=50).
       int totalTextH = lines.empty() ? 0 : (int)((lines.size() - 1) * lineH + 12);
-      int startOffset = 30 + (70 - totalTextH) / 2; // In the top half (0 to 100)
+      int startOffset = 50 + (70 - totalTextH) / 2; // Moved from 30 to 50
       int curLineY = y + startOffset;
 
       for (const auto& line : lines) {
@@ -421,20 +420,23 @@ void MyLibraryActivity::renderGallery() {
                                      bmp.getWidth(), bmp.getHeight());
             renderer.setInvertEnabled(renderer.isDarkMode());
             hasThumb = true;
+            renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
           }
           file.close();
         }
       }
 
       if (!hasThumb) {
+        renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+        renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
         const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 32);
         if (icon) renderer.drawIcon(icon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
       }
     }
 
-    // Selection box — sharp rect, same as Recents
+    // Selection box — 2px rounded rect, same as CoverTheme
     if (selected) {
-      renderer.drawRect(x - 4, y - 4, coverWidth + 8, coverHeight + 8, true);
+      renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
     }
   }
 
