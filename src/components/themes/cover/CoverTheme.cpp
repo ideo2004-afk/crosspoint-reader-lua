@@ -17,7 +17,7 @@
 
 namespace {
 constexpr int mainCoverHeight = 320;
-constexpr int smallCoverHeight = 181;
+constexpr int smallCoverHeight = 180;
 constexpr int cornerRadius = 6;
 constexpr int bookCornerRadius = 4;
 

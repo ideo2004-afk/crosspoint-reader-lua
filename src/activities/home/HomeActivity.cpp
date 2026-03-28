@@ -307,7 +307,7 @@ void HomeActivity::render(Activity::RenderLock&&) {
     recentsLoading = true;
     loadRecentCovers(metrics.homeCoverHeight);
     if (SETTINGS.uiTheme == CrossPointSettings::UI_THEME::COVER_THEME) {
-      loadRecentCovers(181); // Ensure small covers are also loaded/cached
+      loadRecentCovers(180); // Ensure small covers are also loaded/cached
     }
   }
 }

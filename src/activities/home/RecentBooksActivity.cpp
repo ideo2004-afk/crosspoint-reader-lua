@@ -266,8 +266,7 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
   // Calculate grid layout sizes
   const int columns = 3;
   const int coverWidth = (pageWidth - (metrics.contentSidePadding * 2) - (metrics.verticalSpacing * (columns - 1))) / columns;
-  // Preserve rough 3:4 aspect ratio for covers
-  const int coverHeight = (coverWidth * 4) / 3;
+  const int coverHeight = 180; // Unified height for thumbnails
   const int rowSpacing  = metrics.verticalSpacing + 15;
 
   // Pagination
@@ -325,7 +324,7 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
       const int dotSpacing = 8;
       const int totalDotWidth = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
       const int startX = (pageWidth - totalDotWidth) / 2;
-      const int dotY = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 12;
+      const int dotY = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 4;
 
       for (int p = 0; p < totalPages; p++) {
         int x = startX + p * (dotSize + dotSpacing);

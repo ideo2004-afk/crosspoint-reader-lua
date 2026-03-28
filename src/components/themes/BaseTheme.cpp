@@ -317,7 +317,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
     const int dotSpacing = 8;
     const int totalDotWidth = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
     const int startX = rect.x + (rect.width - totalDotWidth) / 2;
-    const int dotY = rect.y + rect.height + 4; // Draw slightly below the list rectangle
+    const int dotY = rect.y + rect.height + 12; // Draw slightly below the list rectangle
 
     const int currentPage = selectedIndex / pageItems;
     for (int p = 0; p < totalPages; p++) {
