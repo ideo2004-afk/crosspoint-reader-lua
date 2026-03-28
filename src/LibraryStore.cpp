@@ -31,10 +31,10 @@ bool LibraryStore::exists(const std::string& path) const {
     return false;
 }
 
-void LibraryStore::scan(const std::string& rootPath) {
-    LOG_INF("LIB", "Scanning library in %s...", rootPath.c_str());
+void LibraryStore::scan() {
+    LOG_INF("LIB", "Scanning library in /books...");
     cleanupMissing(); // Remove deleted files first
-    scanRecursive(rootPath);
+    scanRecursive("/books");
     saveToFile();
     LOG_INF("LIB", "Scan complete. %d books indexed.", getCount());
 }
@@ -85,8 +85,11 @@ void LibraryStore::scanRecursive(const std::string& path) {
 void LibraryStore::cleanupMissing() {
     int removed = 0;
     for (auto it = books.begin(); it != books.end(); ) {
-        if (!Storage.exists(it->path.c_str())) {
-            LOG_INF("LIB", "Removing missing book: %s", it->path.c_str());
+        bool exists = Storage.exists(it->path.c_str());
+        bool inBooks = (it->path.find("/books/") == 0);
+        
+        if (!exists || !inBooks) {
+            LOG_INF("LIB", "Removing missing or invalid book: %s", it->path.c_str());
             it = books.erase(it);
             removed++;
         } else {

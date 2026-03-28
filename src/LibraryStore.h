@@ -34,7 +34,7 @@ public:
     bool saveToFile() const;
 
     // Recursively scan /books folder and update the list
-    void scan(const std::string& rootPath = "/books");
+    void scan();
 
     // Remove books that no longer exist on disk
     void cleanupMissing();
