@@ -310,108 +310,106 @@ void MyLibraryActivity::renderGallery() {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
   const auto& metrics = UITheme::getInstance().getMetrics();
-  
-  const int columns = 3;
-  const int rows = 3;
-  const int itemsPerPage = columns * rows;
-  const int currentPage = selectorIndex / itemsPerPage;
-  const int pageStart = currentPage * itemsPerPage;
-  
-  const int contentTop = metrics.topPadding + metrics.headerHeight + 20;
-  const int horizontalPadding = metrics.contentSidePadding;
-  const int spacingX = 20;
-  const int spacingY = 40;
-  const int coverW = (pageWidth - (horizontalPadding * 2) - (spacingX * (columns - 1))) / columns;
-  const int coverH = 180; // Standard 180px height for 3x3 grid
 
-  for (int i = 0; i < itemsPerPage && (pageStart + i) < files.size(); i++) {
+  // ---- Layout constants identical to RecentBooksActivity ----
+  const int columns      = 3;
+  const int itemsPerPage = 9; // 3x3
+  const int contentTop   = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
+  const int gridTopOffset = 20;
+  const int coverWidth   = (pageWidth - (metrics.contentSidePadding * 2) - (metrics.verticalSpacing * (columns - 1))) / columns;
+  const int coverHeight  = 180;
+  const int rowSpacing   = metrics.verticalSpacing + 15;
+
+  const int totalItems  = static_cast<int>(files.size());
+  const int totalPages  = (totalItems + itemsPerPage - 1) / itemsPerPage;
+  const int currentPage = (totalPages > 0) ? (selectorIndex / itemsPerPage) : 0;
+  const int pageStart   = currentPage * itemsPerPage;
+  const int pageCount   = std::min(itemsPerPage, totalItems - pageStart);
+
+  for (int i = 0; i < pageCount; ++i) {
     int index = pageStart + i;
-    int col = i % columns;
-    int row = i / columns;
-    int x = horizontalPadding + col * (coverW + spacingX);
-    int y = contentTop + row * (coverH + spacingY);
+    int col   = i % columns;
+    int row   = i / columns;
+    int x     = metrics.contentSidePadding + col * (coverWidth + metrics.verticalSpacing);
+    int y     = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
     bool selected = (selectorIndex == index);
 
     const std::string& name = files[index];
     bool isDir = name.back() == '/';
 
     if (isDir) {
-      // Draw Directory Box
-      renderer.drawRoundedRect(x, y, coverW, coverH, 2, 8, true);
-      if (selected) renderer.drawRoundedRect(x - 3, y - 3, coverW + 6, coverH + 6, 3, 10, true);
-      
+      // Folder: outline box + centered icon + folder name
+      renderer.drawRect(x, y, coverWidth, coverHeight, true);
       const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
-      if (icon) renderer.drawIcon(icon, x + (coverW - 48) / 2, y + 40, 48, 48, Color::DarkGray);
-      
+      if (icon) renderer.drawIcon(icon, x + (coverWidth - 48) / 2, y + (coverHeight / 2 - 32), 48, 48);
+
       std::string dirName = name.substr(0, name.length() - 1);
-      std::string truncName = renderer.truncatedText(SMALL_FONT_ID, dirName.c_str(), coverW - 10);
+      std::string truncName = renderer.truncatedText(SMALL_FONT_ID, dirName.c_str(), coverWidth - 8);
       int tw = renderer.getTextWidth(SMALL_FONT_ID, truncName.c_str());
-      renderer.drawText(SMALL_FONT_ID, x + (coverW - tw) / 2, y + 110, truncName.c_str());
+      renderer.drawText(SMALL_FONT_ID, x + (coverWidth - tw) / 2, y + coverHeight / 2 + 22, truncName.c_str());
     } else {
-      // Draw Book Cover
-      if (selected) renderer.drawRoundedRect(x - 4, y - 4, coverW + 8, coverH + 8, 4, 10, true);
-      
+      // Book: try 180px thumbnail, fallback to book icon
       std::string prefix = basepath;
       if (prefix.back() != '/') prefix += "/";
       std::string fullPath = prefix + name;
-      
-      // Determine storage directory deterministically
+
       std::string sDir = LibraryStore::getStorageDirForPath(fullPath);
+      std::string thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
+
+      if (!Storage.exists(thumbPath.c_str())) {
+        // Lazy Generate 180px Thumbnail
+        if (StringUtils::checkFileExtension(fullPath, ".epub")) {
+          Epub epub(fullPath, "/.crosspoint");
+          if (epub.load(true, true)) epub.generateThumbBmp(180);
+        } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
+          Xtc xtc(fullPath, "/.crosspoint");
+          if (xtc.load()) xtc.generateThumbBmp(180);
+        }
+      }
 
       bool hasThumb = false;
-      if (!sDir.empty()) {
-        std::string thumbPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
-        if (!Storage.exists(thumbPath.c_str())) {
-          // Lazy Generate 180px Thumbnail - must load first to find cover
-          if (StringUtils::checkFileExtension(fullPath, ".epub")) {
-            Epub epub(fullPath, "/.crosspoint");
-            if (epub.load(true, true)) {
-              epub.generateThumbBmp(180);
-            }
-          } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
-            Xtc xtc(fullPath, "/.crosspoint");
-            if (xtc.load()) {
-              xtc.generateThumbBmp(180);
-            }
+      if (Storage.exists(thumbPath.c_str())) {
+        FsFile file;
+        if (Storage.openFileForRead("HOME", thumbPath, file)) {
+          Bitmap bmp(file);
+          if (bmp.parseHeaders() == BmpReaderError::Ok) {
+            renderer.setInvertEnabled(false);
+            renderer.drawBitmap(bmp, x + (coverWidth  - bmp.getWidth())  / 2,
+                                     y + (coverHeight - bmp.getHeight()) / 2,
+                                     bmp.getWidth(), bmp.getHeight());
+            renderer.setInvertEnabled(renderer.isDarkMode());
+            hasThumb = true;
           }
-        }
-
-        if (Storage.exists(thumbPath.c_str())) {
-          FsFile file;
-          if (Storage.openFileForRead("HOME", thumbPath, file)) {
-            Bitmap bmp(file);
-            if (bmp.parseHeaders() == BmpReaderError::Ok) {
-              renderer.drawBitmap(bmp, x, y, coverW, coverH);
-              hasThumb = true;
-            }
-            file.close();
-          }
+          file.close();
         }
       }
 
       if (!hasThumb) {
-        renderer.drawRoundedRect(x, y, coverW, coverH, 1, 8, true);
-        const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 48);
-        if (icon) renderer.drawIcon(icon, x + (coverW - 48) / 2, y + (coverH - 48) / 2, 48, 48, Color::LightGray);
+        const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 32);
+        if (icon) renderer.drawIcon(icon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
       }
+    }
+
+    // Selection box — sharp rect, same as Recents
+    if (selected) {
+      renderer.drawRect(x - 4, y - 4, coverWidth + 8, coverHeight + 8, true);
     }
   }
 
-  // Draw Page Indicators
-  int totalPages = (files.size() + itemsPerPage - 1) / itemsPerPage;
+  // Page indicator — 8x8 square dots, identical to Recents
   if (totalPages > 1) {
-    int indicatorsY = pageHeight - metrics.buttonHintsHeight - 15;
-    int indWidth = 20;
-    int indSpacing = 10;
-    int totalIndW = totalPages * indWidth + (totalPages - 1) * indSpacing;
-    int startX = (pageWidth - totalIndW) / 2;
+    const int dotSize    = 8;
+    const int dotSpacing = 8;
+    const int totalDotW  = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
+    const int startX     = (pageWidth - totalDotW) / 2;
+    const int dotY       = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 4;
 
     for (int p = 0; p < totalPages; p++) {
-      int ix = startX + p * (indWidth + indSpacing);
+      int ix = startX + p * (dotSize + dotSpacing);
       if (p == currentPage) {
-        renderer.fillRect(ix, indicatorsY, indWidth, 4, Black);
+        renderer.fillRect(ix, dotY, dotSize, dotSize, true);
       } else {
-        renderer.fillRect(ix, indicatorsY + 1, indWidth, 2, LightGray);
+        renderer.drawRect(ix, dotY, dotSize, dotSize, true);
       }
     }
   }
