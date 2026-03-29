@@ -12,6 +12,14 @@ Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
 
 Experience a premium, classic interface inspired by the iPod. The **Flow Theme** features smooth animations and a refined layout designed for the X4's e-ink screen.
 
+### 2. Kindle-Style Grid View (Collection Icons)
+
+Folders in the library now feature a **Kindle-inspired 3D design** with gray-sectioned backgrounds, top "stacked book" lines, and a dedicated **File Count Badge** in the corner. See how many books are inside a collection without scanning it manually.
+
+### 3. "Cover Theme" Corner Masking
+
+Eliminate rectangular artifacts on dark book covers. Our **Real-time Corner Masking** algorithm ensures all thumbnails have perfectly smooth rounded corners (4px radius) across all library views.
+
 ### 2. Full CJK Support & Proper Rendering
 
 Unlock high-quality reading for Traditional Chinese and other CJK languages. The system correctly displays **Chinese filenames** and ensures **Chinese EPUB rendering** when external fonts are provided.
@@ -155,7 +163,15 @@ Huge thanks to:
 
 ---
 
-## 🕒 Update History
+- **2026-03-29 (v2.6.0-Lee)**:
+  - **子目錄圖示 (Grid View)**:
+    - 重製子目錄圖示為 **Kindle 風格**：頂部 3px 灰階橫線、左部書籍圖示、下半部灰色背景。
+    - 新增 **檔案計數標籤 (Badge)**，位於圖示左下角，展現藏書量。
+  - **封面圓角遮罩 (Cover Theme)**:
+    - 在 `MyLibrary` 與 `RecentBooks` 實現 `maskCorners` 演算法，完美解決深色封面露出直角問題。
+  - **字體工具 (Font Converter)**:
+    - `convert_font.py` 正式支援 **4x 超採樣渲染 (Upscale)**，大幅提升 e-ink 字體邊緣平滑度。
+    - 通過 `TaipeiSansTC` 32級字體測試，結果極佳。
 
 - **2026-03-27 (v2.5.0-Lee)**:
   - 更新系統版本號為 `v2.5.0-Lee`。
