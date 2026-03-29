@@ -181,6 +181,45 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
             renderer.drawText(SMALL_FONT_ID, sx + (smallW - textW) / 2, smallY + smallH + 6, progBuf, DarkGray);
         }
 
+        // --- Draw Statistics Tiles in the remaining space ---
+        const int tileSpacing = 12;
+        const int tileW = (pageWidth - (horizontalPadding * 2) - (tileSpacing * 2)) / 3;
+        const int tileH = 108; // Adjusted height (was 120)
+        const int tileY = smallY + smallH + 42; // Moved down 12px (was 30)
+
+        uint32_t totalSecs = READING_STATS.totalReadingSeconds;
+        uint32_t totalHours = totalSecs / 3600;
+        char totalBuf[16];
+        snprintf(totalBuf, sizeof(totalBuf), "%uh", totalHours);
+
+        struct StatTile {
+            std::string value;
+            std::string label;
+        };
+
+        std::vector<StatTile> stats = {
+            {std::to_string(READING_STATS.getTodaySeconds() / 60) + "m", "reading today"},
+            {std::string(totalBuf), "reading time"},
+            {std::to_string(READING_STATS.getLifetimeActiveDays()), "days of reading"}
+        };
+
+        for (int i = 0; i < 3; ++i) {
+            int tx = horizontalPadding + i * (tileW + tileSpacing);
+            // Draw background
+            renderer.setInvertEnabled(false);
+            renderer.fillRoundedRect(tx, tileY, tileW, tileH, 8, Color::LightGray);
+            renderer.setInvertEnabled(renderer.isDarkMode());
+
+            // Draw value (Large/Bold/Black)
+            int tvw = renderer.getTextWidth(NOTOSANS_14_FONT_ID, stats[i].value.c_str());
+            renderer.drawText(NOTOSANS_14_FONT_ID, tx + (tileW - tvw) / 2, tileY + 22, stats[i].value.c_str(), Black, EpdFontFamily::BOLD);
+
+            // Draw label (Small/Black)
+            int tlw = renderer.getTextWidth(SMALL_FONT_ID, stats[i].label.c_str());
+            renderer.drawText(SMALL_FONT_ID, tx + (tileW - tlw) / 2, tileY + 62, stats[i].label.c_str(), Black);
+        }
+
+        // Store SnapShot after drawing books + stats
         coverRendered = true;
         coverBufferStored = storeCoverBuffer();
     }
@@ -196,44 +235,6 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     }
   } else {
     drawEmptyRecents(renderer, rect);
-  }
-
-  // --- Draw Statistics Tiles in the remaining space ---
-  const int tileSpacing = 12;
-  const int tileW = (pageWidth - (horizontalPadding * 2) - (tileSpacing * 2)) / 3;
-  const int tileH = 108; // Adjusted height (was 120)
-  const int tileY = smallY + smallH + 42; // Moved down 12px (was 30)
-
-  uint32_t totalSecs = READING_STATS.totalReadingSeconds;
-  uint32_t totalHours = totalSecs / 3600;
-  char totalBuf[16];
-  snprintf(totalBuf, sizeof(totalBuf), "%uh", totalHours);
-
-  struct StatTile {
-    std::string value;
-    std::string label;
-  };
-
-  std::vector<StatTile> stats = {
-      {std::to_string(READING_STATS.getTodaySeconds() / 60) + "m", "reading today"},
-      {std::string(totalBuf), "reading time"},
-      {std::to_string(READING_STATS.getLifetimeActiveDays()), "days of reading"}
-  };
-
-  for (int i = 0; i < 3; ++i) {
-    int tx = horizontalPadding + i * (tileW + tileSpacing);
-    // Draw background
-    renderer.setInvertEnabled(false);
-    renderer.fillRoundedRect(tx, tileY, tileW, tileH, 8, Color::LightGray);
-    renderer.setInvertEnabled(renderer.isDarkMode());
-
-    // Draw value (Large/Bold/Black)
-    int tvw = renderer.getTextWidth(NOTOSANS_14_FONT_ID, stats[i].value.c_str());
-    renderer.drawText(NOTOSANS_14_FONT_ID, tx + (tileW - tvw) / 2, tileY + 22, stats[i].value.c_str(), Black, EpdFontFamily::BOLD);
-
-    // Draw label (Small/Black)
-    int tlw = renderer.getTextWidth(SMALL_FONT_ID, stats[i].label.c_str());
-    renderer.drawText(SMALL_FONT_ID, tx + (tileW - tlw) / 2, tileY + 62, stats[i].label.c_str(), Black);
   }
 }
 

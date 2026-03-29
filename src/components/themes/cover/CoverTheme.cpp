@@ -97,11 +97,6 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
   const bool hasRecentBooks = !recentBooks.empty();
   const int pageWidth = renderer.getScreenWidth();
 
-  // Draw Header (Battery & Date) - Every frame for CoverTheme
-  // We use topPadding (5) as y to match sub-pages like Library/Settings.
-  const auto& themeMetrics = UITheme::getInstance().getMetrics();
-  drawHeader(renderer, Rect{0, themeMetrics.topPadding, pageWidth, rect.y}, nullptr, nullptr);
-
   if (hasRecentBooks) {
     const int count = recentBooks.size();
     int currentSelector = (selectorIndex >= 1000) ? (selectorIndex - 1000) : selectorIndex;
@@ -122,6 +117,10 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
         coverRendered = true;
         coverBufferStored = true;
     } else if (!coverRendered) {
+        // Draw Header (Battery, Date) into the static snapshot
+        const auto& themeMetrics = UITheme::getInstance().getMetrics();
+        drawHeader(renderer, Rect{0, themeMetrics.topPadding, pageWidth, rect.y}, nullptr, nullptr);
+
         // --- Full Render Base Layout (WITHOUT selection) ---
         drawBookCover(renderer, recentBooks[0], mainX, mainY, mainW, mainH, false, true);
 

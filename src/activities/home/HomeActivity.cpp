@@ -205,8 +205,6 @@ void HomeActivity::loop() {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
       bookSelectorIndex = (bookSelectorIndex + 1) % bookCount;
-      coverBufferStored = false;
-      coverRendered = false; // Force re-render for new selection
       requestUpdate();
     }
   }
@@ -214,8 +212,6 @@ void HomeActivity::loop() {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
       bookSelectorIndex = (bookSelectorIndex + bookCount - 1) % bookCount;
-      coverBufferStored = false;
-      coverRendered = false; // Force re-render for new selection
       requestUpdate();
     }
   }
