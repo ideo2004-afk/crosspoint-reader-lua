@@ -20,17 +20,31 @@ namespace {
 constexpr unsigned long GO_HOME_MS = 1000;
 std::unordered_map<std::string, std::string> g_folderThumbCache;
 
-void maskCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
+void maskTopCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
   for (int dy = 0; dy < r; dy++) {
     for (int dx = 0; dx < r; dx++) {
       if ((r - dx) * (r - dx) + (r - dy) * (r - dy) > r * r) {
         renderer.drawPixel(x + dx, y + dy, false);                  // TL
         renderer.drawPixel(x + w - 1 - dx, y + dy, false);          // TR
+      }
+    }
+  }
+}
+
+void maskBottomCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
+  for (int dy = 0; dy < r; dy++) {
+    for (int dx = 0; dx < r; dx++) {
+      if ((r - dx) * (r - dx) + (r - dy) * (r - dy) > r * r) {
         renderer.drawPixel(x + dx, y + h - 1 - dy, false);          // BL
         renderer.drawPixel(x + w - 1 - dx, y + h - 1 - dy, false);  // BR
       }
     }
   }
+}
+
+void maskCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
+  maskTopCorners(renderer, x, y, w, h, r);
+  maskBottomCorners(renderer, x, y, w, h, r);
 }
 
 void sortFileList(std::vector<std::string>& strs) {
@@ -458,7 +472,7 @@ void MyLibraryActivity::renderGallery() {
             int drawW = std::min((int)bmp.getWidth(), coverWidth);
             renderer.drawBitmap(bmp, x + (coverWidth - drawW) / 2, y, 0, 0);
             renderer.setInvertEnabled(renderer.isDarkMode());
-            maskCorners(renderer, x, y, coverWidth, 108, 4); // Mask top corners
+            maskTopCorners(renderer, x, y, coverWidth, 108, 4); // ONLY mask top corners
           }
           file.close();
         }
@@ -481,6 +495,7 @@ void MyLibraryActivity::renderGallery() {
         renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - tw) / 2, curLineY, line.c_str());
         curLineY += lineH;
       }
+      maskBottomCorners(renderer, x, y, coverWidth, coverHeight, 4); // Ensure clean card bottom
 
       // NEW: Draw file count badge in TOP-RIGHT corner
       if (item.fileCount >= 0) {
