@@ -16,6 +16,14 @@ class MyLibraryActivity final : public Activity {
 
   size_t selectorIndex = 0;
   bool skipNextButtonCheck = false;
+  bool pageRendered = false; // Whether the current page base (thumbs) is drawn
+
+  // Render Caching - Frame Buffer Snapshot (v3.5.0)
+  uint8_t* pageBuffer = nullptr;
+  bool pageBufferStored = false;
+  bool storePageBuffer();
+  bool restorePageBuffer();
+  void freePageBuffer();
 
   ViewMode viewMode = ViewMode::Grid;
   MenuState menuState = MenuState::None;

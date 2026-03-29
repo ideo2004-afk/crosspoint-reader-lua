@@ -135,6 +135,7 @@ void MyLibraryActivity::loadFiles() {
   sortFileList(files);
   LIBRARY_STORE.scanFolder(basepath);
   invalidateCache();
+  freePageBuffer(); // Invalidate snapshot when files change
 }
 
 void MyLibraryActivity::onEnter() {
@@ -143,6 +144,8 @@ void MyLibraryActivity::onEnter() {
   loadFiles();
   selectorIndex = 0;
   invalidateCache();
+  pageRendered = false;
+  pageBufferStored = false;
   skipNextButtonCheck = true;
   requestUpdate();
 }
@@ -150,6 +153,36 @@ void MyLibraryActivity::onEnter() {
 void MyLibraryActivity::onExit() {
   Activity::onExit();
   files.clear();
+  freePageBuffer();
+}
+
+bool MyLibraryActivity::storePageBuffer() {
+  uint8_t* frameBuffer = renderer.getFrameBuffer();
+  if (!frameBuffer) return false;
+  freePageBuffer();
+  const size_t sz = GfxRenderer::getBufferSize();
+  pageBuffer = static_cast<uint8_t*>(malloc(sz));
+  if (!pageBuffer) return false;
+  memcpy(pageBuffer, frameBuffer, sz);
+  pageBufferStored = true;
+  return true;
+}
+
+bool MyLibraryActivity::restorePageBuffer() {
+  if (!pageBuffer || !pageBufferStored) return false;
+  uint8_t* frameBuffer = renderer.getFrameBuffer();
+  if (!frameBuffer) return false;
+  memcpy(frameBuffer, pageBuffer, GfxRenderer::getBufferSize());
+  return true;
+}
+
+void MyLibraryActivity::freePageBuffer() {
+  if (pageBuffer) {
+    free(pageBuffer);
+    pageBuffer = nullptr;
+  }
+  pageBufferStored = false;
+  pageRendered = false;
 }
 
 void MyLibraryActivity::loop() {
@@ -246,23 +279,33 @@ void MyLibraryActivity::loop() {
   int listSize = static_cast<int>(files.size());
   int itemsPerPage = (viewMode == ViewMode::Grid) ? 9 : UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, false);
 
-  buttonNavigator.onNextRelease([this, listSize] {
+  buttonNavigator.onNextRelease([this, listSize, itemsPerPage] {
+    size_t oldPage = selectorIndex / itemsPerPage;
     selectorIndex = ButtonNavigator::nextIndex(static_cast<int>(selectorIndex), listSize);
+    if (selectorIndex / itemsPerPage != oldPage) {
+        pageRendered = false; // New page
+    }
     requestUpdate();
   });
 
-  buttonNavigator.onPreviousRelease([this, listSize] {
+  buttonNavigator.onPreviousRelease([this, listSize, itemsPerPage] {
+    size_t oldPage = selectorIndex / itemsPerPage;
     selectorIndex = ButtonNavigator::previousIndex(static_cast<int>(selectorIndex), listSize);
+    if (selectorIndex / itemsPerPage != oldPage) {
+        pageRendered = false; // New page
+    }
     requestUpdate();
   });
 
   buttonNavigator.onNextContinuous([this, listSize, itemsPerPage] {
     selectorIndex = ButtonNavigator::nextPageIndex(static_cast<int>(selectorIndex), listSize, itemsPerPage);
+    pageRendered = false; // Page change
     requestUpdate();
   });
 
   buttonNavigator.onPreviousContinuous([this, listSize, itemsPerPage] {
     selectorIndex = ButtonNavigator::previousPageIndex(static_cast<int>(selectorIndex), listSize, itemsPerPage);
+    pageRendered = false; // Page change
     requestUpdate();
   });
 }
@@ -444,142 +487,142 @@ void MyLibraryActivity::renderGallery() {
 
   updatePageCache(pageStart, pageCount);
 
-  for (int i = 0; i < pageCount; ++i) {
-    const auto& item = pageCache[i];
-    int index = pageStart + i;
-    int col   = i % columns;
-    int row   = i / columns;
-    int x     = startXOffset + col * (coverWidth + metrics.verticalSpacing);
-    int y     = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
-    bool selected = (selectorIndex == index);
+  bool bufferRestored = pageBufferStored && restorePageBuffer();
 
-    if (item.isDir) {
-      // Kindle-style Folder look: Two horizontal lines on top for 'stacked' effect
-      renderer.fillRectDither(x + 6, y - 8, coverWidth - 12, 3, Color::DarkGray);
-      renderer.fillRectDither(x + 4, y - 4, coverWidth - 8, 3, Color::DarkGray);
+  if (!bufferRestored || !pageRendered) {
+    // Note: Do NOT clearScreen() here, as render() already drew the Header.
 
-      // Main Card
-      renderer.fillRoundedRect(x, y, coverWidth, coverHeight, 4, Color::White);
-      
-      // Top background thumbnail (60% = 108px)
-      if (item.hasFolderThumb) {
-        FsFile file;
-        if (Storage.openFileForRead("HOME", item.folderThumbPath, file)) {
-          Bitmap bmp(file);
-          if (bmp.parseHeaders() == BmpReaderError::Ok) {
-            renderer.setInvertEnabled(false);
-            // Draw top 108px of the thumbnail (maxWidth=0, maxHeight=0 to disable scaling)
-            int drawW = std::min((int)bmp.getWidth(), coverWidth);
-            renderer.drawBitmap(bmp, x + (coverWidth - drawW) / 2, y, 0, 0);
-            renderer.setInvertEnabled(renderer.isDarkMode());
-            maskTopCorners(renderer, x, y, coverWidth, 108, 4); // ONLY mask top corners
+    for (int i = 0; i < pageCount; ++i) {
+      const auto& item = pageCache[i];
+      int index = pageStart + i;
+      int col   = i % columns;
+      int row   = i / columns;
+      int x     = startXOffset + col * (coverWidth + metrics.verticalSpacing);
+      int y     = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
+
+      if (item.isDir) {
+        // Kindle-style Folder look: Two horizontal lines on top for 'stacked' effect
+        renderer.fillRectDither(x + 6, y - 8, coverWidth - 12, 3, Color::DarkGray);
+        renderer.fillRectDither(x + 4, y - 4, coverWidth - 8, 3, Color::DarkGray);
+
+        // Main Card
+        renderer.fillRoundedRect(x, y, coverWidth, coverHeight, 4, Color::White);
+        
+        // Top background thumbnail (60% = 108px)
+        if (item.hasFolderThumb) {
+          FsFile file;
+          if (Storage.openFileForRead("HOME", item.folderThumbPath, file)) {
+            Bitmap bmp(file);
+            if (bmp.parseHeaders() == BmpReaderError::Ok) {
+              renderer.setInvertEnabled(false);
+              int drawW = std::min((int)bmp.getWidth(), coverWidth);
+              renderer.drawBitmap(bmp, x + (coverWidth - drawW) / 2, y, 0, 0);
+              renderer.setInvertEnabled(renderer.isDarkMode());
+              maskTopCorners(renderer, x, y, coverWidth, 108, 4);
+            }
+            file.close();
           }
-          file.close();
-        }
-      }
-
-      // Bottom Gray Section (approx 40% of the card = 72px)
-      const int grayHeight = 72;
-      const int grayY = y + coverHeight - grayHeight;
-      renderer.fillRoundedRect(x, grayY, coverWidth, grayHeight, 4, false, false, true, true, Color::LightGray);
-      
-      renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-      
-      // Folder Name - centered in the gray area
-      const int lineH = 24;
-      int totalTextH = (int)item.wrappedName.size() * lineH;
-      int curLineY = grayY + (grayHeight - totalTextH) / 2;
-
-      for (const auto& line : item.wrappedName) {
-        int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
-        renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - tw) / 2, curLineY, line.c_str());
-        curLineY += lineH;
-      }
-      maskBottomCorners(renderer, x, y, coverWidth, coverHeight, 4); // Ensure clean card bottom
-
-      // NEW: Draw file count badge in TOP-RIGHT corner
-      if (item.fileCount >= 0) {
-        std::string countStr = std::to_string(item.fileCount);
-        int tw = renderer.getTextWidth(SMALL_FONT_ID, countStr.c_str());
-        int radius = 12;
-        int bx = x + coverWidth - radius - 6;
-        int by = y + radius + 6;
-        renderer.fillCircle(bx, by, radius, Color::Black);
-        renderer.drawText(SMALL_FONT_ID, bx - tw / 2, by - renderer.getLineHeight(SMALL_FONT_ID) / 2, countStr.c_str(), Color::White);
-      }
-    }
- else {
-      bool drawnThumb = false;
-      if (item.hasThumb) {
-        FsFile file;
-        if (Storage.openFileForRead("HOME", item.thumbPath, file)) {
-          Bitmap bmp(file);
-          if (bmp.parseHeaders() == BmpReaderError::Ok) {
-            renderer.setInvertEnabled(false);
-            renderer.drawBitmap(bmp, x + (coverWidth  - bmp.getWidth())  / 2,
-                                     y + (coverHeight - bmp.getHeight()) / 2,
-                                     bmp.getWidth(), bmp.getHeight());
-            renderer.setInvertEnabled(renderer.isDarkMode());
-            drawnThumb = true;
-            // Mask sharp corners of the bitmap so they don't leak outside the rounded border
-            maskCorners(renderer, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
-                        bmp.getWidth(), bmp.getHeight(), 4);
-            renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-          }
-          file.close();
-        }
-      }
-
-      if (!drawnThumb) {
-        // Fallback or demand-generation trigger
-        std::string failedPath = item.thumbPath + ".failed";
-        if (!item.hasThumb && !Storage.exists(failedPath.c_str())) {
-          GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
-          // Reuse fullPath calculation if needed, but for responsiveness, we skip heavy checks here.
-          // Actually, we must check if we should generate.
-          std::string prefix = basepath; if (prefix.back() != '/') prefix += "/";
-          std::string fullPath = prefix + item.path;
-          bool success = false;
-          if (StringUtils::checkFileExtension(fullPath, ".epub")) {
-            Epub epub(fullPath, "/.crosspoint");
-            if (epub.load(true, true)) success = epub.generateThumbBmp(180);
-          } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
-            Xtc xtc(fullPath, "/.crosspoint");
-            if (xtc.load()) success = xtc.generateThumbBmp(180);
-          }
-          if (!success) Storage.writeFile(failedPath.c_str(), "failed");
-          invalidateCache();
-          requestUpdate();
-          return; // Exit loop, redraw with new cache
         }
 
+        // Bottom Gray Section
+        const int grayHeight = 72;
+        const int grayY = y + coverHeight - grayHeight;
+        renderer.fillRoundedRect(x, grayY, coverWidth, grayHeight, 4, false, false, true, true, Color::LightGray);
         renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
-        renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
-        const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 32);
-        if (icon) renderer.drawIcon(icon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
+        
+        const int lineH = 24;
+        int totalTextH = (int)item.wrappedName.size() * lineH;
+        int curLineY = grayY + (grayHeight - totalTextH) / 2;
+        for (const auto& line : item.wrappedName) {
+          int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
+          renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - tw) / 2, curLineY, line.c_str());
+          curLineY += lineH;
+        }
+        maskBottomCorners(renderer, x, y, coverWidth, coverHeight, 4);
+
+        if (item.fileCount >= 0) {
+          std::string countStr = std::to_string(item.fileCount);
+          int tw = renderer.getTextWidth(SMALL_FONT_ID, countStr.c_str());
+          int radius = 12;
+          int bx = x + coverWidth - radius - 6;
+          int by = y + radius + 6;
+          renderer.fillCircle(bx, by, radius, Color::Black);
+          renderer.drawText(SMALL_FONT_ID, bx - tw / 2, by - renderer.getLineHeight(SMALL_FONT_ID) / 2, countStr.c_str(), Color::White);
+        }
+      } else {
+        bool drawnThumb = false;
+        if (item.hasThumb) {
+          FsFile file;
+          if (Storage.openFileForRead("HOME", item.thumbPath, file)) {
+            Bitmap bmp(file);
+            if (bmp.parseHeaders() == BmpReaderError::Ok) {
+              renderer.setInvertEnabled(false);
+              renderer.drawBitmap(bmp, x + (coverWidth  - bmp.getWidth())  / 2,
+                                       y + (coverHeight - bmp.getHeight()) / 2,
+                                       bmp.getWidth(), bmp.getHeight());
+              renderer.setInvertEnabled(renderer.isDarkMode());
+              drawnThumb = true;
+              maskCorners(renderer, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
+                          bmp.getWidth(), bmp.getHeight(), 4);
+              renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+            }
+            file.close();
+          }
+        }
+        if (!drawnThumb) {
+          std::string failedPath = item.thumbPath + ".failed";
+          if (!item.hasThumb && !Storage.exists(failedPath.c_str())) {
+            GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+            std::string prefix = basepath; if (prefix.back() != '/') prefix += "/";
+            std::string fullPath = prefix + item.path;
+            bool success = false;
+            if (StringUtils::checkFileExtension(fullPath, ".epub")) {
+              Epub epub(fullPath, "/.crosspoint");
+              if (epub.load(true, true)) success = epub.generateThumbBmp(180);
+            } else if (StringUtils::checkFileExtension(fullPath, ".xtc") || StringUtils::checkFileExtension(fullPath, ".xtch")) {
+              Xtc xtc(fullPath, "/.crosspoint");
+              if (xtc.load()) success = xtc.generateThumbBmp(180);
+            }
+            if (!success) Storage.writeFile(failedPath.c_str(), "failed");
+            invalidateCache();
+            requestUpdate();
+            return;
+          }
+          renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+          renderer.fillRoundedRect(x + 1, y + 1, coverWidth - 2, coverHeight - 2, 4, Color::White);
+          const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 32);
+          if (icon) renderer.drawIcon(icon, x + (coverWidth - 32) / 2, y + (coverHeight - 32) / 2, 32, 32);
+        }
       }
     }
 
-    if (selected) {
-      renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
+    // Page indicator
+    if (totalPages > 1) {
+      const int dotSize    = 8;
+      const int dotSpacing = 8;
+      const int totalDotW  = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
+      const int startX     = (pageWidth - totalDotW) / 2;
+      const int dotY       = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 4;
+      for (int p = 0; p < totalPages; p++) {
+        int ix = startX + p * (dotSize + dotSpacing);
+        if (p == currentPage) renderer.fillRect(ix, dotY, dotSize, dotSize, true);
+        else renderer.drawRect(ix, dotY, dotSize, dotSize, true);
+      }
     }
+
+    // Store SnapShot (Header + Thumbs + Dots)
+    pageRendered = true;
+    storePageBuffer();
   }
 
-  // Page indicator — 8x8 square dots, identical to Recents
-  if (totalPages > 1) {
-    const int dotSize    = 8;
-    const int dotSpacing = 8;
-    const int totalDotW  = (totalPages * dotSize) + ((totalPages - 1) * dotSpacing);
-    const int startX     = (pageWidth - totalDotW) / 2;
-    const int dotY       = pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 4;
-
-    for (int p = 0; p < totalPages; p++) {
-      int ix = startX + p * (dotSize + dotSpacing);
-      if (p == currentPage) {
-        renderer.fillRect(ix, dotY, dotSize, dotSize, true);
-      } else {
-        renderer.drawRect(ix, dotY, dotSize, dotSize, true);
-      }
+  // Selection Border (Always top)
+  for (int i = 0; i < pageCount; ++i) {
+    int col = i % columns;
+    int row = i / columns;
+    int x   = startXOffset + col * (coverWidth + metrics.verticalSpacing);
+    int y   = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
+    if (selectorIndex == (pageStart + i)) {
+      renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
     }
   }
 }
