@@ -14,9 +14,11 @@
 #include "Epub.h"
 #include "Xtc.h"
 #include "Bitmap.h"
+#include <unordered_map>
 
 namespace {
 constexpr unsigned long GO_HOME_MS = 1000;
+std::unordered_map<std::string, std::string> g_folderThumbCache;
 
 void maskCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
   for (int dy = 0; dy < r; dy++) {
@@ -355,18 +357,37 @@ void MyLibraryActivity::updatePageCache(int pageStart, int count) {
           remaining.clear();
         }
       }
-      // NEW: Count files inside for the folder badge
+      // NEW: Count files inside for the folder badge and find first thumbnail (with 20-file limit/cache)
       std::string prefix = basepath;
       if (prefix.back() != '/') prefix += "/";
       std::string fullPath = prefix + name;
+      
+      auto cacheIt = g_folderThumbCache.find(fullPath);
+      if (cacheIt != g_folderThumbCache.end()) {
+        item.hasFolderThumb = true;
+        item.folderThumbPath = cacheIt->second;
+      }
+
       auto dir = Storage.open(fullPath.c_str());
       if (dir && dir.isDirectory()) {
         item.fileCount = 0;
+        int checkLimit = 20;
         for (auto f = dir.openNextFile(); f; f = dir.openNextFile()) {
           char fname[256];
           f.getName(fname, sizeof(fname));
           if (fname[0] != '.' && strcmp(fname, "System Volume Information") != 0 && !f.isDirectory()) {
             item.fileCount++;
+            if (!item.hasFolderThumb && checkLimit > 0) {
+              checkLimit--;
+              std::string bookPath = fullPath + std::string(fname);
+              std::string sDir = LibraryStore::getStorageDirForPath(bookPath);
+              std::string tPath = "/.crosspoint/" + sDir + "/thumb_180.bmp";
+              if (Storage.exists(tPath.c_str())) {
+                item.hasFolderThumb = true;
+                item.folderThumbPath = tPath;
+                g_folderThumbCache[fullPath] = tPath;
+              }
+            }
           }
           f.close();
         }
@@ -420,29 +441,40 @@ void MyLibraryActivity::renderGallery() {
 
     if (item.isDir) {
       // Kindle-style Folder look: Two horizontal lines on top for 'stacked' effect
-      // Each line shortened by 4px (2px on each side), 3px thick, Grayscale.
       renderer.fillRectDither(x + 6, y - 8, coverWidth - 12, 3, Color::DarkGray);
       renderer.fillRectDither(x + 4, y - 4, coverWidth - 8, 3, Color::DarkGray);
 
       // Main Card
       renderer.fillRoundedRect(x, y, coverWidth, coverHeight, 4, Color::White);
       
-      // Bottom Gray Section (approx 65% of the card)
-      const int grayHeight = coverHeight * 65 / 100;
+      // Top background thumbnail (60% = 108px)
+      if (item.hasFolderThumb) {
+        FsFile file;
+        if (Storage.openFileForRead("HOME", item.folderThumbPath, file)) {
+          Bitmap bmp(file);
+          if (bmp.parseHeaders() == BmpReaderError::Ok) {
+            renderer.setInvertEnabled(false);
+            // Draw top 108px of the thumbnail (maxWidth=0, maxHeight=0 to disable scaling)
+            int drawW = std::min((int)bmp.getWidth(), coverWidth);
+            renderer.drawBitmap(bmp, x + (coverWidth - drawW) / 2, y, 0, 0);
+            renderer.setInvertEnabled(renderer.isDarkMode());
+            maskCorners(renderer, x, y, coverWidth, 108, 4); // Mask top corners
+          }
+          file.close();
+        }
+      }
+
+      // Bottom Gray Section (approx 40% of the card = 72px)
+      const int grayHeight = 72;
       const int grayY = y + coverHeight - grayHeight;
       renderer.fillRoundedRect(x, grayY, coverWidth, grayHeight, 4, false, false, true, true, Color::LightGray);
       
       renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
       
-      // Top-Left Icon (Books logo)
-      const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 24);
-      if (icon) renderer.drawIcon(icon, x + 8, y + 8, 24, 24);
-
-      // Adjust text position - centered in the gray area
+      // Folder Name - centered in the gray area
       const int lineH = 24;
-      int totalTextH = item.wrappedName.empty() ? 0 : (int)((item.wrappedName.size() - 1) * lineH + 12);
-      int startOffset = (grayHeight - totalTextH) / 2;
-      int curLineY = grayY + startOffset - 20;
+      int totalTextH = (int)item.wrappedName.size() * lineH;
+      int curLineY = grayY + (grayHeight - totalTextH) / 2;
 
       for (const auto& line : item.wrappedName) {
         int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
@@ -450,17 +482,18 @@ void MyLibraryActivity::renderGallery() {
         curLineY += lineH;
       }
 
-      // NEW: Draw file count badge in BOTTOM-LEFT corner (as per attachment)
+      // NEW: Draw file count badge in TOP-RIGHT corner
       if (item.fileCount >= 0) {
         std::string countStr = std::to_string(item.fileCount);
         int tw = renderer.getTextWidth(SMALL_FONT_ID, countStr.c_str());
         int radius = 12;
-        int bx = x + radius + 6;
-        int by = y + coverHeight - radius - 6;
+        int bx = x + coverWidth - radius - 6;
+        int by = y + radius + 6;
         renderer.fillCircle(bx, by, radius, Color::Black);
         renderer.drawText(SMALL_FONT_ID, bx - tw / 2, by - renderer.getLineHeight(SMALL_FONT_ID) / 2, countStr.c_str(), Color::White);
       }
-    } else {
+    }
+ else {
       bool drawnThumb = false;
       if (item.hasThumb) {
         FsFile file;

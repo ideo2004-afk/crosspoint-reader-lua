@@ -51,6 +51,8 @@ class MyLibraryActivity final : public Activity {
     bool hasThumb = false;
     std::string thumbPath;
     int fileCount = -1;  // -1 for non-dir or not calculated, >= 0 for dirs
+    bool hasFolderThumb = false;
+    std::string folderThumbPath;
   };
   std::vector<ItemRenderCache> pageCache;
   int cachedPageStart = -1;
