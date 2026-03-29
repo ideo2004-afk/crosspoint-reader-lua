@@ -18,6 +18,19 @@
 namespace {
 constexpr unsigned long GO_HOME_MS = 1000;
 
+void maskCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
+  for (int dy = 0; dy < r; dy++) {
+    for (int dx = 0; dx < r; dx++) {
+      if ((r - dx) * (r - dx) + (r - dy) * (r - dy) > r * r) {
+        renderer.drawPixel(x + dx, y + dy, false);                  // TL
+        renderer.drawPixel(x + w - 1 - dx, y + dy, false);          // TR
+        renderer.drawPixel(x + dx, y + h - 1 - dy, false);          // BL
+        renderer.drawPixel(x + w - 1 - dx, y + h - 1 - dy, false);  // BR
+      }
+    }
+  }
+}
+
 void sortFileList(std::vector<std::string>& strs) {
   std::sort(begin(strs), end(strs), [](const std::string& str1, const std::string& str2) {
     // Directories first
@@ -342,6 +355,23 @@ void MyLibraryActivity::updatePageCache(int pageStart, int count) {
           remaining.clear();
         }
       }
+      // NEW: Count files inside for the folder badge
+      std::string prefix = basepath;
+      if (prefix.back() != '/') prefix += "/";
+      std::string fullPath = prefix + name;
+      auto dir = Storage.open(fullPath.c_str());
+      if (dir && dir.isDirectory()) {
+        item.fileCount = 0;
+        for (auto f = dir.openNextFile(); f; f = dir.openNextFile()) {
+          char fname[256];
+          f.getName(fname, sizeof(fname));
+          if (fname[0] != '.' && strcmp(fname, "System Volume Information") != 0 && !f.isDirectory()) {
+            item.fileCount++;
+          }
+          f.close();
+        }
+        dir.close();
+      }
     } else {
       // Check thumbnail existence once and cache
       std::string prefix = basepath;
@@ -389,25 +419,46 @@ void MyLibraryActivity::renderGallery() {
     bool selected = (selectorIndex == index);
 
     if (item.isDir) {
-      // Folder: 'Stacked Papers' look
-      const int stackOffset = 3;
-      renderer.drawRoundedRect(x + stackOffset * 2, y, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
-      renderer.drawRoundedRect(x + stackOffset, y + stackOffset, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
-      renderer.fillRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 4, Color::White);
-      renderer.drawRoundedRect(x, y + stackOffset * 2, coverWidth - stackOffset * 2, coverHeight - stackOffset * 2, 1, 4, true);
-      
-      const uint8_t* icon = BaseTheme::iconForName(UIIcon::Folder, 48);
-      if (icon) renderer.drawIcon(icon, x + (coverWidth - 6 - 48) / 2, y + 110, 48, 48);
+      // Kindle-style Folder look: Two horizontal lines on top for 'stacked' effect
+      // Each line shortened by 4px (2px on each side), 3px thick, Grayscale.
+      renderer.fillRectDither(x + 6, y - 8, coverWidth - 12, 3, Color::DarkGray);
+      renderer.fillRectDither(x + 4, y - 4, coverWidth - 8, 3, Color::DarkGray);
 
+      // Main Card
+      renderer.fillRoundedRect(x, y, coverWidth, coverHeight, 4, Color::White);
+      
+      // Bottom Gray Section (approx 65% of the card)
+      const int grayHeight = coverHeight * 65 / 100;
+      const int grayY = y + coverHeight - grayHeight;
+      renderer.fillRoundedRect(x, grayY, coverWidth, grayHeight, 4, false, false, true, true, Color::LightGray);
+      
+      renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
+      
+      // Top-Left Icon (Books logo)
+      const uint8_t* icon = BaseTheme::iconForName(UIIcon::Book, 24);
+      if (icon) renderer.drawIcon(icon, x + 8, y + 8, 24, 24);
+
+      // Adjust text position - centered in the gray area
       const int lineH = 24;
       int totalTextH = item.wrappedName.empty() ? 0 : (int)((item.wrappedName.size() - 1) * lineH + 12);
-      int startOffset = 46 + (70 - totalTextH) / 2;
-      int curLineY = (y + 6) + startOffset;
+      int startOffset = (grayHeight - totalTextH) / 2;
+      int curLineY = grayY + startOffset - 20;
 
       for (const auto& line : item.wrappedName) {
         int tw = renderer.getTextWidth(NOTOSANS_12_FONT_ID, line.c_str());
-        renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - 6 - tw) / 2, curLineY, line.c_str());
+        renderer.drawText(NOTOSANS_12_FONT_ID, x + (coverWidth - tw) / 2, curLineY, line.c_str());
         curLineY += lineH;
+      }
+
+      // NEW: Draw file count badge in BOTTOM-LEFT corner (as per attachment)
+      if (item.fileCount >= 0) {
+        std::string countStr = std::to_string(item.fileCount);
+        int tw = renderer.getTextWidth(SMALL_FONT_ID, countStr.c_str());
+        int radius = 12;
+        int bx = x + radius + 6;
+        int by = y + coverHeight - radius - 6;
+        renderer.fillCircle(bx, by, radius, Color::Black);
+        renderer.drawText(SMALL_FONT_ID, bx - tw / 2, by - renderer.getLineHeight(SMALL_FONT_ID) / 2, countStr.c_str(), Color::White);
       }
     } else {
       bool drawnThumb = false;
@@ -422,6 +473,9 @@ void MyLibraryActivity::renderGallery() {
                                      bmp.getWidth(), bmp.getHeight());
             renderer.setInvertEnabled(renderer.isDarkMode());
             drawnThumb = true;
+            // Mask sharp corners of the bitmap so they don't leak outside the rounded border
+            maskCorners(renderer, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
+                        bmp.getWidth(), bmp.getHeight(), 4);
             renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
           }
           file.close();

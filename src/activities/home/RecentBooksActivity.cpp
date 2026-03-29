@@ -18,6 +18,19 @@
 
 namespace {
 constexpr unsigned long GO_HOME_MS = 1000;
+
+void maskCorners(const GfxRenderer& renderer, int x, int y, int w, int h, int r) {
+  for (int dy = 0; dy < r; dy++) {
+    for (int dx = 0; dx < r; dx++) {
+      if ((r - dx) * (r - dx) + (r - dy) * (r - dy) > r * r) {
+        renderer.drawPixel(x + dx, y + dy, false);                  // TL
+        renderer.drawPixel(x + w - 1 - dx, y + dy, false);          // TR
+        renderer.drawPixel(x + dx, y + h - 1 - dy, false);          // BL
+        renderer.drawPixel(x + w - 1 - dx, y + h - 1 - dy, false);  // BR
+      }
+    }
+  }
+}
 }  // namespace
 
 void RecentBooksActivity::loadRecentBooks() {
@@ -345,6 +358,9 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
             renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
                                 bmp.getWidth(), bmp.getHeight());
             renderer.setInvertEnabled(renderer.isDarkMode());
+            // Mask sharp corners of the bitmap so they don't leak outside the rounded border
+            maskCorners(renderer, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
+                        bmp.getWidth(), bmp.getHeight(), 4);
             renderer.drawRoundedRect(x, y, coverWidth, coverHeight, 1, 4, true);
             drawn = true;
           }

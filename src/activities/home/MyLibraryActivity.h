@@ -50,6 +50,7 @@ class MyLibraryActivity final : public Activity {
     std::vector<std::string> wrappedName;
     bool hasThumb = false;
     std::string thumbPath;
+    int fileCount = -1;  // -1 for non-dir or not calculated, >= 0 for dirs
   };
   std::vector<ItemRenderCache> pageCache;
   int cachedPageStart = -1;
