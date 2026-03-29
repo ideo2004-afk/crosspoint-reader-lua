@@ -30,11 +30,11 @@ void ReadingStatsStore::addReadingTime(const std::string& path, const std::strin
   // Record daily stats
   dailyReadingSeconds[today] += seconds;
   
-  // Cleanup: Keep only last 30 days (though we only display 7)
-  if (dailyReadingSeconds.size() > 30) {
+  // Cleanup: Keep only last 365 days
+  if (dailyReadingSeconds.size() > 365) {
     auto it = dailyReadingSeconds.begin();
     // Don't erase the fallback entry if it's the only one or if it's active
-    if (it->first != 19700101 || dailyReadingSeconds.size() > 31) {
+    if (it->first != 19700101 || dailyReadingSeconds.size() > 366) {
        dailyReadingSeconds.erase(it);
     }
   }
