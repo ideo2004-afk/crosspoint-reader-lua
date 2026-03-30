@@ -211,7 +211,7 @@ void HomeActivity::loop() {
   const bool powerConfirm = (SETTINGS.shortPwrBtn == CrossPointSettings::PAGE_TURN) &&
                              mappedInput.wasShortPressedRaw(HalGPIO::BTN_POWER, SETTINGS.getPowerButtonDuration());
 
-  // 1. Side Buttons (Physical 4 & 5 / BTN_UP & BTN_DOWN) - Strictly for Book Selection
+  // Side Buttons (Physical 4 & 5 / BTN_UP & BTN_DOWN) - Strictly for Book Selection
   if (mappedInput.wasPressedRaw(HalGPIO::BTN_UP) || mappedInput.wasPressedRaw(4)) {
     if (bookCount > 0) {
       focusZone = Zone::BOOKS;
@@ -227,7 +227,7 @@ void HomeActivity::loop() {
     }
   }
 
-  // 2. Front Buttons (Button 3 & 4 / Left & Right) - Strictly for Menu Selection
+  // Use logical buttons for Menu/Confirm/Back to respect user remapping settings
   if (mappedInput.wasReleased(MappedInputManager::Button::Left)) {
     if (focusZone == Zone::BOOKS) {
       focusZone = Zone::MENU;
@@ -247,7 +247,7 @@ void HomeActivity::loop() {
     requestUpdate();
   }
 
-  // 3. Confirm Button (Button 2)
+  // Confirm Button - Strictly triggers the focused action
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) || powerConfirm) {
     if (focusZone == Zone::BOOKS && !recentBooks.empty()) {
       freeCoverBuffer();
@@ -262,7 +262,7 @@ void HomeActivity::loop() {
     return;
   }
 
-  // Back Button (Button 1) - Toggles Theme Switcher Overlay
+  // Back Button - Strictly Toggles Theme Switcher Overlay
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     themeSwitcher.show();
     requestUpdate();
