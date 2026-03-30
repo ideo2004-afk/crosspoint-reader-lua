@@ -23,7 +23,8 @@ class HomeActivity final : public Activity {
   bool coverRendered = false;      // Track if cover has been rendered once
   bool abortLoading = false;
   bool coverBufferStored = false;
-  bool skipNextButtonCheck = false; 
+  bool skipNextButtonCheck = false;
+  bool pendingHalfRefresh = false;
   uint8_t* coverBuffer = nullptr;  // HomeActivity's own buffer for cover image
   uint32_t lastInputMs = 0;        // Cooldown for bounce
   std::vector<RecentBook> recentBooks;
@@ -39,6 +40,7 @@ class HomeActivity final : public Activity {
   void freeCoverBuffer();     // Free the stored cover buffer
   void loadRecentBooks(int maxBooks);
   void loadRecentCovers(int coverHeight);
+  void resetForThemeChange();
 
  public:
   explicit HomeActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,

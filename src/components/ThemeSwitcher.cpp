@@ -4,13 +4,7 @@
 #include "components/icons/home_cover.h"
 #include "components/icons/home_time.h"
 #include "components/UITheme.h"
-#include "activities/util/GoHomeActivity.h"
 #include <cstring>
-
-// Link to global systems defined in main.cpp
-extern GfxRenderer renderer;
-extern MappedInputManager mappedInputManager;
-extern void enterNewActivity(Activity* activity);
 
 ThemeSwitcher::ThemeSwitcher() {
   options = {
@@ -54,10 +48,7 @@ bool ThemeSwitcher::handleInput(const MappedInputManager& input) {
       SETTINGS.saveToFile();
       UITheme::getInstance().reload();
       visible = false;
-      
-      // Stage 2 & 3: Initiate the "Return Home" proxy sequence
-      enterNewActivity(new GoHomeActivity(renderer, mappedInputManager));
-      return true; // Applied!
+      return true; // Tell caller: theme was changed
     }
     visible = false;
     return false;

@@ -185,13 +185,34 @@ void HomeActivity::freeCoverBuffer() {
   coverBufferStored = false;
 }
 
+void HomeActivity::resetForThemeChange() {
+  freeCoverBuffer();
+  coverRendered = false;
+  coverBufferStored = false;
+  recentsLoaded = false;
+  recentsLoading = false;
+  firstRenderDone = false;
+  bookSelectorIndex = 0;
+  menuSelectorIndex = 0;
+  focusZone = Zone::BOOKS;
+
+  const auto& metrics = UITheme::getInstance().getMetrics();
+  loadRecentBooks(metrics.homeRecentBooksCount);
+
+  // 標記下一次 render 使用 HALF_REFRESH 消除殘影
+  pendingHalfRefresh = true;
+
+  skipNextButtonCheck = true;
+  requestUpdate();
+}
+
 void HomeActivity::loop() {
   if (themeSwitcher.isVisible()) {
       if (themeSwitcher.handleInput(mappedInput)) {
-          // Theme was changed and confirmed
-          requestUpdate();
+          // Theme changed — reset in-place
+          resetForThemeChange();
       } else {
-          // Theme selection changed (Redraw)
+          // Theme selection changed or cancelled — redraw
           requestUpdate();
       }
       return;
@@ -304,7 +325,12 @@ void HomeActivity::render(Activity::RenderLock&&) {
   // Draw Theme Switcher Overlay on top
   themeSwitcher.render(renderer);
 
-  renderer.displayBuffer();
+  if (pendingHalfRefresh) {
+    pendingHalfRefresh = false;
+    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  } else {
+    renderer.displayBuffer();
+  }
 
   if (!firstRenderDone) {
     firstRenderDone = true;

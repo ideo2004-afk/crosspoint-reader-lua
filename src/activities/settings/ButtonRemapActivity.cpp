@@ -172,14 +172,14 @@ bool ButtonRemapActivity::validateUnassigned(const uint8_t pressedButton) {
 const char* ButtonRemapActivity::getRoleName(const uint8_t roleIndex) const {
   switch (roleIndex) {
     case 0:
-      return BaseTheme::HINT_BACK;
+      return tr(STR_BACK);
     case 1:
-      return BaseTheme::HINT_OK;
+      return tr(STR_CONFIRM);
     case 2:
-      return BaseTheme::HINT_PREV;
+      return tr(STR_DIR_LEFT);
     case 3:
     default:
-      return BaseTheme::HINT_NEXT;
+      return tr(STR_DIR_RIGHT);
   }
 }
 
