@@ -140,11 +140,14 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         drawBatteryRight(renderer, Rect{batteryX, 5, FlowMetrics::values.batteryWidth, FlowMetrics::values.batteryHeight}, showBatteryPercentage);
 
         // 2. Draw Static Footer Hints
-        const char* h1 = (btn1 && strcmp(btn1, BaseTheme::HINT_BACK) == 0) ? nullptr : btn1;
-        const char* h2 = (btn2 && strcmp(btn2, BaseTheme::HINT_BACK) == 0) ? nullptr : btn2;
-        const char* h3 = (btn3 && strcmp(btn3, BaseTheme::HINT_BACK) == 0) ? nullptr : btn3;
-        const char* h4 = (btn4 && strcmp(btn4, BaseTheme::HINT_BACK) == 0) ? nullptr : btn4;
-        drawButtonHints(renderer, h1, h2, h3, h4, highlightMask);
+        drawButtonHints(renderer, btn1, btn2, btn3, btn4, highlightMask);
+
+        // 3. Draw Top-Left Date (Consistent with other themes)
+        if (SETTINGS.statusBarClock) {
+            char dateStr[32] = {};
+            const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "";
+            renderer.drawText(SMALL_FONT_ID, FlowMetrics::values.contentSidePadding, 5, dateText, Color::Black);
+        }
 
         // Draw V-shape indicator (3px black line)
         int cx = renderer.getScreenWidth() / 2;
@@ -152,7 +155,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         renderer.drawLine(cx - 20, cy, cx, cy + 12, 3, Color::Black);
         renderer.drawLine(cx, cy + 12, cx + 20, cy, 3, Color::Black);
 
-        // 3. Draw Static Clock/Date (Casio Style)
+        // 4. Draw Static Clock (Casio Style for Today's Reading Time)
         {
             uint32_t todaySeconds = READING_STATS.getTodaySeconds();
             uint32_t hours = todaySeconds / 3600;
@@ -170,13 +173,6 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
             int drawY = renderer.getScreenHeight() - digitH - 100;
 
             draw7SegmentTime(renderer, drawX, drawY, digitH, todayTimeStr, Color::Black, thickness);
-
-            if (SETTINGS.statusBarClock) {
-                char dateStr[32] = {};
-                const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "";
-                int dateWidth = renderer.getTextWidth(SMALL_FONT_ID, dateText);
-                renderer.drawText(SMALL_FONT_ID, renderer.getScreenWidth() - 32 - dateWidth, drawY - 25, dateText, Color::Black);
-            }
         }
 
         // --- Finished Base drawing (Static Background ONLY), store snapshot ---
@@ -287,7 +283,7 @@ void FlowTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   
   const int centerX = rect.width / 2;
   const int menuLeft = centerX - 190;
-  const int menuWidth = 209; // Reduced to 55% of 380 to avoid overlapping with clock
+  const int menuWidth = 209; 
   
   for (int i = 0; i < buttonCount; ++i) {
     const bool selected = (selectedIndex == i);
