@@ -5,11 +5,13 @@
 #include "../Activity.h"
 #include "./MyLibraryActivity.h"
 #include "util/ButtonNavigator.h"
+#include "components/ThemeSwitcher.h"
 
 struct RecentBook;
 struct Rect;
 
 class HomeActivity final : public Activity {
+  ThemeSwitcher themeSwitcher;
   ButtonNavigator buttonNavigator;
   enum class Zone { BOOKS, MENU };
   Zone focusZone = Zone::BOOKS;

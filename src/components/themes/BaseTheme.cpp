@@ -420,6 +420,12 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     renderer.drawText(SMALL_FONT_ID,
                       rect.x + rect.width - metrics.contentSidePadding - truncatedSubtitleWidth, subY,
                       truncatedSubtitle.c_str(), true);
+  } else if (!title) {
+    // Top-center V-shape indicator (3px black line)
+    int cx = (rect.x + rect.width) / 2;
+    int cy = rect.y + 16;
+    renderer.drawLine(cx - 20, cy, cx, cy + 12, 3, Color::Black);
+    renderer.drawLine(cx, cy + 12, cx + 20, cy, 3, Color::Black);
   }
 }
 

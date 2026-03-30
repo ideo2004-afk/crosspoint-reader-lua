@@ -146,6 +146,12 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         const char* h4 = (btn4 && strcmp(btn4, BaseTheme::HINT_BACK) == 0) ? nullptr : btn4;
         drawButtonHints(renderer, h1, h2, h3, h4, highlightMask);
 
+        // Draw V-shape indicator (3px black line)
+        int cx = renderer.getScreenWidth() / 2;
+        int cy = 16; 
+        renderer.drawLine(cx - 20, cy, cx, cy + 12, 3, Color::Black);
+        renderer.drawLine(cx, cy + 12, cx + 20, cy, 3, Color::Black);
+
         // 3. Draw Static Clock/Date (Casio Style)
         {
             uint32_t todaySeconds = READING_STATS.getTodaySeconds();

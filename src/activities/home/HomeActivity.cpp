@@ -186,6 +186,17 @@ void HomeActivity::freeCoverBuffer() {
 }
 
 void HomeActivity::loop() {
+  if (themeSwitcher.isVisible()) {
+      if (themeSwitcher.handleInput(mappedInput)) {
+          // Theme was changed and confirmed
+          requestUpdate();
+      } else {
+          // Theme selection changed (Redraw)
+          requestUpdate();
+      }
+      return;
+  }
+
   if (skipNextButtonCheck) {
     if (!mappedInput.isAnyPressed() && !mappedInput.wasAnyReleased()) {
       skipNextButtonCheck = false;
@@ -251,8 +262,10 @@ void HomeActivity::loop() {
     return;
   }
 
-  // Back Button (Button 1) - Inactive on Home screen as per user request
+  // Back Button (Button 1) - Toggles Theme Switcher Overlay
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+    themeSwitcher.show();
+    requestUpdate();
     return;
   }
 }
@@ -287,6 +300,9 @@ void HomeActivity::render(Activity::RenderLock&&) {
       static_cast<int>(menuItems.size()), focusZone == Zone::MENU ? menuSelectorIndex : -1,
       [&menuItems](int index) { return std::string(menuItems[index]); },
       [&menuIcons](int index) { return menuIcons[index]; });
+
+  // Draw Theme Switcher Overlay on top
+  themeSwitcher.render(renderer);
 
   renderer.displayBuffer();
 
