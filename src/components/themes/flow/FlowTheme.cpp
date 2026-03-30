@@ -137,7 +137,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         // 1. Draw Static Header Elements (Battery)
         const bool showBatteryPercentage = SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;
         const int batteryX = pageWidth - 12 - FlowMetrics::values.batteryWidth;
-        drawBatteryRight(renderer, Rect{batteryX, 5, FlowMetrics::values.batteryWidth, FlowMetrics::values.batteryHeight}, showBatteryPercentage);
+        drawBatteryRight(renderer, Rect{batteryX, 16, FlowMetrics::values.batteryWidth, FlowMetrics::values.batteryHeight}, showBatteryPercentage);
 
         // 2. Draw Static Footer Hints
         drawButtonHints(renderer, btn1, btn2, btn3, btn4, highlightMask);
@@ -146,7 +146,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         if (SETTINGS.statusBarClock) {
             char dateStr[32] = {};
             const char* dateText = TIME_SERVICE.formatDate(dateStr, sizeof(dateStr)) ? dateStr : "";
-            renderer.drawText(SMALL_FONT_ID, FlowMetrics::values.contentSidePadding, 5, dateText, Color::Black);
+            renderer.drawText(SMALL_FONT_ID, FlowMetrics::values.contentSidePadding, 16, dateText, Color::Black);
         }
 
         // Draw V-shape indicator (3px black line)
