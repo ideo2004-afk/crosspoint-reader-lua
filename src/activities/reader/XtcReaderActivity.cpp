@@ -591,26 +591,32 @@ void XtcReaderActivity::renderStatusBar() const {
 void XtcReaderActivity::renderBookmarkIndicator() const {
   if (isPageBookmarked(currentPage)) {
     const int sw = renderer.getScreenWidth();
-    const int rw = 20;
-    const int rh = 36;
-    const int rx = sw - rw - 30;
-    const int ry = 0;
-    const int notchH = 8;
-    const bool color = !SETTINGS.darkMode;
+    const int w = 60; // Width along top edge
+    const int h = 30; // Height along right edge
+    const int h2w2 = h*h + w*w;
+    const int sw_edge = sw - 1; // Ensure rightmost pixels are drawn
     
-    // Draw ribbon body
-    renderer.fillRect(rx, ry, rw, rh - notchH, color);
+    // Correct physical reflection of (sw_edge, 0) across the fold line from (sw_edge-w, 0) to (sw_edge, h)
+    const int tx = sw_edge - (2 * h * h * w) / h2w2;
+    const int ty = (2 * w * w * h) / h2w2;
 
-    // Draw notched bottom (filling line by line to create the triangle cutout)
-    for (int i = 0; i < notchH; i++) {
-      int y = rh - notchH + i;
-      int cutoutW = (i * rw) / notchH;
-      int sideW = (rw - cutoutW) / 2;
-      if (sideW > 0) {
-        renderer.fillRect(rx, ry + y, sideW, 1, color);
-        renderer.fillRect(rx + rw - sideW, ry + y, sideW, 1, color);
-      }
-    }
+    // 1. Draw the black background "hole" where the paper was folded from
+    int hx[3] = {sw_edge - w, sw_edge, sw_edge};
+    int hy[3] = {0, 0, h};
+    renderer.fillPolygon(hx, hy, 3, true);
+
+    // 2. Draw the folded flap (mirrored triangle from the corner)
+    int fx[3] = {sw_edge - w, sw_edge, tx};
+    int fy[3] = {0, h, ty};
+    renderer.fillPolygon(fx, fy, 3, false); // Fill with white
+    renderer.drawLine(sw_edge - w, 0, tx, ty, true); // Edge 1 (fold tip back to top)
+    renderer.drawLine(sw_edge, h, tx, ty, true);     // Edge 2 (fold tip back to right side)
+    
+    // 3. Draw a sharp acute shadow triangle at the bottom-right of the fold area (on the page)
+    // Enlarged for better visibility on 1-bit E-ink
+    int sx[3] = {sw_edge, sw_edge - 19, sw_edge - 13};
+    int sy[3] = {h, h + 14, h + 19};
+    renderer.fillPolygon(sx, sy, 3, true);
   }
 }
 

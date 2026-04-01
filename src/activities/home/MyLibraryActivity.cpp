@@ -144,8 +144,7 @@ void MyLibraryActivity::onEnter() {
   loadFiles();
   selectorIndex = 0;
   invalidateCache();
-  pageRendered = false;
-  pageBufferStored = false;
+  freePageBuffer();
   skipNextButtonCheck = true;
   requestUpdate();
 }
@@ -212,6 +211,7 @@ void MyLibraryActivity::loop() {
           viewMode = (viewMode == ViewMode::Grid) ? ViewMode::List : ViewMode::Grid;
           menuState = MenuState::None;
           selectorIndex = 0; // Reset index when switching modes for simplicity
+          freePageBuffer();
         } else if (menuSelectedIndex == 1) { // Delete
           menuState = MenuState::ConfirmDelete;
           menuSelectedIndex = 1; // Default to "No"
@@ -283,7 +283,7 @@ void MyLibraryActivity::loop() {
     size_t oldPage = selectorIndex / itemsPerPage;
     selectorIndex = ButtonNavigator::nextIndex(static_cast<int>(selectorIndex), listSize);
     if (selectorIndex / itemsPerPage != oldPage) {
-        pageRendered = false; // New page
+        freePageBuffer(); // New page
     }
     requestUpdate();
   });
@@ -292,20 +292,20 @@ void MyLibraryActivity::loop() {
     size_t oldPage = selectorIndex / itemsPerPage;
     selectorIndex = ButtonNavigator::previousIndex(static_cast<int>(selectorIndex), listSize);
     if (selectorIndex / itemsPerPage != oldPage) {
-        pageRendered = false; // New page
+        freePageBuffer(); // New page
     }
     requestUpdate();
   });
 
   buttonNavigator.onNextContinuous([this, listSize, itemsPerPage] {
     selectorIndex = ButtonNavigator::nextPageIndex(static_cast<int>(selectorIndex), listSize, itemsPerPage);
-    pageRendered = false; // Page change
+    freePageBuffer(); // Page change
     requestUpdate();
   });
 
   buttonNavigator.onPreviousContinuous([this, listSize, itemsPerPage] {
     selectorIndex = ButtonNavigator::previousPageIndex(static_cast<int>(selectorIndex), listSize, itemsPerPage);
-    pageRendered = false; // Page change
+    freePageBuffer(); // Page change
     requestUpdate();
   });
 }
@@ -622,7 +622,7 @@ void MyLibraryActivity::renderGallery() {
     int x   = startXOffset + col * (coverWidth + metrics.verticalSpacing);
     int y   = contentTop + gridTopOffset + row * (coverHeight + rowSpacing);
     if (selectorIndex == (pageStart + i)) {
-      renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
+      renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 3, 5, true);
     }
   }
 }

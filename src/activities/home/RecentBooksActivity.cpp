@@ -376,7 +376,7 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
 
       // Selection box — 2px rounded rect, same as CoverTheme
       if (bookIdx == selectorIndex) {
-        renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 2, 5, true);
+        renderer.drawRoundedRect(x - 2, y - 2, coverWidth + 4, coverHeight + 4, 3, 5, true);
       }
     }
 
