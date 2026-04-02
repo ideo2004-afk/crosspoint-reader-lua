@@ -16,7 +16,7 @@
 #include "components/icons/cover.h"
 
 namespace {
-constexpr int mainCoverHeight = 180;
+constexpr int mainCoverHeight = 320;
 constexpr int smallCoverHeight = 180;
 constexpr int cornerRadius = 6;
 constexpr int bookCornerRadius = 4;
@@ -98,16 +98,13 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
   const int pageWidth = renderer.getScreenWidth();
   const int horizontalPadding = 25;
 
-  const int mainW = 124;
+  const int mainW = 220;
   const int mainH = mainCoverHeight;
   const int mainX = 30; // Left padding
   const int mainY = rect.y + 20;
 
-  const int smallW = 124;
-  const int smallH = smallCoverHeight;
-  const int spacing = (pageWidth - (smallW * 3) - (horizontalPadding * 2)) / 2;
-  const int labelY = mainY + mainH + 29; // Moved up 16px from (45)
-  const int smallY = mainY + mainH + 85; // Previous absolute position (approx 341)
+  const int infoX = mainX + mainW + 28; 
+  int infoTopY = mainY + 30;
 
   // Draw Header (Battery & Date) - Every frame for TimeTheme
   // We use topPadding (5) as y to match sub-pages like Library/Settings.
@@ -127,19 +124,18 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         drawBookCover(renderer, recentBooks[0], mainX, mainY, mainW, mainH, false, true);
 
         // Metadata for Main Book
-        int infoX = mainX + mainW + 30;
-        int infoY = mainY + 16; // Moved up 24px (was 40)
+        int infoY = infoTopY;
         
         // Title for Main Book
         std::string title = recentBooks[0].title;
         renderer.drawText(UI_12_FONT_ID, infoX, infoY, renderer.truncatedText(UI_12_FONT_ID, title.c_str(), pageWidth - infoX - 20).c_str(), Black, EpdFontFamily::BOLD);
-        infoY += 43; 
+        infoY += 48; 
         
         // Author
         std::string author = recentBooks[0].author;
         if (author.empty()) author = "Unknown";
         renderer.drawText(UI_10_FONT_ID, infoX, infoY, renderer.truncatedText(UI_10_FONT_ID, author.c_str(), pageWidth - infoX - 20).c_str(), DarkGray);
-        infoY += 35; // Reduced spacing to match smaller cover
+        infoY += 40; 
         
         // Reading Time
         const std::string& bookPath = recentBooks[0].path;
@@ -152,8 +148,9 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         renderer.drawText(SMALL_FONT_ID, infoX, infoY, timeStr.c_str(), DarkGray);
         
         // Progress Bar (Main Book)
-        int progressY = infoY + 25;
-        int progressW = 220;
+        int progressY = infoY + 32;
+        int progressW = pageWidth - infoX - 40;
+        if (progressW > 240) progressW = 240;
         int progressH = 8;
         renderer.fillRectDither(infoX, progressY, progressW, progressH, Color::LightGray);
         int filledW = (recentBooks[0].progressPercent * progressW) / 100;
@@ -161,31 +158,53 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
             renderer.fillRect(infoX, progressY, filledW, progressH, Black);
         }
 
-        // Percentage Label (Hardcoded English only)
+        // Percentage Label
         char progBuf[16];
         snprintf(progBuf, sizeof(progBuf), "%02d%% Read", recentBooks[0].progressPercent);
-        renderer.drawText(SMALL_FONT_ID, infoX, progressY + progressH + 5, progBuf, DarkGray);
+        renderer.drawText(SMALL_FONT_ID, infoX, progressY + progressH + 8, progBuf, DarkGray);
 
-        // Draw "Recent Books" label
-        renderer.drawText(NOTOSANS_14_FONT_ID, 30, labelY, "Recent Books", Black, EpdFontFamily::BOLD);
+        // --- 3. Reading Stats Chart (replacing "Recent Books") ---
+        int chartY = mainY + mainH + 42;
+        int chartHeight = 84; 
+        auto weeklyStats = READING_STATS.getRecentDays(7);
+        uint32_t maxSecs = 1;
+        for (const auto& day : weeklyStats) if (day.seconds > maxSecs) maxSecs = day.seconds;
 
-        // 3 Small covers (WITHOUT selection)
-        for (int i = 1; i < 4 && i < count; ++i) {
-            int sx = horizontalPadding + (i - 1) * (smallW + spacing);
-            drawBookCover(renderer, recentBooks[i], sx, smallY, smallW, smallH, false, false);
+        int chartLeft = horizontalPadding + 10;
+        int chartRightPadding = horizontalPadding + 10;
+        int chartAvailableWidth = pageWidth - chartLeft - chartRightPadding;
+        int barSpacing = 6;
+        int barWidth = (chartAvailableWidth - (barSpacing * 6)) / 7;
+        
+        for (int i = 0; i < 7; ++i) {
+            int x = chartLeft + i * (barWidth + barSpacing);
+            float ratio = (float)weeklyStats[i].seconds / maxSecs;
+            int h = (int)(ratio * chartHeight);
+            if (h < 2 && weeklyStats[i].seconds > 0) h = 2;
             
-            // Draw Reading Progress Percentage (Small/Gray)
-            char progBuf[8];
-            snprintf(progBuf, sizeof(progBuf), "%d%%", recentBooks[i].progressPercent);
-            int textW = renderer.getTextWidth(SMALL_FONT_ID, progBuf);
-            renderer.drawText(SMALL_FONT_ID, sx + (smallW - textW) / 2, smallY + smallH + 6, progBuf, DarkGray);
+            // Draw bar
+            if (h > 0) {
+                renderer.fillRect(x, chartY + chartHeight - h, barWidth, h, Black);
+            } else {
+                renderer.drawRect(x, chartY + chartHeight - 1, barWidth, 1, Black);
+            }
+
+            // Days label (S M T W T F S)
+            const char* days[] = {"S", "M", "T", "W", "T", "F", "S"};
+            struct tm t = {};
+            t.tm_year = (weeklyStats[i].date / 10000) - 1900;
+            t.tm_mon = ((weeklyStats[i].date / 100) % 100) - 1;
+            t.tm_mday = (weeklyStats[i].date % 100);
+            mktime(&t);
+            int tw = renderer.getTextWidth(SMALL_FONT_ID, days[t.tm_wday]);
+            renderer.drawText(SMALL_FONT_ID, x + (barWidth - tw) / 2, chartY + chartHeight + 8, days[t.tm_wday]);
         }
 
-        // --- Draw Statistics Tiles in the remaining space ---
+        // --- 4. Statistics Tiles (moved up) ---
         const int tileSpacing = 12;
         const int tileW = (pageWidth - (horizontalPadding * 2) - (tileSpacing * 2)) / 3;
-        const int tileH = 108; // Adjusted height (was 120)
-        const int tileY = smallY + smallH + 42; // Moved down 12px (was 30)
+        const int tileH = 104; 
+        const int tileY = chartY + chartHeight + 46; 
 
         uint32_t totalSecs = READING_STATS.totalReadingSeconds;
         uint32_t totalHours = totalSecs / 3600;
@@ -212,26 +231,21 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
             // Draw value (Large/Bold/Black)
             int tvw = renderer.getTextWidth(NOTOSANS_14_FONT_ID, stats[i].value.c_str());
-            renderer.drawText(NOTOSANS_14_FONT_ID, tx + (tileW - tvw) / 2, tileY + 22, stats[i].value.c_str(), Black, EpdFontFamily::BOLD);
+            renderer.drawText(NOTOSANS_14_FONT_ID, tx + (tileW - tvw) / 2, tileY + 20, stats[i].value.c_str(), Black, EpdFontFamily::BOLD);
 
             // Draw label (Small/Black)
             int tlw = renderer.getTextWidth(SMALL_FONT_ID, stats[i].label.c_str());
-            renderer.drawText(SMALL_FONT_ID, tx + (tileW - tlw) / 2, tileY + 62, stats[i].label.c_str(), Black);
+            renderer.drawText(SMALL_FONT_ID, tx + (tileW - tlw) / 2, tileY + 60, stats[i].label.c_str(), Black);
         }
 
-        // Store SnapShot after drawing books + stats
+        // Store SnapShot after drawing books + chart + stats
         coverRendered = true;
         coverBufferStored = storeCoverBuffer();
     }
 
     // --- Draw Selection Border ON TOP (Every frame, outside buffer check) ---
-    if (hasSelection) {
-        if (currentSelector == 0) {
-            drawBookCover(renderer, recentBooks[0], mainX, mainY, mainW, mainH, true, true);
-        } else if (currentSelector < 4 && currentSelector < count) {
-            int sx = horizontalPadding + (currentSelector - 1) * (smallW + spacing);
-            drawBookCover(renderer, recentBooks[currentSelector], sx, smallY, smallW, smallH, true, false);
-        }
+    if (hasSelection && currentSelector == 0) {
+        drawBookCover(renderer, recentBooks[0], mainX, mainY, mainW, mainH, true, true);
     }
   } else {
     drawEmptyRecents(renderer, rect);

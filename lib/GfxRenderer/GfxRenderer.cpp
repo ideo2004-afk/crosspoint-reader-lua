@@ -754,12 +754,10 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
   LOG_DBG("GFX", "Cropping %dx%d by %dx%d pix, is %s", bitmap.getWidth(), bitmap.getHeight(), cropPixX, cropPixY,
           bitmap.isTopDown() ? "top-down" : "bottom-up");
 
-  if (maxWidth > 0 && (1.0f - cropX) * bitmap.getWidth() > maxWidth) {
-    scale = static_cast<float>(maxWidth) / static_cast<float>((1.0f - cropX) * bitmap.getWidth());
-    isScaled = true;
-  }
-  if (maxHeight > 0 && (1.0f - cropY) * bitmap.getHeight() > maxHeight) {
-    scale = std::min(scale, static_cast<float>(maxHeight) / static_cast<float>((1.0f - cropY) * bitmap.getHeight()));
+  if (maxWidth > 0 && maxHeight > 0) {
+    float scaleX = static_cast<float>(maxWidth) / static_cast<float>((1.0f - cropX) * bitmap.getWidth());
+    float scaleY = static_cast<float>(maxHeight) / static_cast<float>((1.0f - cropY) * bitmap.getHeight());
+    scale = std::min(scaleX, scaleY);
     isScaled = true;
   }
   LOG_DBG("GFX", "Scaling by %f - %s", scale, isScaled ? "scaled" : "not scaled");
@@ -777,18 +775,7 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
     return;
   }
 
-  for (int bmpY = 0; bmpY < (bitmap.getHeight() - cropPixY); bmpY++) {
-    // The BMP's (0, 0) is the bottom-left corner (if the height is positive, top-left if negative).
-    // Screen's (0, 0) is the top-left corner.
-    int screenY = -cropPixY + (bitmap.isTopDown() ? bmpY : bitmap.getHeight() - 1 - bmpY);
-    if (isScaled) {
-      screenY = std::floor(screenY * scale);
-    }
-    screenY += y;  // the offset should not be scaled
-    if (screenY >= getScreenHeight()) {
-      break;
-    }
-
+  for (int bmpY = 0; bmpY < bitmap.getHeight(); bmpY++) {
     if (bitmap.readNextRow(outputRow, rowBytes) != BmpReaderError::Ok) {
       LOG_ERR("GFX", "Failed to read row %d from bitmap", bmpY);
       free(outputRow);
@@ -796,38 +783,42 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
       return;
     }
 
-    if (screenY < 0) {
+    if (bmpY < cropPixY || bmpY >= bitmap.getHeight() - cropPixY) {
       continue;
     }
 
-    if (bmpY < cropPixY) {
-      // Skip the row if it's outside the crop area
-      continue;
-    }
+    // Determine the range of screen rows this source row covers
+    int srcYRelative = bitmap.isTopDown() ? (bmpY - cropPixY) : (bitmap.getHeight() - 1 - bmpY - cropPixY);
+    int syStart = std::floor(srcYRelative * scale);
+    int syEnd = std::max(syStart + 1, (int)std::floor((srcYRelative + 1) * scale));
 
-    for (int bmpX = cropPixX; bmpX < bitmap.getWidth() - cropPixX; bmpX++) {
-      int screenX = bmpX - cropPixX;
-      if (isScaled) {
-        screenX = std::floor(screenX * scale);
-      }
-      screenX += x;  // the offset should not be scaled
-      if (screenX >= getScreenWidth()) {
-        break;
-      }
-      if (screenX < 0) {
-        continue;
-      }
+    for (int sy = syStart; sy < syEnd; sy++) {
+      int screenY = y + sy;
+      if (screenY < 0) continue;
+      if (screenY >= getScreenHeight()) break;
 
-      const uint8_t val = outputRow[bmpX / 4] >> (6 - ((bmpX * 2) % 8)) & 0x3;
+      for (int bmpX = cropPixX; bmpX < bitmap.getWidth() - cropPixX; bmpX++) {
+        int srcXRelative = bmpX - cropPixX;
+        int sxStart = std::floor(srcXRelative * scale);
+        int sxEnd = std::max(sxStart + 1, (int)std::floor((srcXRelative + 1) * scale));
 
-      if (renderMode == BW && val < 3) {
-        drawPixel(screenX, screenY);
-      } else if (renderMode == BW && val == 3 && _darkMode && !_invertEnabled) {
-        drawPixel(screenX, screenY, false);  // Explicit white for dark-bg cover exception
-      } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
-        drawPixel(screenX, screenY, false);
-      } else if (renderMode == GRAYSCALE_LSB && val == 1) {
-        drawPixel(screenX, screenY, false);
+        const uint8_t val = outputRow[bmpX / 4] >> (6 - ((bmpX * 2) % 8)) & 0x3;
+
+        for (int sx = sxStart; sx < sxEnd; sx++) {
+          int screenX = x + sx;
+          if (screenX < 0) continue;
+          if (screenX >= getScreenWidth()) break;
+
+          if (renderMode == BW && val < 3) {
+            drawPixel(screenX, screenY);
+          } else if (renderMode == BW && val == 3 && _darkMode && !_invertEnabled) {
+            drawPixel(screenX, screenY, false);
+          } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
+            drawPixel(screenX, screenY, false);
+          } else if (renderMode == GRAYSCALE_LSB && val == 1) {
+            drawPixel(screenX, screenY, false);
+          }
+        }
       }
     }
   }

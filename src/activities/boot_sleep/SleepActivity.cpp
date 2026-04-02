@@ -133,52 +133,61 @@ void SleepActivity::renderDefaultSleepScreen() const {
 }
 
 void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
-  int x, y;
-  const auto pageWidth = renderer.getScreenWidth();
-  const auto pageHeight = renderer.getScreenHeight();
+  const int pageWidth = renderer.getScreenWidth();
+  const int pageHeight = renderer.getScreenHeight();
+  const float screenRatio = static_cast<float>(pageWidth) / static_cast<float>(pageHeight);
+  const float imgRatio = static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
+
+  int targetX = 0, targetY = 0;
+  int targetW = pageWidth;
+  int targetH = pageHeight;
   float cropX = 0, cropY = 0;
 
-  LOG_DBG("SLP", "bitmap %d x %d, screen %d x %d", bitmap.getWidth(), bitmap.getHeight(), pageWidth, pageHeight);
-  if (bitmap.getWidth() > pageWidth || bitmap.getHeight() > pageHeight) {
-    // image will scale, make sure placement is right
-    float ratio = static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
-    const float screenRatio = static_cast<float>(pageWidth) / static_cast<float>(pageHeight);
+  // Book cover mode always fills the screen (Crop). Other modes follow the setting.
+  bool shouldFill = (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::COVER) ||
+                    (SETTINGS.sleepScreenCoverMode == CrossPointSettings::SLEEP_SCREEN_COVER_MODE::CROP);
 
-    LOG_DBG("SLP", "bitmap ratio: %f, screen ratio: %f", ratio, screenRatio);
-    if (ratio > screenRatio) {
-      // image wider than viewport ratio, scaled down image needs to be centered vertically
-      if (SETTINGS.sleepScreenCoverMode == CrossPointSettings::SLEEP_SCREEN_COVER_MODE::CROP) {
-        cropX = 1.0f - (screenRatio / ratio);
-        LOG_DBG("SLP", "Cropping bitmap x: %f", cropX);
-        ratio = (1.0f - cropX) * static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
+  if (shouldFill) {
+      // Scale to FILL (Cover mode)
+      if (imgRatio > screenRatio) {
+          // Source is wider than screen: scale to match height, crop width
+          cropX = 1.0f - (screenRatio / imgRatio);
+          cropY = 0;
+      } else {
+          // Source is taller than screen: scale to match width, crop height
+          cropX = 0;
+          cropY = 1.0f - (imgRatio / screenRatio);
       }
-      x = 0;
-      y = std::round((static_cast<float>(pageHeight) - static_cast<float>(pageWidth) / ratio) / 2);
-      LOG_DBG("SLP", "Centering with ratio %f to y=%d", ratio, y);
-    } else {
-      // image taller than viewport ratio, scaled down image needs to be centered horizontally
-      if (SETTINGS.sleepScreenCoverMode == CrossPointSettings::SLEEP_SCREEN_COVER_MODE::CROP) {
-        cropY = 1.0f - (ratio / screenRatio);
-        LOG_DBG("SLP", "Cropping bitmap y: %f", cropY);
-        ratio = static_cast<float>(bitmap.getWidth()) / ((1.0f - cropY) * static_cast<float>(bitmap.getHeight()));
-      }
-      x = std::round((static_cast<float>(pageWidth) - static_cast<float>(pageHeight) * ratio) / 2);
-      y = 0;
-      LOG_DBG("SLP", "Centering with ratio %f to x=%d", ratio, x);
-    }
+      targetX = 0;
+      targetY = 0;
+      targetW = pageWidth;
+      targetH = pageHeight;
   } else {
-    // center the image
-    x = (pageWidth - bitmap.getWidth()) / 2;
-    y = (pageHeight - bitmap.getHeight()) / 2;
+      // Scale to FIT (Contain mode)
+      if (imgRatio > screenRatio) {
+          // Source is wider than screen: scale to match width, center vertically
+          targetW = pageWidth;
+          targetH = std::round(static_cast<float>(pageWidth) / imgRatio);
+          targetX = 0;
+          targetY = (pageHeight - targetH) / 2;
+      } else {
+          // Source is taller than screen: scale to match height, center horizontally
+          targetH = pageHeight;
+          targetW = std::round(static_cast<float>(pageHeight) * imgRatio);
+          targetX = std::round((static_cast<float>(pageWidth) - targetW) / 2.0f);
+          targetY = 0;
+      }
+      cropX = 0;
+      cropY = 0;
   }
 
-  LOG_DBG("SLP", "drawing to %d x %d", x, y);
+  LOG_DBG("SLP", "drawing to %d x %d (size %d x %d, crop %f x %f)", targetX, targetY, targetW, targetH, cropX, cropY);
   renderer.clearScreen();
 
   const bool hasGreyscale = bitmap.hasGreyscale() &&
                             SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
 
-  renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
+  renderer.drawBitmap(bitmap, targetX, targetY, targetW, targetH, cropX, cropY);
 
   if (SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED_BLACK_AND_WHITE) {
     renderer.invertScreen();
@@ -190,13 +199,13 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
     bitmap.rewindToData();
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
-    renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
+    renderer.drawBitmap(bitmap, targetX, targetY, targetW, targetH, cropX, cropY);
     renderer.copyGrayscaleLsbBuffers();
 
     bitmap.rewindToData();
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
-    renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
+    renderer.drawBitmap(bitmap, targetX, targetY, targetW, targetH, cropX, cropY);
     renderer.copyGrayscaleMsbBuffers();
 
     renderer.displayGrayBuffer();

@@ -205,14 +205,18 @@ void HomeActivity::resetForThemeChange() {
   skipNextButtonCheck = true;
   requestUpdate();
 }
-
 void HomeActivity::loop() {
   if (themeSwitcher.isVisible()) {
       if (themeSwitcher.handleInput(mappedInput)) {
           // Theme changed — reset in-place
           resetForThemeChange();
+      } else if (!themeSwitcher.isVisible()) {
+          // Switcher was just hidden (cancelled or same theme confirmed)
+          // Redraw and skip one input check to prevent the same button from triggering activities
+          skipNextButtonCheck = true;
+          requestUpdate();
       } else {
-          // Theme selection changed or cancelled — redraw
+          // Theme selection changed but still visible — redraw
           requestUpdate();
       }
       return;
@@ -286,6 +290,7 @@ void HomeActivity::loop() {
   // Back Button - Strictly Toggles Theme Switcher Overlay
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     themeSwitcher.show();
+    skipNextButtonCheck = true;
     requestUpdate();
     return;
   }
@@ -300,7 +305,13 @@ void HomeActivity::render(Activity::RenderLock&&) {
   bool bufferRestored = coverBufferStored && restoreCoverBuffer();
 
   // Calculate compatible index for drawing (FlowTheme, etc.)
-  int compatibleSelectorIndex = (focusZone == Zone::BOOKS) ? bookSelectorIndex : (1000 + bookSelectorIndex);
+  // Hide focus if ThemeSwitcher is visible
+  int compatibleSelectorIndex;
+  if (themeSwitcher.isVisible()) {
+      compatibleSelectorIndex = -1;
+  } else {
+      compatibleSelectorIndex = (focusZone == Zone::BOOKS) ? bookSelectorIndex : (1000 + bookSelectorIndex);
+  }
 
   const auto labels = mappedInput.mapLabels(BaseTheme::HINT_BACK, BaseTheme::HINT_OK, BaseTheme::HINT_PREV, BaseTheme::HINT_NEXT);
   GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
@@ -318,7 +329,7 @@ void HomeActivity::render(Activity::RenderLock&&) {
       renderer,
       Rect{0, menuY, pageWidth,
            pageHeight - menuY - metrics.verticalSpacing},
-      static_cast<int>(menuItems.size()), focusZone == Zone::MENU ? menuSelectorIndex : -1,
+      static_cast<int>(menuItems.size()), (focusZone == Zone::MENU && !themeSwitcher.isVisible()) ? menuSelectorIndex : -1,
       [&menuItems](int index) { return std::string(menuItems[index]); },
       [&menuIcons](int index) { return menuIcons[index]; });
 

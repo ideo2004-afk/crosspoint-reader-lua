@@ -22,9 +22,9 @@ constexpr ThemeMetrics values = {.batteryWidth = 16,
                                  .scrollBarWidth = 4,
                                  .scrollBarRightOffset = 5,
                                  .homeTopPadding = 56,
-                                 .homeCoverHeight = 180,      // Main cover height (Time: 180)
+                                 .homeCoverHeight = 320,      // Main cover height (Time: 320)
                                  .homeCoverTileHeight = 600,  // Compact tile height
-                                 .homeRecentBooksCount = 4,   // 1 main + 3 small
+                                 .homeRecentBooksCount = 1,   // Only showing 1 main book in TimeTheme
                                  .buttonHintsHeight = 40,
                                  .sideButtonHintsWidth = 30,
                                  .progressBarHeight = 16,
