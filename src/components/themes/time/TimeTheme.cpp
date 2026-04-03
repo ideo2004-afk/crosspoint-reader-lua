@@ -119,7 +119,7 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     if (bufferRestored) {
         coverRendered = true;
         coverBufferStored = true;
-    } else if (!coverRendered) {
+    } else {
         // --- Full Render Base Layout (WITHOUT selection) ---
         drawBookCover(renderer, recentBooks[0], mainX, mainY, mainW, mainH, false, true);
 
@@ -163,7 +163,7 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         snprintf(progBuf, sizeof(progBuf), "%02d%% Read", recentBooks[0].progressPercent);
         renderer.drawText(SMALL_FONT_ID, infoX, progressY + progressH + 8, progBuf, DarkGray);
 
-        // --- 3. Reading Stats Chart (replacing "Recent Books") ---
+        // --- 3. Reading Stats Chart ---
         int chartY = mainY + mainH + 42;
         int chartHeight = 84; 
         auto weeklyStats = READING_STATS.getRecentDays(7);
@@ -219,7 +219,7 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         std::vector<StatTile> stats = {
             {std::to_string(READING_STATS.getTodaySeconds() / 60) + "m", "reading today"},
             {std::string(totalBuf), "reading time"},
-            {std::to_string(READING_STATS.getLifetimeActiveDays()), "days of reading"}
+            {std::to_string(READING_STATS.getLifetimeActiveDays()) + "d", "days of reading"}
         };
 
         for (int i = 0; i < 3; ++i) {
