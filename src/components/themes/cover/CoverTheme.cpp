@@ -116,7 +116,8 @@ void CoverTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std
     if (bufferRestored) {
         coverRendered = true;
         coverBufferStored = true;
-    } else if (!coverRendered) {
+    } else {
+        // Redraw if buffer cannot be restored (either first frame or buffer creation failed)
         // Draw Header (Battery, Date) into the static snapshot
         const auto& themeMetrics = UITheme::getInstance().getMetrics();
         drawHeader(renderer, Rect{0, themeMetrics.topPadding, pageWidth, rect.y}, nullptr, nullptr);

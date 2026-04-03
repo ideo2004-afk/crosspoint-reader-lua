@@ -345,7 +345,7 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
 
     // Draw name
     auto itemName = rowTitle(i);
-    auto font = NOTOSANS_14_FONT_ID;
+    auto font = NOTOSANS_12_FONT_ID;
     auto item = renderer.truncatedText(font, itemName.c_str(), textWidth - 24, EpdFontFamily::REGULAR);
     
     int iconPadding = 0;
@@ -415,8 +415,8 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     auto truncatedSubtitle = renderer.truncatedText(
         SMALL_FONT_ID, subtitle, rect.width - metrics.contentSidePadding * 2, EpdFontFamily::REGULAR);
     int truncatedSubtitleWidth = renderer.getTextWidth(SMALL_FONT_ID, truncatedSubtitle.c_str());
-    // Fixed subtitle positioning (no longer at 738, shifted down +8px from original +5px)
-    int subY = rect.y + 13;
+    // Position subtitle (version) above the horizontal line, away from the battery
+    int subY = rect.y + 40;
     renderer.drawText(SMALL_FONT_ID,
                       rect.x + rect.width - metrics.contentSidePadding - truncatedSubtitleWidth, subY,
                       truncatedSubtitle.c_str(), true);
@@ -557,7 +557,7 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     // Draw cover image as background if available (inside the box)
     // Only load from SD on first render, then use stored buffer
 
-    if (hasContinueReading && !recentBooks[0].coverBmpPath.empty() && !coverRendered) {
+    if (hasContinueReading && !recentBooks[0].coverBmpPath.empty() && (!coverRendered || !bufferRestored)) {
       const std::string coverBmpPath =
           UITheme::getCoverThumbPath(recentBooks[0].coverBmpPath, BaseMetrics::values.homeCoverHeight);
 
@@ -580,7 +580,7 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
           // Store the buffer with cover image for fast navigation
           coverBufferStored = storeCoverBuffer();
-          coverRendered = true;
+          coverRendered = true; // Signal that we've attempted a high-quality render
 
           // First render: if selected, draw selection indicators now
           if (bookSelected) {
@@ -594,8 +594,8 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
       }
     }
 
-    if (!bufferRestored && !coverRendered) {
-      // No cover image: draw border or fill, plus bookmark as visual flair
+    if (!bufferRestored) {
+      // No cover image (or buffer restoration failed): draw border or fill, plus bookmark as visual flair
       if (bookSelected) {
         renderer.fillRect(bookX, bookY, bookWidth, bookHeight);
       } else {

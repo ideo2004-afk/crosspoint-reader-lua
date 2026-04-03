@@ -131,7 +131,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     if (bufferRestored) {
       coverRendered = true;
       coverBufferStored = true;
-    } else if (!coverRendered) {
+    } else {
         // --- Full Render Base Layout (Snapshot Base) ---
         
         // 1. Draw Static Header Elements (Battery)
