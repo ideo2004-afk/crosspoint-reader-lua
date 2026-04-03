@@ -83,9 +83,6 @@ void ThemeSwitcher::render(GfxRenderer& renderer) const {
     const int slotX = i * slotWidth;
     const int centerX = slotX + slotWidth / 2;
 
-    // A. Draw Icon using Primitives (2px bold design)
-    renderer.setInvertEnabled(renderer.isDarkMode());
-    
     if (i == 0) { // FLOW: Center rect + side lines
         // Center Rect (2px stroke)
         renderer.drawRect(centerX - 6, iconBaseY, 12, 28, 2, true);
@@ -112,8 +109,6 @@ void ThemeSwitcher::render(GfxRenderer& renderer) const {
         renderer.drawRect(centerX - size - gap/2, iconBaseY + size + gap + 1, size*2 + gap, size, 2, true);
     }
     
-    renderer.setInvertEnabled(false);
-
     // B. Draw Label (Small font, Gray if unselected, Black if selected)
     TextColor textColor = isSelected ? Color::Black : Color::DarkGray;
     int tw = renderer.getTextWidth(SMALL_FONT_ID, opt.name, EpdFontFamily::REGULAR);

@@ -60,7 +60,6 @@ void drawBookCover(GfxRenderer& renderer, const RecentBook& book, int x, int y, 
     FsFile file;
     
     // Clear background
-    renderer.setInvertEnabled(false);
     renderer.fillRect(x, y, w, h, false);
 
     bool success = false;
@@ -72,7 +71,6 @@ void drawBookCover(GfxRenderer& renderer, const RecentBook& book, int x, int y, 
         }
         file.close();
     }
-    renderer.setInvertEnabled(renderer.isDarkMode());
     
     if (success) {
         cutRoundedCorners(renderer, x, y, w, h, bookCornerRadius);
@@ -225,10 +223,8 @@ void TimeTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         for (int i = 0; i < 3; ++i) {
             int tx = horizontalPadding + i * (tileW + tileSpacing);
             // Draw background
-            renderer.setInvertEnabled(false);
             renderer.fillRoundedRect(tx, tileY, tileW, tileH, 8, Color::LightGray);
-            renderer.setInvertEnabled(renderer.isDarkMode());
-
+            
             // Draw value (Large/Bold/Black)
             int tvw = renderer.getTextWidth(NOTOSANS_14_FONT_ID, stats[i].value.c_str());
             renderer.drawText(NOTOSANS_14_FONT_ID, tx + (tileW - tvw) / 2, tileY + 20, stats[i].value.c_str(), Black, EpdFontFamily::BOLD);

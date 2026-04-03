@@ -514,10 +514,8 @@ void MyLibraryActivity::renderGallery() {
           if (Storage.openFileForRead("HOME", item.folderThumbPath, file)) {
             Bitmap bmp(file);
             if (bmp.parseHeaders() == BmpReaderError::Ok) {
-              renderer.setInvertEnabled(false);
               int drawW = std::min((int)bmp.getWidth(), coverWidth);
               renderer.drawBitmap(bmp, x + (coverWidth - drawW) / 2, y, 0, 0);
-              renderer.setInvertEnabled(renderer.isDarkMode());
               maskTopCorners(renderer, x, y, coverWidth, 108, 4);
             }
             file.close();
@@ -556,11 +554,9 @@ void MyLibraryActivity::renderGallery() {
           if (Storage.openFileForRead("HOME", item.thumbPath, file)) {
             Bitmap bmp(file);
             if (bmp.parseHeaders() == BmpReaderError::Ok) {
-              renderer.setInvertEnabled(false);
               renderer.drawBitmap(bmp, x + (coverWidth  - bmp.getWidth())  / 2,
                                        y + (coverHeight - bmp.getHeight()) / 2,
                                        bmp.getWidth(), bmp.getHeight());
-              renderer.setInvertEnabled(renderer.isDarkMode());
               drawnThumb = true;
               maskCorners(renderer, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
                           bmp.getWidth(), bmp.getHeight(), 4);

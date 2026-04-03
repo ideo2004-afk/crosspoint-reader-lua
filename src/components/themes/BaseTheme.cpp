@@ -568,11 +568,9 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         if (bitmap.parseHeaders() == BmpReaderError::Ok) {
           LOG_DBG("THEME", "Rendering bmp");
 
-          // Draw the cover image without dark mode inversion (preserve original cover art)
-          renderer.setInvertEnabled(false);
+          // Draw the cover image
           renderer.drawBitmap(bitmap, bookX, bookY, bookWidth, bookHeight);
-          renderer.setInvertEnabled(renderer.isDarkMode());
-
+          
           // Draw border around the card
           renderer.drawRect(bookX, bookY, bookWidth, bookHeight);
 
@@ -580,7 +578,7 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
           // Store the buffer with cover image for fast navigation
           coverBufferStored = storeCoverBuffer();
-          coverRendered = true; // Signal that we've attempted a high-quality render
+          coverRendered = true; 
 
           // First render: if selected, draw selection indicators now
           if (bookSelected) {

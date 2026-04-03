@@ -60,7 +60,6 @@ void drawBookCover(GfxRenderer& renderer, const RecentBook& book, int x, int y, 
     FsFile file;
     
     // Clear background
-    renderer.setInvertEnabled(false);
     renderer.fillRect(x, y, w, h, false);
 
     bool success = false;
@@ -72,7 +71,6 @@ void drawBookCover(GfxRenderer& renderer, const RecentBook& book, int x, int y, 
         }
         file.close();
     }
-    renderer.setInvertEnabled(renderer.isDarkMode());
     
     if (success) {
         cutRoundedCorners(renderer, x, y, w, h, bookCornerRadius);

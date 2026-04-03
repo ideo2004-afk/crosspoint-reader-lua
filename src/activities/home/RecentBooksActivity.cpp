@@ -354,10 +354,8 @@ void RecentBooksActivity::render(Activity::RenderLock&&) {
         if (Storage.openFileForRead("HOME", cacheItem.thumbPath, file)) {
           Bitmap bmp(file);
           if (bmp.parseHeaders() == BmpReaderError::Ok) {
-            renderer.setInvertEnabled(false);
             renderer.drawBitmap(bmp, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
                                 bmp.getWidth(), bmp.getHeight());
-            renderer.setInvertEnabled(renderer.isDarkMode());
             // Mask sharp corners of the bitmap so they don't leak outside the rounded border
             maskCorners(renderer, x + (coverWidth - bmp.getWidth()) / 2, y + (coverHeight - bmp.getHeight()) / 2,
                         bmp.getWidth(), bmp.getHeight(), 4);

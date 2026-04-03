@@ -216,9 +216,7 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     if (count >= 2) drawStackedCover(idx2, true, false); 
     if (count >= 3) drawStackedCover(idx4, false, false);
 
-    // 2. Center Cover (Main Focused Book)
     int cX = centerX - centerCoverWidth / 2;
-    renderer.setInvertEnabled(false);
     renderer.fillRect(cX, centerY, centerCoverWidth, centerCoverHeight, false);
 
     const std::string cp = UITheme::getCoverThumbPath(recentBooks[curIdx].coverBmpPath, centerCoverHeight);
@@ -232,7 +230,6 @@ void FlowTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         }
         cf.close();
     }
-    renderer.setInvertEnabled(renderer.isDarkMode());
     if (cs) cutRoundedCorners(renderer, cX, centerY, centerCoverWidth, centerCoverHeight, bookCornerRadius);
     renderer.drawRoundedRect(cX, centerY, centerCoverWidth, centerCoverHeight, 1, bookCornerRadius, true);
     if (!cs) {
